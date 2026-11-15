@@ -8,23 +8,26 @@ import { projects, categories } from '../../data/projects';
   title="Proyectos · SEIMA Servicios Generales"
   description="Catálogo de proyectos de SEIMA: cocinas, baños, departamentos, melamina, techos y más, en Lima y provincias."
 >
-  <section class="head dark">
-    <div class="wrap">
-      <p class="eyebrow">Catálogo</p>
-      <h1><Words text="Nuestros" accent="proyectos." /></h1>
-      <p class="head__note">Proyectos de prueba: las fotos y datos reales se cargan después.</p>
-    </div>
-  </section>
-
   <section class="catalog light" data-catalog>
     <div class="wrap">
+      <header class="head">
+        <p class="eyebrow">Catálogo</p>
+        <h1><Words text="Proyectos" /> <span class="head__count" aria-live="polite">(<span data-count-out>{projects.length}</span>)</span></h1>
+        <p class="head__note">Proyectos de prueba: las fotos y datos reales se cargan después. Pasa el mouse (o mantén presionada una tarjeta) para ver el antes.</p>
+      </header>
+
       <div class="chips" role="group" aria-label="Filtrar por categoría">
         <button type="button" class="chip" data-filter="" aria-pressed="true">Todos</button>
         {categories.map((c) => <button type="button" class="chip" data-filter={c.slug} aria-pressed="false">{c.nombre}</button>)}
       </div>
-      <p class="status" role="status" aria-live="polite" data-status></p>
-      <div class="grid">
-        {projects.map((p) => <div class="grid__item" data-cat={p.categoria}><ProjectCard project={p} /></div>)}
+      <p class="status sr-only" role="status" aria-live="polite" data-status></p>
+
+      <div class="grid" data-grid>
+        {projects.map((p, i) => (
+          <div class="grid__item" data-cat={p.categoria} data-slot={i % 5}>
+            <ProjectCard project={p} fill />
+          </div>
+        ))}
       </div>
       <p class="empty" data-empty hidden>Todavía no hay proyectos en esta categoría. Pronto subimos más.</p>
     </div>
@@ -32,25 +35,37 @@ import { projects, categories } from '../../data/projects';
 </Base>
 
 <script>
-  function setup() {
+  // Filtro del catálogo. Al cambiar, las tarjetas que salen se desvanecen y las que quedan se reacomodan (GSAP Flip).
+  let busy = false;
+  let pending: string | null = null;
+
+  async function setup() {
     const root = document.querySelector<HTMLElement>('[data-catalog]');
     if (!root) return;
     const chips = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')];
     const items = [...root.querySelectorAll<HTMLElement>('.grid__item')];
     const empty = root.querySelector<HTMLElement>('[data-empty]')!;
     const status = root.querySelector<HTMLElement>('[data-status]')!;
+    const countOut = root.querySelector<HTMLElement>('[data-count-out]')!;
     const valid = new Set(chips.map((c) => c.dataset.filter));
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const apply = (cat: string, push = true) => {
-      let shown = 0;
-      items.forEach((el) => {
-        const on = !cat || el.dataset.cat === cat;
-        el.hidden = !on;
-        if (on) shown++;
-      });
+    let libs: Promise<{ gsap: any; Flip: any }> | null = null;
+    const load = () =>
+      (libs ??= (async () => {
+        const [{ gsap }, { Flip }] = await Promise.all([import('gsap'), import('gsap/Flip')]);
+        gsap.registerPlugin(Flip);
+        return { gsap, Flip };
+      })());
+
+    // Bento: el tamaño depende de la posición entre las tarjetas visibles
+    const layout = (visible: HTMLElement[]) => visible.forEach((el, i) => (el.dataset.slot = String(i % 5)));
+
+    const paint = (cat: string, shown: number, push: boolean) => {
       chips.forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.filter === cat)));
       empty.hidden = shown > 0;
-      status.textContent = cat ? `${shown} proyecto${shown === 1 ? '' : 's'}` : '';
+      countOut.textContent = String(shown);
+      status.textContent = `${shown} proyecto${shown === 1 ? '' : 's'}`;
       if (push) {
         const url = new URL(location.href);
         if (cat) url.searchParams.set('categoria', cat);
@@ -59,28 +74,95 @@ import { projects, categories } from '../../data/projects';
       }
     };
 
+    const apply = async (cat: string, push = true, animate = true) => {
+      if (busy) {
+        pending = cat;
+        return;
+      }
+      const next = items.filter((el) => !cat || el.dataset.cat === cat);
+      const was = items.filter((el) => !el.hidden);
+      paint(cat, next.length, push);
+
+      if (!animate || reduce) {
+        items.forEach((el) => (el.hidden = !next.includes(el)));
+        layout(next);
+        return;
+      }
+
+      busy = true;
+      try {
+        const { gsap, Flip } = await load();
+        const leaving = was.filter((el) => !next.includes(el));
+        const staying = was.filter((el) => next.includes(el));
+        const entering = next.filter((el) => !was.includes(el));
+
+        if (leaving.length) {
+          await new Promise<void>((done) => gsap.to(leaving, { opacity: 0, scale: 0.94, duration: 0.22, ease: 'power2.in', onComplete: done }));
+        }
+        const state = Flip.getState(staying);
+        items.forEach((el) => (el.hidden = !next.includes(el)));
+        gsap.set(leaving, { clearProps: 'opacity,transform' });
+        layout(next);
+        if (staying.length) Flip.from(state, { duration: 0.6, ease: 'power3.inOut', scale: true });
+        if (entering.length) {
+          gsap.fromTo(entering, { opacity: 0, y: 36, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.55, ease: 'power3.out', delay: 0.18, stagger: 0.07, clearProps: 'transform,opacity' });
+        }
+      } finally {
+        busy = false;
+        if (pending !== null) {
+          const p = pending;
+          pending = null;
+          apply(p);
+        }
+      }
+    };
+
     chips.forEach((c) => c.addEventListener('click', () => apply(c.dataset.filter ?? '')));
     const initial = new URLSearchParams(location.search).get('categoria') ?? '';
-    apply(valid.has(initial) ? initial : '', false);
+    const cat = valid.has(initial) ? initial : '';
+    const next = items.filter((el) => !cat || el.dataset.cat === cat);
+    items.forEach((el) => (el.hidden = !next.includes(el)));
+    layout(next);
+    paint(cat, next.length, false);
+    status.textContent = '';
   }
   document.addEventListener('astro:page-load', setup);
 </script>
 
 <style>
-  .head { padding-block: clamp(2.5rem, 7vw, 5rem) clamp(2rem, 5vw, 3.5rem); }
-  .head h1 { font-size: clamp(2.4rem, 8vw, 5rem); margin-top: 0.6rem; }
-  .head__note { margin-top: 1rem; color: var(--muted-dark); font-size: 0.9rem; }
-  .catalog { padding-block: clamp(1.5rem, 4vw, 3rem) clamp(4rem, 9vw, 7rem); min-height: 60svh; }
-  .chips { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.75rem; scrollbar-width: thin; }
+  .catalog { padding-block: clamp(2.5rem, 7vw, 5rem) clamp(4rem, 9vw, 7rem); min-height: 80svh; }
+  .head { display: grid; gap: 0.9rem; margin-bottom: clamp(1.4rem, 4vw, 2.4rem); }
+  .head h1 { font-size: clamp(3rem, 12vw, 6rem); line-height: 0.95; letter-spacing: -0.02em; }
+  .head__count { font-size: 0.32em; color: var(--red-text); vertical-align: top; font-weight: 800; letter-spacing: 0; margin-left: 0.2em; }
+  .head__note { color: var(--muted-light); font-size: 0.9rem; max-width: 40rem; }
+
+  .chips { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.9rem; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
   .chip {
-    flex: none; font: inherit; font-weight: 600; font-size: 0.9rem; cursor: pointer;
-    padding: 0.5rem 1rem; border-radius: 999px; border: 1.5px solid var(--ink); background: transparent; color: var(--ink);
-    transition: background-color 0.25s ease, color 0.25s ease;
+    flex: none; font: inherit; font-weight: 600; font-size: 0.92rem; cursor: pointer; min-height: 44px;
+    padding: 0.55rem 1.1rem; border-radius: 999px; border: 1.5px solid #cfc8bd; background: transparent; color: var(--ink);
+    transition: transform 0.2s cubic-bezier(0.2, 0.7, 0, 1), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   }
-  .chip:hover { background: var(--paper-2); }
-  .chip[aria-pressed='true'] { background: var(--ink); color: #fff; }
-  .status { min-height: 1.4em; font-size: 0.85rem; color: var(--muted-light); margin: 0.5rem 0 1rem; }
-  .grid { display: grid; gap: clamp(1.4rem, 3vw, 2.2rem); grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); }
+  .chip:hover { translate: 0 -3px; border-color: var(--ink); }
+  .chip:active { scale: 0.97; }
+  .chip[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+  /* Bento */
+  .grid { display: grid; gap: clamp(1.4rem, 3vw, 2.2rem) clamp(1rem, 2vw, 1.6rem); grid-template-columns: 1fr; margin-top: 0.6rem; }
+  .grid__item { --h: 17rem; }
   .grid__item[hidden] { display: none; }
+  .grid__item[data-slot='0'] { --h: 21rem; }
+  .grid__item :global(.pcard) { transition: translate 0.35s cubic-bezier(0.2, 0.7, 0, 1); }
+  .grid__item :global(.pcard:hover) { translate: 0 -6px; }
+  @media (min-width: 620px) {
+    .grid { grid-template-columns: repeat(2, 1fr); }
+    .grid__item[data-slot='0'] { grid-column: 1 / -1; --h: 24rem; }
+  }
+  @media (min-width: 960px) {
+    .grid { grid-template-columns: repeat(12, 1fr); }
+    .grid__item { --h: 19rem; grid-column: span 4; }
+    .grid__item[data-slot='0'] { grid-column: span 7; --h: 26rem; }
+    .grid__item[data-slot='1'] { grid-column: span 5; --h: 26rem; }
+  }
   .empty { padding: 3rem 0; color: var(--muted-light); }
 </style>

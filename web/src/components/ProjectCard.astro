@@ -1,13 +1,21 @@
 ---
 import Photo from './Photo.astro';
 import { categoryName, type Project } from '../data/projects';
-interface Props { project: Project; ar?: string; class?: string }
-const { project: p, ar = '4 / 3', class: cls } = Astro.props;
-const cover = p.fotos.find((f) => f.etapa === 'despues') ?? p.fotos[0];
+// "Después" por defecto; al pasar el mouse o mantener presionado (celular) se asoma el "Antes".
+interface Props { project: Project; ar?: string; fill?: boolean; class?: string }
+const { project: p, ar = '4 / 3', fill = false, class: cls } = Astro.props;
+const after = p.fotos.find((f) => f.etapa === 'despues') ?? p.fotos[0];
+const before = p.fotos.find((f) => f.etapa === 'antes');
 ---
-<a class:list={['pcard', cls]} href={`/proyectos/${p.slug}`} data-cat={p.categoria}>
+<a class:list={['pcard', fill && 'pcard--fill', cls]} href={`/proyectos/${p.slug}`} data-cat={p.categoria}>
   <div class="pcard__media" transition:name={`foto-${p.slug}`}>
-    <Photo src={cover.src} alt={cover.alt} tone={p.tono} ar={ar} />
+    <Photo src={after.src} alt={after.alt} tone={p.tono} ar={ar} fill={fill} />
+    {before && (
+      <div class="pcard__peek" aria-hidden="true">
+        <Photo src={before.src} alt="" tone={(p.tono + 3) % 6} ar={ar} fill plain label="[FOTO ANTES]" />
+        <span class="pcard__chip">Antes</span>
+      </div>
+    )}
   </div>
   <div class="pcard__body">
     <span class="pcard__cat">{categoryName(p.categoria)}</span>
@@ -15,10 +23,19 @@ const cover = p.fotos.find((f) => f.etapa === 'despues') ?? p.fotos[0];
   </div>
 </a>
 <style>
-  .pcard { display: flex; flex-direction: column; gap: 0.9rem; text-decoration: none; height: 100%; }
-  .pcard__media { border-radius: var(--r); }
+  .pcard { display: flex; flex-direction: column; gap: 0.9rem; text-decoration: none; height: 100%; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  .pcard__media { position: relative; border-radius: var(--r); overflow: hidden; }
+  .pcard--fill .pcard__media { height: var(--h, 20rem); }
+  .pcard__peek { position: absolute; inset: 0; opacity: 0; transition: opacity 0.4s ease; }
+  .pcard__peek :global(.photo) { border-radius: 0; height: 100%; aspect-ratio: auto; }
+  .pcard__chip {
+    position: absolute; top: 0.8rem; left: 0.8rem; z-index: 3; background: var(--ink); color: #fff;
+    font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; padding: 0.3rem 0.65rem; border-radius: 999px;
+  }
+  @media (hover: hover) { .pcard:hover .pcard__peek { opacity: 1; } }
+  .pcard:focus-visible .pcard__peek, .pcard.is-peek .pcard__peek { opacity: 1; }
   .pcard__cat { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--red-text); }
-  h3 { font-size: clamp(1.1rem, 2.4vw, 1.4rem); margin-top: 0.2rem; }
   :global(.dark) .pcard__cat { color: var(--red); }
+  h3 { font-size: clamp(1.1rem, 2.4vw, 1.4rem); margin-top: 0.2rem; }
   .pcard:hover h3 { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
 </style>

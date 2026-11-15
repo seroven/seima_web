@@ -334,6 +334,10 @@ main {
   background: var(--ink-3);
   isolation: isolate;
 }
+.photo--fill {
+  aspect-ratio: auto;
+  height: 100%;
+}
 .photo__color,
 .photo__mono {
   position: absolute;

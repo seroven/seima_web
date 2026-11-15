@@ -1,0 +1,87 @@
+---
+// Modo presentación: fotos a pantalla completa, deslizar con el dedo, sin menús.
+// Para que Luis lo muestre en su celular frente al cliente.
+import Photo from './Photo.astro';
+import { etapaLabel, type Project } from '../data/projects';
+interface Props { project: Project }
+const { project: p } = Astro.props;
+---
+<button type="button" class="pres-open" data-pres-open>
+  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor" /></svg>
+  Modo presentación
+</button>
+
+<dialog class="pres" data-pres data-lenis-prevent aria-label={`Presentación: ${p.titulo}`}>
+  <div class="pres__bar">
+    <span class="pres__count" aria-live="polite"><b data-pres-n>1</b> / {p.fotos.length}</span>
+    <span class="pres__title">{p.titulo}</span>
+    <button type="button" class="pres__close" data-pres-close aria-label="Cerrar presentación">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg>
+    </button>
+  </div>
+  <div class="pres__track" data-pres-track tabindex="0">
+    {p.fotos.map((f) => (
+      <figure class="pres__slide">
+        <Photo src={f.src} alt={f.alt} tone={p.tono} fill plain label={`[FOTO REAL · ${etapaLabel[f.etapa].toUpperCase()}]`} />
+        <figcaption>{etapaLabel[f.etapa]}</figcaption>
+      </figure>
+    ))}
+  </div>
+  <p class="pres__hint" aria-hidden="true">Desliza para cambiar de foto</p>
+</dialog>
+
+<script>
+  function setup() {
+    const dlg = document.querySelector<HTMLDialogElement>('[data-pres]');
+    const open = document.querySelector<HTMLElement>('[data-pres-open]');
+    if (!dlg || !open || dlg.dataset.ready) return;
+    dlg.dataset.ready = '1';
+    const track = dlg.querySelector<HTMLElement>('[data-pres-track]')!;
+    const n = dlg.querySelector<HTMLElement>('[data-pres-n]')!;
+    const slides = [...track.children] as HTMLElement[];
+
+    const index = () => Math.round(track.scrollLeft / track.clientWidth);
+    const go = (i: number) => track.scrollTo({ left: Math.max(0, Math.min(slides.length - 1, i)) * track.clientWidth, behavior: 'smooth' });
+    track.addEventListener('scroll', () => (n.textContent = String(index() + 1)), { passive: true });
+
+    open.addEventListener('click', () => {
+      dlg.showModal();
+      document.documentElement.classList.add('pres-on');
+      track.scrollTo({ left: 0 });
+      track.focus();
+    });
+    const close = () => dlg.close();
+    dlg.querySelector('[data-pres-close]')!.addEventListener('click', close);
+    dlg.addEventListener('close', () => document.documentElement.classList.remove('pres-on'));
+    dlg.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); go(index() + 1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); go(index() - 1); }
+    });
+  }
+  document.addEventListener('astro:page-load', setup);
+</script>
+
+<style>
+  .pres-open {
+    display: inline-flex; align-items: center; gap: 0.5rem; min-height: 44px; font: inherit; font-weight: 700; font-size: 0.92rem; cursor: pointer;
+    color: inherit; background: transparent; border: 0; padding: 0.55rem 0.2rem; border-bottom: 2px solid transparent;
+  }
+  .pres-open:hover { border-bottom-color: var(--red); }
+
+  .pres { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #000; color: #fff; }
+  .pres[open] { display: grid; grid-template-rows: auto 1fr auto; }
+  .pres::backdrop { background: #000; }
+  .pres__bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.8rem 1rem; }
+  .pres__count { font-size: 0.9rem; color: #bbb; min-width: 4rem; }
+  .pres__count b { color: #fff; }
+  .pres__title { font-weight: 700; font-size: 0.95rem; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pres__close { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #222; color: #fff; display: grid; place-items: center; cursor: pointer; }
+  .pres__close:hover { background: var(--red); }
+  .pres__track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; min-height: 0; }
+  .pres__track::-webkit-scrollbar { display: none; }
+  .pres__slide { flex: 0 0 100%; scroll-snap-align: center; margin: 0; padding: 0 1rem; position: relative; min-height: 0; display: grid; }
+  .pres__slide :global(.photo) { border-radius: 16px; }
+  .pres__slide figcaption { position: absolute; left: 2rem; top: 1rem; background: var(--red); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.78rem; padding: 0.4rem 0.8rem; border-radius: 999px; }
+  .pres__hint { text-align: center; font-size: 0.8rem; color: #888; padding: 0.7rem; }
+  :global(html.pres-on) { overflow: hidden; }
+</style>

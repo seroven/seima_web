@@ -4,6 +4,8 @@ import Photo from '../../components/Photo.astro';
 import Cta from '../../components/Cta.astro';
 import Words from '../../components/Words.astro';
 import BackButton from '../../components/BackButton.astro';
+import CompareSlider from '../../components/CompareSlider.astro';
+import Presentation from '../../components/Presentation.astro';
 import { projects, categoryName, etapaLabel, show, type Project } from '../../data/projects';
 
 export function getStaticPaths() {
@@ -17,13 +19,17 @@ const meta = [
   { k: 'Distrito', v: show(p.distrito) },
   { k: 'Área', v: show(p.areaM2, ' m²') },
   { k: 'Duración', v: show(p.dias, ' días') },
+  { k: 'Servicios', v: p.servicios.join(' · ') },
 ];
+// Compartir: abre WhatsApp con el enlace de esta ficha (no necesita el número de Luis).
+const share = `https://wa.me/?text=${encodeURIComponent(`${p.titulo} · SEIMA Servicios Generales ${Astro.url.href}`)}`;
 ---
 <Base
   title={`${p.titulo} · SEIMA Servicios Generales`}
   description={`${p.titulo} (${cat}). ${p.servicios.join(', ')}. Proyecto de SEIMA en Lima y provincias.`}
   image={cover.src}
 >
+  <!-- PORTADA: comparador antes/después -->
   <section class="top dark">
     <div class="wrap">
       <div class="topbar">
@@ -31,40 +37,61 @@ const meta = [
         <nav class="crumbs" aria-label="Ruta"><a href="/proyectos">Proyectos</a> / <a href={`/proyectos?categoria=${p.categoria}`}>{cat}</a></nav>
       </div>
       <h1><Words text={p.titulo} /></h1>
-      <ul class="meta">
+      <ul class="meta" data-hero-in>
         {meta.map((m) => <li><span>{m.k}</span><strong>{m.v}</strong></li>)}
       </ul>
+      <div class="actions" data-hero-in>
+        <Cta class="btn--lg" text={`Hola SEIMA, vi el proyecto "${p.titulo}" y quiero cotizar algo así.`} label="Cotizar algo así →" compact />
+        <a class="btn btn--ghost btn--lg" href={share} target="_blank" rel="noopener">Compartir por WhatsApp</a>
+        <Presentation project={p} />
+      </div>
       <div class="cover" transition:name={`foto-${p.slug}`}>
-        <Photo src={cover.src} alt={cover.alt} tone={p.tono} ar="16 / 9" />
+        <CompareSlider project={p} />
+      </div>
+      <p class="cover__hint">Arrastra para comparar el antes y el después</p>
+    </div>
+  </section>
+
+  <!-- EL PROYECTO -->
+  <section class="about light">
+    <div class="wrap about__grid">
+      <div>
+        <p class="eyebrow">El proyecto</p>
+        <p class="desc" data-reveal>{p.descripcion}</p>
+      </div>
+      <div class="about__side" data-reveal>
+        <ul class="tags">{p.servicios.map((s) => <li class="tag">{s}</li>)}</ul>
+        <p class="test">Proyecto de prueba: datos y fotos por reemplazar con los reales.</p>
       </div>
     </div>
   </section>
 
-  <section class="body light">
+  <!-- HISTORIA DE LA OBRA: avanza sola con el scroll -->
+  <section class="story light" data-story aria-label="La historia de la obra">
     <div class="wrap">
-      <div class="body__text">
-        <p class="eyebrow">El proyecto</p>
-        <p class="desc" data-reveal>{p.descripcion}</p>
-        <ul class="tags" data-reveal>{p.servicios.map((s) => <li class="tag">{s}</li>)}</ul>
-        <p class="test" data-reveal>Proyecto de prueba: datos y fotos por reemplazar con los reales.</p>
+      <p class="eyebrow">La historia de la obra</p>
+      <div class="story__bar" aria-hidden="true"><i data-story-fill></i></div>
+      <div class="story__chips" role="group" aria-label="Etapas de la obra">
+        {p.fotos.map((f, i) => (
+          <button type="button" class="story__chip" data-story-chip aria-pressed={i === 0 ? 'true' : 'false'}>0{i + 1} · {etapaLabel[f.etapa]}</button>
+        ))}
       </div>
-
-      <h2 class="stages__title">Antes, durante y después</h2>
-      <div class="stages">
+      <div class="story__frame" data-story-frame>
         {p.fotos.map((f) => (
-          <figure class="stage" data-curtain>
-            <Photo src={f.src} alt={f.alt} tone={p.tono} ar="4 / 5" label={`[FOTO REAL · ${etapaLabel[f.etapa].toUpperCase()}]`} />
-            <figcaption>{etapaLabel[f.etapa]}</figcaption>
+          <figure class="story__fig" data-fig>
+            <Photo src={f.src} alt={f.alt} tone={p.tono} fill label={`[FOTO REAL · ${etapaLabel[f.etapa].toUpperCase()}]`} />
+            <figcaption class="story__cap">{etapaLabel[f.etapa]}</figcaption>
           </figure>
         ))}
       </div>
+      <p class="story__text">[DESCRIPCIÓN REAL: qué pidió el cliente, qué se hizo y con qué materiales, en 3–4 líneas.]</p>
     </div>
   </section>
 
   <section class="cta dark">
     <div class="wrap">
       <h2><Words text="¿Quieres algo" accent="así en tu casa?" /></h2>
-      <div data-reveal><Cta text={`Hola SEIMA, vi el proyecto "${p.titulo}" y quiero cotizar algo similar.`} /></div>
+      <div data-reveal><Cta class="btn--lg" text={`Hola SEIMA, vi el proyecto "${p.titulo}" y quiero cotizar algo similar.`} label="Cotizar algo así →" /></div>
     </div>
   </section>
 </Base>
@@ -75,25 +102,49 @@ const meta = [
   .crumbs { font-size: 0.85rem; color: var(--muted-dark); }
   .crumbs a { text-decoration: none; }
   .crumbs a:hover { color: #fff; text-decoration: underline; }
-  .top h1 { font-size: clamp(2rem, 6.5vw, 4.2rem); max-width: 18ch; }
-  .meta { list-style: none; margin: 1.4rem 0 2rem; padding: 0; display: flex; flex-wrap: wrap; gap: 0.6rem 2rem; }
+  .top h1 { font-size: clamp(2.1rem, 6.5vw, 4.4rem); max-width: 18ch; }
+  .meta { list-style: none; margin: 1.4rem 0 1.2rem; padding: 0; display: flex; flex-wrap: wrap; gap: 0.6rem 2.2rem; }
   .meta li { display: grid; }
   .meta span { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-dark); }
   .meta strong { font-weight: 700; }
-  .cover { border-radius: var(--r); }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem 1rem; margin-bottom: 1.8rem; }
+  .cover { border-radius: 24px; }
+  .cover__hint { margin-top: 0.8rem; font-size: 0.82rem; color: var(--muted-dark); }
 
-  .body { padding-block: clamp(2.5rem, 6vw, 5rem) clamp(3.5rem, 8vw, 6rem); }
-  .body__text { display: grid; gap: 1rem; max-width: 60ch; margin-bottom: clamp(2.5rem, 6vw, 4rem); }
-  .desc { font-size: clamp(1.1rem, 2.4vw, 1.35rem); }
+  .about { padding-block: clamp(3rem, 7vw, 5.5rem) clamp(2rem, 5vw, 3rem); }
+  .about__grid { display: grid; gap: 1.6rem; }
+  @media (min-width: 800px) { .about__grid { grid-template-columns: 1.6fr 1fr; gap: 3rem; align-items: start; } }
+  .desc { margin-top: 0.8rem; font-size: clamp(1.15rem, 2.6vw, 1.6rem); line-height: 1.45; max-width: 38ch; }
+  .about__side { display: grid; gap: 1rem; }
   .tags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
   .test { font-size: 0.85rem; color: var(--muted-light); }
-  .stages__title { font-size: clamp(1.5rem, 4vw, 2.4rem); margin-bottom: 1.5rem; }
-  .stages { display: grid; grid-auto-flow: column; grid-auto-columns: 78%; gap: 1rem; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 1rem; margin-inline: calc(var(--pad) * -1); padding-inline: var(--pad); }
-  .stage { margin: 0; scroll-snap-align: start; }
-  .stage figcaption { margin-top: 0.6rem; font-weight: 700; font-stretch: 112%; }
+
+  /* Historia: sin JS se ven las 3 fotos en fila; con JS se fija y avanza con el scroll */
+  .story { padding-block: clamp(2rem, 5vw, 4rem) clamp(3rem, 7vw, 5rem); }
+  .story__bar, .story__chips { display: none; }
+  .story__frame { display: grid; grid-auto-flow: column; grid-auto-columns: 78%; gap: 1rem; overflow-x: auto; scroll-snap-type: x mandatory; margin: 1.2rem calc(var(--pad) * -1) 0; padding-inline: var(--pad); padding-bottom: 1rem; }
+  .story__fig { margin: 0; position: relative; scroll-snap-align: start; }
+  .story__fig :global(.photo) { aspect-ratio: 4 / 5; height: auto; }
+  .story__cap { margin-top: 0.6rem; font-weight: 700; font-stretch: 112%; }
+  .story__text { margin-top: 1rem; max-width: 52ch; color: #3d3a36; font-size: 1.05rem; }
   @media (min-width: 800px) {
-    .stages { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); grid-auto-columns: auto; overflow: visible; margin-inline: 0; padding-inline: 0; }
+    .story__frame { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); grid-auto-columns: auto; overflow: visible; margin-inline: 0; padding-inline: 0; }
   }
+
+  .story.is-scrub { padding-block: 1rem; display: grid; align-content: center; min-height: calc(100svh - var(--header)); }
+  .is-scrub .story__bar { display: block; height: 4px; background: #ddd6cb; border-radius: 4px; overflow: hidden; margin-top: 0.8rem; }
+  .is-scrub .story__bar i { display: block; height: 100%; background: var(--red); transform-origin: 0 50%; transform: scaleX(0); }
+  .is-scrub .story__chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.8rem; }
+  .story__chip {
+    font: inherit; font-weight: 700; font-size: 0.88rem; cursor: pointer; min-height: 44px; padding: 0.5rem 1rem; border-radius: 999px;
+    border: 1.5px solid #cfc8bd; background: transparent; color: var(--ink); transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  }
+  .story__chip[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .is-scrub .story__frame { display: block; position: relative; overflow: hidden; margin: 1rem 0 0; padding: 0; height: min(52svh, 34rem); border-radius: 24px; }
+  .is-scrub .story__fig { position: absolute; inset: 0; }
+  .is-scrub .story__fig :global(.photo) { aspect-ratio: auto; height: 100%; border-radius: 0; }
+  .is-scrub .story__cap { position: absolute; left: 1rem; top: 1rem; margin: 0; background: var(--red); color: #fff; font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.4rem 0.85rem; border-radius: 999px; }
+  .is-scrub .story__text { margin-top: 0.9rem; }
 
   .cta { padding-block: clamp(3.5rem, 9vw, 6rem); }
   .cta .wrap { display: grid; gap: 1.5rem; justify-items: start; }

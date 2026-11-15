@@ -1,11 +1,12 @@
 ---
 // Si hay `src`, usa la foto real; si no, placeholder visible. Mismo tratamiento en ambos casos.
-interface Props { src?: string | null; alt?: string; tone?: number; label?: string; ar?: string; class?: string }
-const { src, alt = '', tone = 0, label = '[FOTO REAL]', ar, class: cls } = Astro.props;
+// plain: solo la capa a color (para "antes" que aparece encima). fill: ocupa el alto del contenedor.
+interface Props { src?: string | null; alt?: string; tone?: number; label?: string; ar?: string; class?: string; plain?: boolean; fill?: boolean }
+const { src, alt = '', tone = 0, label = '[FOTO REAL]', ar, class: cls, plain = false, fill = false } = Astro.props;
 const style = `--tone:${tone};${ar ? `--ar:${ar};` : ''}`;
 ---
-<div class:list={['photo', cls]} style={style} role={src ? undefined : 'img'} aria-label={src ? undefined : alt || label}>
+<div class:list={['photo', fill && 'photo--fill', plain && 'photo--plain', cls]} style={style} role={src ? undefined : 'img'} aria-label={src ? undefined : alt || label}>
   <div class="photo__color">{src ? <img src={src} alt={alt} loading="lazy" decoding="async" /> : <span class="photo__ph"></span>}</div>
-  <div class="photo__mono" aria-hidden="true">{src ? <img src={src} alt="" loading="lazy" decoding="async" /> : <span class="photo__ph"></span>}</div>
+  {!plain && <div class="photo__mono" aria-hidden="true">{src ? <img src={src} alt="" loading="lazy" decoding="async" /> : <span class="photo__ph"></span>}</div>}
   {!src && <span class="photo__label">{label}</span>}
 </div>

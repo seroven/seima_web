@@ -11,6 +11,7 @@ type Cleanup = () => void;
 
 let cleanups: Cleanup[] = [];
 let token = 0;
+let lenisRef: any = null;
 
 const prefersReduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel);
@@ -40,6 +41,7 @@ async function init() {
     gsap.registerPlugin(ScrollTrigger);
 
     const lenis = new Lenis({ lerp: 0.1 });
+    lenisRef = lenis;
     lenis.on('scroll', ScrollTrigger.update);
     const tick = (time: number) => lenis.raf(time * 1000);
     gsap.ticker.add(tick);
@@ -49,8 +51,11 @@ async function init() {
       // 1) Pines, en orden de aparición
       scenes(gsap);
       gallery(gsap);
+      story(gsap);
       // 2) Resto
+      heroIn(gsap);
       heroIntro(gsap);
+      compare(gsap);
       words(gsap);
       reveals(gsap);
       curtains(gsap);
@@ -61,6 +66,7 @@ async function init() {
       ctx.revert();
       gsap.ticker.remove(tick);
       lenis.destroy();
+      lenisRef = null;
     });
 
     ScrollTrigger.refresh();
@@ -206,6 +212,12 @@ function scenes(gsap: any) {
   cleanups.push(() => mm.revert());
 }
 
+/* ---------- Entrada de textos de cabecera (cualquier página) ---------- */
+function heroIn(gsap: any) {
+  if (!$$('[data-hero-in]').length) return;
+  gsap.fromTo('[data-hero-in]', { y: 28, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9, ease: 'power3.out', stagger: 0.14, delay: 0.7 });
+}
+
 /* ---------- Portada: la casa se construye sola al cargar ---------- */
 function heroIntro(gsap: any) {
   const art = $('.hero__art');
@@ -220,8 +232,6 @@ function heroIntro(gsap: any) {
   const spots = $$('.spot', art);
   const steps = $$('[data-step]', art);
   const setStep = (i: number) => steps.forEach((s, n) => s.classList.toggle('is-active', n === i));
-
-  gsap.fromTo('[data-hero-in]', { y: 28, opacity: 0 }, { y: 0, opacity: 1, duration: 0.9, ease: 'power3.out', stagger: 0.14, delay: 0.7 });
 
   const tl = gsap.timeline({ delay: 0.3, defaults: { ease: 'power3.out' } });
   tl.call(setStep, [0], 0);
@@ -277,6 +287,77 @@ function gallery(gsap: any) {
     return () => section.classList.remove('is-pinned');
   });
   cleanups.push(() => mm.revert());
+}
+
+/* ---------- Ficha: la historia de la obra se fija y avanza con el scroll ---------- */
+function story(gsap: any) {
+  const root = $("[data-story]");
+  if (!root) return;
+  const figs = $$("[data-fig]", root);
+  const fill = $("[data-story-fill]", root);
+  const chips = $$("[data-story-chip]", root);
+  const n = figs.length;
+  if (n < 2) return;
+  const STEP = 1.2;
+  const mm = gsap.matchMedia();
+
+  mm.add("(min-height: 520px)", () => {
+    root.classList.add("is-scrub");
+    const tl = gsap.timeline({
+      defaults: { ease: "none" },
+      scrollTrigger: {
+        trigger: root,
+        start: "top top+=60",
+        end: () => "+=" + window.innerHeight * 1.6,
+        pin: true,
+        scrub: 0.6,
+        anticipatePin: 1,
+        invalidateOnRefresh: true,
+        onUpdate: (self: any) => {
+          const idx = Math.min(n - 1, Math.floor(self.progress * n * 0.999));
+          chips.forEach((c, i) => c.setAttribute("aria-pressed", String(i === idx)));
+        },
+      },
+    });
+    figs.slice(1).forEach((f, i) => {
+      tl.fromTo(f, { clipPath: "inset(0% 0% 0% 100%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 1, ease: "power2.inOut" }, i * STEP + 0.2);
+    });
+    const total = (n - 1) * STEP + 0.6;
+    tl.fromTo(fill, { scaleX: 0 }, { scaleX: 1, duration: total }, 0);
+    tl.to({}, { duration: 0.4 }, total);
+
+    // Los botones de etapa saltan a su punto del scroll
+    const onChip = (i: number) => () => {
+      const st = tl.scrollTrigger;
+      if (!st) return;
+      const y = st.start + ((st.end - st.start) * (i / (n - 1))) * 0.9;
+      if (lenisRef) lenisRef.scrollTo(y, { duration: 1.1 });
+      else window.scrollTo({ top: y, behavior: "smooth" });
+    };
+    const handlers = chips.map((c, i) => {
+      const h = onChip(i);
+      c.addEventListener("click", h);
+      return () => c.removeEventListener("click", h);
+    });
+    return () => {
+      handlers.forEach((off) => off());
+      root.classList.remove("is-scrub");
+    };
+  });
+  cleanups.push(() => mm.revert());
+}
+
+/* ---------- Ficha: el comparador hace un barrido de bienvenida ---------- */
+function compare(gsap: any) {
+  $$("[data-compare]").forEach((el) => {
+    const input = $<HTMLInputElement>(".cmp__range", el);
+    const o = { v: 0 };
+    const set = () => el.style.setProperty("--p", o.v.toFixed(1));
+    set(); // arranca mostrando solo el "después" (igual que la foto de la tarjeta)
+    const tl = gsap.timeline({ delay: 0.9, onUpdate: set, onComplete: () => input && (input.value = "50") });
+    tl.to(o, { v: 82, duration: 0.9, ease: "power2.inOut" }).to(o, { v: 50, duration: 0.8, ease: "power2.inOut" });
+    (el as any)._intro = tl;
+  });
 }
 
 /* ---------- Títulos: palabra por palabra (entrada) y salida al subir ---------- */
