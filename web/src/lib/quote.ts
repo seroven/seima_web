@@ -78,7 +78,7 @@ export const ACABADOS = [
   { id: 'estandar', label: 'Estándar', desc: 'Buen acabado, el más usado' },
   { id: 'corte45', label: 'Corte 45° + resina', desc: 'Bordes a inglete y resina' },
   { id: 'granito', label: 'Granito o formato grande', desc: 'Piezas grandes, más premium' },
-  { id: 'recomiendame', label: 'Recomiéndame', desc: 'Que Luis me aconseje' },
+  { id: 'recomiendame', label: 'Recomiéndame', desc: 'Que ustedes me aconsejen' },
 ] as const;
 
 export const PLAZOS = [

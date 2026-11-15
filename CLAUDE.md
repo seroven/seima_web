@@ -59,6 +59,7 @@ Modelo de datos orientativo (ajustable; **las decisiones sobre fotos están en `
 - **No mencionar facturación** (Luis tiene RUC pero no emite facturas).
 - El número de WhatsApp va en variable de entorno, nunca hardcodeado.
 - Textos de la interfaz en **español (Perú)**, tono cercano y profesional.
+- **El cotizador habla en "nosotros"** (la marca en primera persona del plural: "te respondemos", "nos llega todo ordenado", "podemos ir a medir"). No nombra a Luis en tercera persona ahí. El nombre del dueño solo va donde corresponde (pie de página, datos de contacto).
 
 ## Dirección visual
 

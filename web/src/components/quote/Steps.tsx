@@ -75,7 +75,7 @@ export function StepEspacio({ data, set }: P) {
           </div>
         </Collapse>
         <Collapse show={data.medidasModo === 'nose'}>
-          <p className="q-help q-help--top">Sin problema: Luis puede ir a medir o tú se las mandas luego.</p>
+          <p className="q-help q-help--top">Sin problema: podemos ir a medir o tú nos las mandas luego.</p>
         </Collapse>
       </fieldset>
 
@@ -160,7 +160,7 @@ export function StepLugar({ data, set, files, onFiles }: P & { files: File[]; on
             </button>
           )}
         </div>
-        <p className="q-help">Hasta 6 fotos. Por ahora se las envías a Luis por el mismo chat de WhatsApp al final.</p>
+        <p className="q-help">Hasta 6 fotos. Por ahora nos las envías por el mismo chat de WhatsApp al final.</p>
       </fieldset>
     </div>
   );
@@ -177,7 +177,7 @@ export function StepDatos({ data, set }: P) {
       <Field id={idN} label="Tu nombre">
         <TextInput id={idN} autoComplete="name" placeholder="Nombre y apellido" value={data.nombre} onChange={(e) => set('nombre', e.target.value)} />
       </Field>
-      <Field id={idW} label="Tu WhatsApp" hint="Solo para que Luis te responda.">
+      <Field id={idW} label="Tu WhatsApp" hint="Solo para que podamos responderte.">
         <TextInput id={idW} prefix="+51" type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="9XX XXX XXX" value={formatCelular(data.whatsapp)} onChange={(e) => set('whatsapp', e.target.value)} />
       </Field>
       <Collapse show={data.cliente === 'empresa'}>
@@ -208,7 +208,7 @@ export function StepResumen({ data, tituloProyecto }: { data: QuoteData; tituloP
 
   return (
     <div className="q-stack">
-      <p className="q-help">Así le llegará a Luis por WhatsApp. Revisa que todo esté bien.</p>
+      <p className="q-help">Así nos llegará por WhatsApp. Revisa que todo esté bien.</p>
       <div className="q-chat" aria-label="Vista previa del mensaje">
         <AnimatePresence mode="wait">
           {typing ? (

@@ -153,8 +153,8 @@ export default function Quote() {
             <h2>¡Listo, {data.nombre.split(' ')[0] || 'gracias'}!</h2>
             <p>
               {href
-                ? 'Se abrió WhatsApp con tu solicitud. Envía el mensaje (y las fotos, si tienes) y Luis te responde por ahí.'
-                : 'Tu solicitud está lista. Aún no está configurado el número de WhatsApp de Luis [NÚMERO PENDIENTE]: copia el mensaje y envíaselo.'}
+                ? 'Se abrió WhatsApp con tu solicitud. Envía el mensaje (y las fotos, si tienes) y te respondemos por ahí.'
+                : 'Tu solicitud está lista. Aún no está configurado nuestro número de WhatsApp [NÚMERO PENDIENTE]: copia el mensaje y envíalo.'}
             </p>
             <div className="q-nav">
               {!href && <button type="button" className="btn q-next" onClick={copy}>{copied ? 'Copiado ✓' : 'Copiar mensaje'}</button>}
@@ -208,7 +208,7 @@ export default function Quote() {
               )}
             </div>
             {step === LAST && !href && (
-              <p className="q-help">Mientras no esté el número de Luis, puedes copiar el mensaje y enviárselo.</p>
+              <p className="q-help">Mientras no esté nuestro número, puedes copiar el mensaje y enviarlo.</p>
             )}
           </form>
         )}
