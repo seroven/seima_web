@@ -1,0 +1,18 @@
+---
+import Cta from './Cta.astro';
+const path = Astro.url.pathname;
+const active = (p: string) => (p === '/' ? path === '/' : path.startsWith(p)) ? 'page' : undefined;
+---
+<header class="site-header on-dark">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="SEIMA Servicios Generales, inicio">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 2 15h4v13h8v-8h4v8h8V15h4z" fill="#fff"/><rect x="13" y="13" width="6" height="5" fill="#e0283c"/></svg>
+      <span><b>SEIMA</b><small>Servicios Generales</small></span>
+    </a>
+    <nav class="nav" aria-label="Principal">
+      <a href="/" aria-current={active('/')}>Inicio</a>
+      <a href="/proyectos" aria-current={active('/proyectos')}>Proyectos</a>
+      <Cta text="Hola SEIMA, quiero cotizar un trabajo." label="Cotizar" compact />
+    </nav>
+  </div>
+</header>

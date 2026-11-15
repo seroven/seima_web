@@ -1,0 +1,14 @@
+# Dependencias y builds (web/ y api/)
+node_modules/
+dist/
+.astro/
+
+# Entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Logs y sistema
+*.log
+.DS_Store
+.idea/

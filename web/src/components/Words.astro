@@ -1,0 +1,9 @@
+---
+// Parte el texto en palabras en build; motion.ts las hace entrar con una máscara.
+interface Props { text: string; accent?: string; br?: boolean }
+const { text, accent, br = false } = Astro.props;
+const split = (s: string, cls = '') => s.split(' ').filter(Boolean).map((w) => ({ w, cls }));
+const first = split(text);
+const words = [...first, ...(accent ? split(accent, 'accent') : [])];
+---
+<span class="words" data-words>{words.map(({ w, cls }, i) => (<Fragment>{br && i === first.length && <br />}<span class="w"><span class={`wi ${cls}`} data-word>{w}</span></span>{i < words.length - 1 ? ' ' : ''}</Fragment>))}</span>

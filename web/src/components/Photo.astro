@@ -1,0 +1,11 @@
+---
+// Si hay `src`, usa la foto real; si no, placeholder visible. Mismo tratamiento en ambos casos.
+interface Props { src?: string | null; alt?: string; tone?: number; label?: string; ar?: string; class?: string }
+const { src, alt = '', tone = 0, label = '[FOTO REAL]', ar, class: cls } = Astro.props;
+const style = `--tone:${tone};${ar ? `--ar:${ar};` : ''}`;
+---
+<div class:list={['photo', cls]} style={style} role={src ? undefined : 'img'} aria-label={src ? undefined : alt || label}>
+  <div class="photo__color">{src ? <img src={src} alt={alt} loading="lazy" decoding="async" /> : <span class="photo__ph"></span>}</div>
+  <div class="photo__mono" aria-hidden="true">{src ? <img src={src} alt="" loading="lazy" decoding="async" /> : <span class="photo__ph"></span>}</div>
+  {!src && <span class="photo__label">{label}</span>}
+</div>

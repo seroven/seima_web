@@ -1,0 +1,96 @@
+---
+import Base from '../../layouts/Base.astro';
+import Photo from '../../components/Photo.astro';
+import Cta from '../../components/Cta.astro';
+import Words from '../../components/Words.astro';
+import { projects, categoryName, etapaLabel, show, type Project } from '../../data/projects';
+
+export function getStaticPaths() {
+  return projects.map((project) => ({ params: { slug: project.slug }, props: { project } }));
+}
+
+const { project: p } = Astro.props as { project: Project };
+const cat = categoryName(p.categoria);
+const cover = p.fotos.find((f) => f.etapa === 'despues') ?? p.fotos[0];
+const meta = [
+  { k: 'Distrito', v: show(p.distrito) },
+  { k: 'Área', v: show(p.areaM2, ' m²') },
+  { k: 'Duración', v: show(p.dias, ' días') },
+];
+---
+<Base
+  title={`${p.titulo} · SEIMA Servicios Generales`}
+  description={`${p.titulo} (${cat}). ${p.servicios.join(', ')}. Proyecto de SEIMA en Lima y provincias.`}
+  image={cover.src}
+>
+  <section class="top dark">
+    <div class="wrap">
+      <nav class="crumbs" aria-label="Ruta"><a href="/proyectos">← Proyectos</a> / <a href={`/proyectos?categoria=${p.categoria}`}>{cat}</a></nav>
+      <h1><Words text={p.titulo} /></h1>
+      <ul class="meta">
+        {meta.map((m) => <li><span>{m.k}</span><strong>{m.v}</strong></li>)}
+      </ul>
+      <div class="cover" transition:name={`foto-${p.slug}`}>
+        <Photo src={cover.src} alt={cover.alt} tone={p.tono} ar="16 / 9" />
+      </div>
+    </div>
+  </section>
+
+  <section class="body light">
+    <div class="wrap">
+      <div class="body__text">
+        <p class="eyebrow">El proyecto</p>
+        <p class="desc" data-reveal>{p.descripcion}</p>
+        <ul class="tags" data-reveal>{p.servicios.map((s) => <li class="tag">{s}</li>)}</ul>
+        <p class="test" data-reveal>Proyecto de prueba: datos y fotos por reemplazar con los reales.</p>
+      </div>
+
+      <h2 class="stages__title">Antes, durante y después</h2>
+      <div class="stages">
+        {p.fotos.map((f) => (
+          <figure class="stage" data-curtain>
+            <Photo src={f.src} alt={f.alt} tone={p.tono} ar="4 / 5" label={`[FOTO REAL · ${etapaLabel[f.etapa].toUpperCase()}]`} />
+            <figcaption>{etapaLabel[f.etapa]}</figcaption>
+          </figure>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="cta dark">
+    <div class="wrap">
+      <h2><Words text="¿Quieres algo" accent="así en tu casa?" /></h2>
+      <div data-reveal><Cta text={`Hola SEIMA, vi el proyecto "${p.titulo}" y quiero cotizar algo similar.`} /></div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .top { padding-block: clamp(1.5rem, 4vw, 3rem) clamp(2rem, 5vw, 4rem); }
+  .crumbs { font-size: 0.85rem; color: var(--muted-dark); margin-bottom: 1.2rem; }
+  .crumbs a { text-decoration: none; }
+  .crumbs a:hover { color: #fff; text-decoration: underline; }
+  .top h1 { font-size: clamp(2rem, 6.5vw, 4.2rem); max-width: 18ch; }
+  .meta { list-style: none; margin: 1.4rem 0 2rem; padding: 0; display: flex; flex-wrap: wrap; gap: 0.6rem 2rem; }
+  .meta li { display: grid; }
+  .meta span { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-dark); }
+  .meta strong { font-weight: 700; }
+  .cover { border-radius: var(--r); }
+
+  .body { padding-block: clamp(2.5rem, 6vw, 5rem) clamp(3.5rem, 8vw, 6rem); }
+  .body__text { display: grid; gap: 1rem; max-width: 60ch; margin-bottom: clamp(2.5rem, 6vw, 4rem); }
+  .desc { font-size: clamp(1.1rem, 2.4vw, 1.35rem); }
+  .tags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .test { font-size: 0.85rem; color: var(--muted-light); }
+  .stages__title { font-size: clamp(1.5rem, 4vw, 2.4rem); margin-bottom: 1.5rem; }
+  .stages { display: grid; grid-auto-flow: column; grid-auto-columns: 78%; gap: 1rem; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 1rem; margin-inline: calc(var(--pad) * -1); padding-inline: var(--pad); }
+  .stage { margin: 0; scroll-snap-align: start; }
+  .stage figcaption { margin-top: 0.6rem; font-weight: 700; font-stretch: 112%; }
+  @media (min-width: 800px) {
+    .stages { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); grid-auto-columns: auto; overflow: visible; margin-inline: 0; padding-inline: 0; }
+  }
+
+  .cta { padding-block: clamp(3.5rem, 9vw, 6rem); }
+  .cta .wrap { display: grid; gap: 1.5rem; justify-items: start; }
+  .cta h2 { font-size: clamp(1.8rem, 5.5vw, 3.4rem); max-width: 14ch; }
+</style>

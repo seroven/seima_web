@@ -1,0 +1,196 @@
+---
+// Corte de una casa en 3 SVG apilados (misma viewBox) para poder animar cada capa con clip-path/opacity.
+// Ilustración propia (no es foto de proyecto). Ambientes clicables = botones HTML encima.
+const W = 600;
+const H = 440;
+
+const range = (a: number, b: number, step: number) => {
+  const out: number[] = [];
+  for (let x = a; x <= b; x += step) out.push(x);
+  return out;
+};
+
+// Ambientes: x, y, ancho, alto (planta baja y alta)
+const rooms = {
+  cochera: { x: 60, y: 220, w: 150, h: 180 },
+  cocina: { x: 210, y: 220, w: 170, h: 180 },
+  sala: { x: 380, y: 220, w: 160, h: 180 },
+  bano: { x: 60, y: 68, w: 170, h: 140 },
+  dorm: { x: 230, y: 68, w: 310, h: 140 },
+};
+
+const hotspots = [
+  { id: 'techos', nombre: 'Techos', x: 300, y: 50 },
+  { id: 'banos', nombre: 'Baños', x: 145, y: 120 },
+  { id: 'melamina', nombre: 'Melamina', x: 430, y: 120 },
+  { id: 'cocheras-fachadas', nombre: 'Cochera y fachada', x: 135, y: 300 },
+  { id: 'cocinas', nombre: 'Cocinas', x: 295, y: 300 },
+  { id: 'departamentos', nombre: 'Departamentos', x: 460, y: 300 },
+];
+const pct = (v: number, t: number) => `${((v / t) * 100).toFixed(2)}%`;
+---
+<div class="house" data-house>
+  <div class="house__stage">
+    <!-- 1 · Estructura: perfiles metálicos -->
+    <svg class="layer layer--structure" data-layer="structure" viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
+      <g stroke="#8c8c8c" stroke-width="1.2" fill="none">
+        {range(60, 540, 24).map((x) => <line data-stud x1={x} y1="220" x2={x} y2="400" />)}
+        {range(60, 540, 24).map((x) => <line data-stud x1={x} y1="68" x2={x} y2="208" />)}
+        <line data-track x1="50" y1="220" x2="550" y2="220" />
+        <line data-track x1="50" y1="208" x2="550" y2="208" />
+        <line data-track x1="50" y1="68" x2="550" y2="68" />
+        <line data-track x1="50" y1="400" x2="550" y2="400" />
+      </g>
+      <g stroke="#e0283c" stroke-width="3" fill="none" stroke-linecap="square">
+        {[60, 210, 380, 540].map((x) => <line data-stud data-col x1={x} y1="220" x2={x} y2="400" />)}
+        {[60, 230, 540].map((x) => <line data-stud data-col x1={x} y1="68" x2={x} y2="208" />)}
+      </g>
+      <rect x="44" y="400" width="512" height="14" fill="#262626" stroke="#3d3d3d" />
+    </svg>
+
+    <!-- 2 · Placas de drywall -->
+    <svg class="layer layer--plates" data-layer="plates" viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
+      {Object.entries(rooms).map(([id, r]) => (
+        <g class="plate" data-plate={id}>
+          <rect x={r.x + 4} y={r.y + 4} width={r.w - 8} height={r.h - 8} fill="#2b2b2b" stroke="#444" />
+          <line x1={r.x + 4} y1={r.y + r.h / 2} x2={r.x + r.w - 4} y2={r.y + r.h / 2} stroke="#444" />
+          {range(r.x + 22, r.x + r.w - 14, 36).map((sx) => (
+            <Fragment>
+              <circle cx={sx} cy={r.y + 14} r="1.6" fill="#666" />
+              <circle cx={sx} cy={r.y + r.h - 14} r="1.6" fill="#666" />
+            </Fragment>
+          ))}
+        </g>
+      ))}
+      <rect x="44" y="52" width="512" height="16" fill="#2b2b2b" stroke="#444" />
+      <rect x="44" y="208" width="512" height="12" fill="#2b2b2b" stroke="#444" />
+    </svg>
+
+    <!-- 3 · Acabado -->
+    <svg class="layer layer--finish" data-layer="finish" viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
+      <defs>
+        <pattern id="tile" width="16" height="16" patternUnits="userSpaceOnUse">
+          <rect width="16" height="16" fill="#ece7de" />
+          <path d="M16 0H0V16" fill="none" stroke="#bdb5a8" stroke-width="1" />
+        </pattern>
+        <pattern id="tile-dark" width="20" height="20" patternUnits="userSpaceOnUse">
+          <rect width="20" height="20" fill="#3b3b3b" />
+          <path d="M20 0H0V20" fill="none" stroke="#202020" stroke-width="1.2" />
+        </pattern>
+      </defs>
+
+      <!-- paredes pintadas -->
+      <rect x="64" y="224" width="142" height="172" fill="#d9d3c7" />
+      <rect x="214" y="224" width="162" height="172" fill="url(#tile)" />
+      <rect x="384" y="224" width="152" height="172" fill="#c9b9a6" />
+      <rect x="64" y="72" width="162" height="132" fill="url(#tile)" />
+      <rect x="234" y="72" width="302" height="132" fill="#d9d3c7" />
+
+      <!-- pisos -->
+      <rect x="64" y="384" width="472" height="16" fill="#1b1b1b" />
+      <rect x="64" y="196" width="472" height="12" fill="#1b1b1b" />
+
+      <!-- cochera: portón y auto -->
+      <g>
+        {range(236, 380, 18).map((y) => <line x1="72" y1={y} x2="198" y2={y} stroke="#b9b1a3" stroke-width="2" />)}
+        <rect x="80" y="338" width="112" height="34" rx="8" fill="#e0283c" />
+        <path d="M98 338l12-20h50l14 20z" fill="#e0283c" />
+        <path d="M114 336l8-14h34l8 14z" fill="#0e0e0e" opacity=".85" />
+        <circle cx="108" cy="374" r="9" fill="#0e0e0e" /><circle cx="108" cy="374" r="3.5" fill="#8c8c8c" />
+        <circle cx="166" cy="374" r="9" fill="#0e0e0e" /><circle cx="166" cy="374" r="3.5" fill="#8c8c8c" />
+      </g>
+
+      <!-- cocina: muebles, campana y LED -->
+      <g>
+        <rect x="226" y="248" width="140" height="42" rx="3" fill="#b79b7a" />
+        <line x1="296" y1="248" x2="296" y2="290" stroke="#8a6f50" />
+        <rect x="226" y="294" width="140" height="3" fill="#e0283c" />
+        <rect x="226" y="338" width="140" height="46" fill="#cbbfae" />
+        <line x1="296" y1="338" x2="296" y2="384" stroke="#a89a85" />
+        <rect x="222" y="330" width="148" height="8" rx="2" fill="#0e0e0e" />
+        <rect x="236" y="326" width="40" height="4" rx="1" fill="#555" />
+        <path d="M312 326h38v-6h-38z" fill="#222" />
+      </g>
+
+      <!-- sala: sofá, cuadro y lámpara -->
+      <g>
+        <rect x="404" y="352" width="104" height="32" rx="8" fill="#0e0e0e" />
+        <rect x="398" y="330" width="22" height="54" rx="8" fill="#262626" />
+        <rect x="492" y="330" width="22" height="54" rx="8" fill="#262626" />
+        <rect x="414" y="334" width="84" height="22" rx="7" fill="#1b1b1b" />
+        <rect x="420" y="256" width="72" height="48" fill="#0e0e0e" />
+        <rect x="426" y="262" width="60" height="36" fill="#e0283c" />
+        <rect x="516" y="262" width="3" height="100" fill="#222" />
+        <path d="M506 262h24l-6 14h-12z" fill="#f4f1ec" />
+      </g>
+
+      <!-- baño: tina, nicho, espejo, LED -->
+      <g>
+        <rect x="82" y="168" width="128" height="30" rx="14" fill="#f4f1ec" />
+        <rect x="82" y="166" width="128" height="5" rx="2" fill="#bdb5a8" />
+        <rect x="100" y="94" width="46" height="34" fill="#1b1b1b" />
+        <rect x="104" y="98" width="38" height="26" fill="#d7d0c4" />
+        <circle cx="190" cy="108" r="17" fill="#0e0e0e" />
+        <circle cx="190" cy="108" r="13" fill="#9fb2b8" />
+        <rect x="64" y="136" width="162" height="3" fill="#e0283c" />
+      </g>
+
+      <!-- dormitorio: cama, closet en melamina, ventana -->
+      <g>
+        <rect x="262" y="164" width="130" height="32" rx="4" fill="#0e0e0e" />
+        <rect x="262" y="130" width="14" height="66" rx="4" fill="#262626" />
+        <rect x="278" y="150" width="108" height="20" rx="8" fill="#f4f1ec" />
+        <rect x="282" y="144" width="34" height="14" rx="6" fill="#fff" />
+        <rect x="448" y="88" width="82" height="108" fill="#b79b7a" />
+        <line x1="489" y1="88" x2="489" y2="196" stroke="#8a6f50" stroke-width="2" />
+        <rect x="482" y="136" width="3" height="16" fill="#0e0e0e" />
+        <rect x="493" y="136" width="3" height="16" fill="#0e0e0e" />
+        <rect x="320" y="86" width="80" height="50" fill="#0e0e0e" />
+        <rect x="324" y="90" width="72" height="42" fill="#a9bfc6" />
+        <line x1="360" y1="90" x2="360" y2="132" stroke="#0e0e0e" stroke-width="3" />
+      </g>
+
+      <!-- techo: losa, parapeto y tanque -->
+      <g>
+        <rect x="44" y="52" width="512" height="16" fill="#f4f1ec" />
+        <rect x="44" y="36" width="14" height="18" fill="#f4f1ec" />
+        <rect x="542" y="36" width="14" height="18" fill="#f4f1ec" />
+        <rect x="256" y="22" width="88" height="30" rx="6" fill="#e0283c" />
+        <rect x="256" y="34" width="88" height="3" fill="#0e0e0e" opacity=".35" />
+      </g>
+      <rect x="44" y="208" width="512" height="12" fill="#f4f1ec" />
+    </svg>
+  </div>
+
+  <ul class="house__spots" aria-label="Ambientes de la casa: elige uno para ver proyectos">
+    {hotspots.map((h) => (
+      <li class="spot" style={`left:${pct(h.x, W)};top:${pct(h.y, H)}`}>
+        <a href={`/proyectos?categoria=${h.id}`}><span class="spot__dot" aria-hidden="true"></span><span class="spot__name">{h.nombre}</span></a>
+      </li>
+    ))}
+  </ul>
+</div>
+
+<style>
+  .house { position: relative; width: 100%; max-width: 640px; margin-inline: auto; }
+  .house__stage { position: relative; aspect-ratio: 600 / 440; }
+  .layer { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .house__spots { list-style: none; margin: 0; padding: 0; position: absolute; inset: 0; }
+  .spot { position: absolute; translate: -50% -50%; }
+  .spot a {
+    display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;
+    text-decoration: none; color: #fff; background: var(--ink); border: 1px solid var(--red);
+    padding: 0.2rem 0.6rem 0.2rem 0.35rem; border-radius: 999px;
+    font-size: clamp(0.62rem, 2.2vw, 0.8rem); font-weight: 700;
+    transition: transform 0.25s ease, background-color 0.25s ease;
+  }
+  .spot a:hover, .spot a:focus-visible { background: var(--red); transform: scale(1.06); }
+  .spot__dot { position: relative; width: 0.7em; height: 0.7em; border-radius: 50%; background: var(--red); flex: none; }
+  .spot__dot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--red); animation: ping 1.9s ease-out infinite; }
+  @keyframes ping { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(3.2); opacity: 0; } }
+  .spot a:hover .spot__dot, .spot a:focus-visible .spot__dot { background: #fff; }
+  .layer :global(line), .layer :global(.plate) { transform-box: fill-box; }
+  .house { max-width: 780px; }
+  /* Con movimiento, los ambientes aparecen al final de la animación (motion.ts) */
+  :global(.motion) .spot { opacity: 0; visibility: hidden; }
+</style>
