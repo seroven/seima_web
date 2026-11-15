@@ -155,7 +155,7 @@ const share = `https://wa.me/?text=${encodeURIComponent(`${p.titulo} · SEIMA Se
   .story__nav { position: sticky; top: var(--header); z-index: 20; background: var(--paper); box-shadow: 0 10px 26px rgb(0 0 0 / 0.05); }
   .story__navin { display: grid; gap: 0.5rem; padding-block: 0.7rem 0; }
   .story__label { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--red-text); }
-  .story__chips { display: flex; gap: 0.5rem; overflow-x: auto; scrollbar-width: none; padding-bottom: 0.6rem; }
+  .story__chips { display: flex; gap: 0.5rem; overflow-x: auto; scrollbar-width: none; padding: 8px 8px 0.7rem; margin: -8px -8px 0; } /* el padding deja sitio al anillo de foco */
   .story__chips::-webkit-scrollbar { display: none; }
   .story__chip {
     flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0.4rem 1rem; border-radius: 999px;

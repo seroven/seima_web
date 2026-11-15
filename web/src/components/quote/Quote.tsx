@@ -2,7 +2,7 @@
 // Al final se guarda vía POST /quotes (si hay API) y se abre WhatsApp con el mensaje ya armado.
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
-import Icon from './Icon';
+import { Icon } from '../ui';
 import Summary, { resumenFilas } from './Summary';
 import { StepCliente, StepDatos, StepEspacio, StepLugar, StepResumen, StepServicios } from './Steps';
 import { projects } from '../../data/projects';

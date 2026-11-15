@@ -1,105 +1,53 @@
-/* Cotizador. Zona clara: fondo blanco, tarjetas grises, opciones sin borde (estados por tono de fondo). */
+/* Cotizador: solo el diseño propio de la página (rejilla, tarjeta, progreso, resumen, chat).
+   Los controles (campos, chips, tarjetas de opción, dropdown…) viven en components/ui/ui.css.
+   IMPORTANTE: ningún contenedor de aquí usa overflow ≠ visible alrededor de controles: recortaría el anillo de foco. */
 .q { display: grid; gap: 1.5rem; align-items: start; }
 @media (min-width: 960px) {
   .q { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 2rem; }
 }
 
-.q-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-
 /* ---------- Tarjeta principal ---------- */
 .q-main { background: var(--paper-2); border-radius: 28px; padding: clamp(1.2rem, 3vw, 2.2rem); scroll-margin-top: calc(var(--header) + 1rem); min-width: 0; }
-.q-progress { height: 6px; border-radius: 6px; background: var(--tint-2); overflow: hidden; }
+.q-progress { height: 6px; border-radius: 6px; background: var(--tint-2); overflow: hidden; } /* solo la barra, sin controles dentro */
 .q-progress i { display: block; height: 100%; background: var(--red); transform-origin: 0 50%; }
 .q-stepno { margin: 0.9rem 0 0.4rem; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--red-text); }
 .q-title { font-size: clamp(1.7rem, 4.4vw, 2.6rem); line-height: 1.02; margin-bottom: 1.3rem; outline: none; }
 .q-help { color: var(--muted-light); font-size: 0.9rem; margin: 0 0 0.9rem; }
+.q-help--top { margin: 0.9rem 0 0; }
 .q-sub { font-weight: 700; font-size: 0.92rem; margin: 0.9rem 0 0.5rem; }
 .q-stack { display: grid; gap: 1.5rem; }
-.q-block { border: 0; padding: 0; margin: 0; min-width: 0; overflow: hidden; }
+.q-block { border: 0; padding: 0; margin: 0; min-width: 0; } /* sin overflow: el anillo de foco no se recorta */
 .q-block legend { padding: 0; font-weight: 800; font-size: 1rem; margin-bottom: 0.7rem; }
 .q-opt-tag { font-weight: 600; font-size: 0.78rem; color: var(--muted-light); margin-left: 0.4rem; }
 
-/* ---------- Opciones (tarjetas) ---------- */
-.q-grid { display: grid; gap: 0.7rem; }
-.q-grid--2 { grid-template-columns: 1fr; }
-.q-grid--services { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (min-width: 560px) { .q-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1100px) { .q-grid--services { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.q-icon { flex: none; }
-
-.q-opt {
-  position: relative; display: flex; align-items: center; gap: 0.8rem; padding: 1rem 2.9rem 1rem 1rem; min-height: 64px;
-  background: #fff; color: var(--ink); border-radius: 18px; cursor: pointer; user-select: none; min-width: 0;
-  transition: background-color 0.25s ease, color 0.25s ease, translate 0.3s cubic-bezier(0.2, 0.7, 0, 1), box-shadow 0.3s ease;
-}
-.q-opt .q-icon { color: var(--red-text); transition: color 0.25s ease, transform 0.35s cubic-bezier(0.2, 0.7, 0, 1); }
-.q-opt:hover { translate: 0 -2px; box-shadow: 0 10px 24px rgb(0 0 0 / 0.07); }
-.q-opt:hover .q-icon { transform: scale(1.1) rotate(-5deg); }
-.q-opt:focus-within { outline: 3px solid var(--red); outline-offset: 2px; }
-.q-opt.is-on { background: var(--ink); color: #fff; }
-.q-opt.is-on .q-icon { color: #ff6b7a; }
-.q-opt__text { display: grid; gap: 0.15rem; min-width: 0; }
-.q-opt__t { font-weight: 700; font-size: 0.95rem; line-height: 1.2; overflow-wrap: anywhere; hyphens: auto; }
-.q-opt__d { font-size: 0.8rem; color: var(--muted-light); line-height: 1.3; }
-.q-opt.is-on .q-opt__d { color: #bdbdbd; }
-.q-opt--compact { padding-block: 0.8rem; min-height: 56px; }
-.q-opt__check { position: absolute; top: 50%; right: 0.9rem; translate: 0 -50%; width: 24px; height: 24px; border-radius: 50%; background: var(--red); color: #fff; display: grid; place-items: center; }
-
-/* ---------- Chips ---------- */
-.q-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.q-chip {
-  min-height: 44px; padding: 0.4rem 1.1rem; border-radius: 999px; border: 0; cursor: pointer; font: inherit; font-weight: 700; font-size: 0.9rem;
-  color: var(--ink); background: #fff; transition: background-color 0.25s ease, color 0.25s ease, translate 0.25s ease;
-}
-.q-chip:hover { translate: 0 -2px; background: #fafafa; }
-.q-chip.is-on { background: var(--ink); color: #fff; }
-.q-chip:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
-
-/* ---------- Campos ---------- */
-.q-field { display: grid; gap: 0.4rem; min-width: 0; }
-.q-field label { font-weight: 700; font-size: 0.9rem; }
-.q-field small { color: var(--muted-light); font-size: 0.8rem; }
-.q-field input, .q-phone {
-  width: 100%; min-height: 52px; padding: 0.8rem 1rem; border: 0; border-radius: 14px; background: #fff; color: var(--ink);
-  font: inherit; font-size: 1rem; transition: box-shadow 0.2s ease;
-}
-.q-field input::placeholder { color: #9a9a9a; }
-.q-field input:focus { outline: none; box-shadow: 0 0 0 3px rgb(224 40 60 / 0.4); }
-.q-phone { display: flex; align-items: center; gap: 0.7rem; padding: 0 1rem 0 0.9rem; }
-.q-phone:focus-within { box-shadow: 0 0 0 3px rgb(224 40 60 / 0.4); }
-.q-phone span { font-weight: 800; color: var(--muted-light); }
-.q-phone input { min-height: 50px; padding: 0; background: transparent; box-shadow: none !important; }
-.q-row { display: flex; align-items: flex-end; gap: 0.8rem; margin-top: 0.9rem; flex-wrap: wrap; }
-.q-row .q-field { flex: 1 1 8rem; }
+.q-row { display: flex; align-items: flex-end; gap: 0.8rem; padding-top: 0.9rem; flex-wrap: wrap; }
+.q-row > .ui-field { flex: 1 1 8rem; }
 .q-x { padding-bottom: 0.9rem; font-weight: 800; color: var(--muted-light); }
 .q-area { flex: 1 1 100%; min-height: 1.4em; margin: 0; font-weight: 800; color: var(--red-text); }
 
-.q-stepper { display: inline-flex; align-items: center; gap: 1rem; background: #fff; border-radius: 999px; padding: 0.3rem; }
-.q-stepper button { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--tint); font: inherit; font-size: 1.4rem; font-weight: 700; cursor: pointer; transition: background-color 0.2s ease; }
-.q-stepper button:hover:not(:disabled) { background: var(--tint-2); }
-.q-stepper button:disabled { opacity: 0.35; cursor: default; }
-.q-stepper output { min-width: 2ch; text-align: center; font-weight: 900; font-size: 1.3rem; }
-
 /* Fotos */
-.q-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.2rem, 1fr)); gap: 0.6rem; margin-bottom: 0.8rem; }
-.q-photo { position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden; background: #fff; }
-.q-photo img { width: 100%; height: 100%; object-fit: cover; }
+.q-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.2rem, 1fr)); gap: 0.6rem; margin-bottom: 0.8rem; padding: 4px; margin-inline: -4px; }
+.q-photo { position: relative; aspect-ratio: 1; border-radius: 14px; background: #fff; }
+.q-photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 14px; }
 .q-photo button { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgb(14 14 14 / 0.75); color: #fff; display: grid; place-items: center; cursor: pointer; }
-.q-photo--add { border: 0; display: grid; place-content: center; gap: 0.2rem; justify-items: center; font: inherit; font-weight: 700; font-size: 0.8rem; color: var(--ink); background: #fff; cursor: pointer; transition: background-color 0.2s ease; }
+.q-photo button:focus-visible { outline: none; box-shadow: var(--ring); }
+.q-photo--add { border: 0; display: grid; place-content: center; gap: 0.2rem; justify-items: center; font: inherit; font-weight: 700; font-size: 0.8rem; color: var(--ink); background: #fff; cursor: pointer; transition: background-color 0.2s ease, box-shadow 0.2s ease; }
 .q-photo--add:hover { background: #fafafa; }
-.q-photo--add .q-icon { color: var(--red-text); }
+.q-photo--add:focus-visible { outline: none; box-shadow: var(--ring); }
+.q-photo--add .ui-icon { color: var(--red-text); }
 
 /* ---------- Navegación ---------- */
 .q-error { min-height: 1.5em; margin: 1rem 0 0.2rem; font-weight: 700; font-size: 0.9rem; color: var(--red-text); }
-.q-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; margin-top: 0.6rem; }
+.q-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; margin-top: 0.6rem; padding: 4px; margin-inline: -4px; }
 .q-back {
   display: inline-flex; align-items: center; gap: 0.5rem; min-height: 48px; padding: 0.5rem 1.2rem; border-radius: 999px; border: 0; cursor: pointer;
-  font: inherit; font-weight: 700; background: var(--tint); color: var(--ink); transition: background-color 0.2s ease;
+  font: inherit; font-weight: 700; background: var(--tint); color: var(--ink); transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 .q-back:hover { background: var(--tint-2); }
+.q-back:focus-visible, .q-next:focus-visible { outline: none; box-shadow: var(--ring); }
 .q-next { min-height: 48px; margin-left: auto; }
-.q-next .q-icon { transition: translate 0.25s ease; }
-.q-next:hover .q-icon { translate: 4px 0; }
+.q-next .ui-icon { transition: translate 0.25s ease; }
+.q-next:hover .ui-icon { translate: 4px 0; }
 
 /* ---------- Vista previa de WhatsApp ---------- */
 .q-chat { background: #111b21; border-radius: 22px; padding: 1.2rem; min-height: 11rem; }
@@ -135,6 +83,7 @@
 .q-sheet { position: fixed; inset: auto 0 0 0; z-index: 40; }
 @media (min-width: 960px) { .q-sheet { display: none; } }
 .q-sheet__bar { width: 100%; min-height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1.2rem; background: var(--ink); color: #fff; border: 0; font: inherit; font-weight: 800; cursor: pointer; box-shadow: 0 -10px 30px rgb(0 0 0 / 0.18); }
+.q-sheet__bar:focus-visible { outline: 3px solid #fff; outline-offset: -3px; } /* anillo hacia adentro: la barra está pegada al borde */
 .q-sheet__panel { position: absolute; inset: auto 0 100% 0; max-height: 60svh; overflow: auto; background: var(--ink); border-radius: 24px 24px 0 0; padding: 0.4rem 0 0; }
 .q-sheet__panel .q-summary { border-radius: 24px 24px 0 0; }
 
