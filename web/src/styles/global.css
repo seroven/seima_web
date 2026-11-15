@@ -104,6 +104,10 @@ html.motion {
 html.motion::-webkit-scrollbar {
   display: none;
 }
+/* Mientras se restaura el scroll (volver / recargar) la página espera oculta para no verse el salto */
+html.restoring main {
+  visibility: hidden;
+}
 .progress {
   position: fixed;
   inset: 0 0 auto 0;

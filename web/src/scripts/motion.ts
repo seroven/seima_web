@@ -5,6 +5,8 @@
 // - ORDEN: primero los pines (en el orden del documento) y después todo lo demás; si no, ScrollTrigger
 //   calcula las posiciones sin contar el espacio de los pines y las animaciones se disparan antes de tiempo.
 
+import { takeRestoreY, finishRestore } from "./nav";
+
 type Cleanup = () => void;
 
 let cleanups: Cleanup[] = [];
@@ -20,6 +22,9 @@ async function init() {
 
   if (prefersReduced()) {
     root.classList.remove('motion');
+    const y = takeRestoreY();
+    if (y !== null) window.scrollTo(0, y);
+    finishRestore();
     return;
   }
   root.classList.add('motion');
@@ -59,10 +64,25 @@ async function init() {
     });
 
     ScrollTrigger.refresh();
+    // Restaurar el scroll ahora que las escenas fijas ya existen (volver desde una ficha / recargar)
+    const y = takeRestoreY();
+    if (y !== null) {
+      lenis.resize(); // el límite de Lenis se calculó antes de que existieran los espacios de los pines
+      window.scrollTo(0, y);
+      lenis.scrollTo(y, { immediate: true, force: true });
+      ScrollTrigger.update();
+      ScrollTrigger.getAll().forEach((st: any) => {
+        try { st.getTween?.()?.progress(1); } catch { /* sin scrub */ }
+      });
+    }
+    finishRestore();
   } catch (err) {
     // Si falla la carga de las librerías, que el contenido se vea igual.
     console.warn('[motion] animaciones desactivadas', err);
     root.classList.remove('motion');
+    const y = takeRestoreY();
+    if (y !== null) window.scrollTo(0, y);
+    finishRestore();
   }
 }
 

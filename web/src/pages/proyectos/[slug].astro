@@ -3,6 +3,7 @@ import Base from '../../layouts/Base.astro';
 import Photo from '../../components/Photo.astro';
 import Cta from '../../components/Cta.astro';
 import Words from '../../components/Words.astro';
+import BackButton from '../../components/BackButton.astro';
 import { projects, categoryName, etapaLabel, show, type Project } from '../../data/projects';
 
 export function getStaticPaths() {
@@ -25,7 +26,10 @@ const meta = [
 >
   <section class="top dark">
     <div class="wrap">
-      <nav class="crumbs" aria-label="Ruta"><a href="/proyectos">← Proyectos</a> / <a href={`/proyectos?categoria=${p.categoria}`}>{cat}</a></nav>
+      <div class="topbar">
+        <BackButton />
+        <nav class="crumbs" aria-label="Ruta"><a href="/proyectos">Proyectos</a> / <a href={`/proyectos?categoria=${p.categoria}`}>{cat}</a></nav>
+      </div>
       <h1><Words text={p.titulo} /></h1>
       <ul class="meta">
         {meta.map((m) => <li><span>{m.k}</span><strong>{m.v}</strong></li>)}
@@ -67,7 +71,8 @@ const meta = [
 
 <style>
   .top { padding-block: clamp(1.5rem, 4vw, 3rem) clamp(2rem, 5vw, 4rem); }
-  .crumbs { font-size: 0.85rem; color: var(--muted-dark); margin-bottom: 1.2rem; }
+  .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.2rem; margin-bottom: 1.4rem; }
+  .crumbs { font-size: 0.85rem; color: var(--muted-dark); }
   .crumbs a { text-decoration: none; }
   .crumbs a:hover { color: #fff; text-decoration: underline; }
   .top h1 { font-size: clamp(2rem, 6.5vw, 4.2rem); max-width: 18ch; }

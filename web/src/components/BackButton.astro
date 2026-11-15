@@ -1,0 +1,19 @@
+---
+// Sin JS es un enlace normal al catálogo; nav.ts lo convierte en "Volver al inicio / catálogo" según de dónde vengas.
+---
+<a class="back" href="/proyectos" data-back>
+  <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M12 4 6 10l6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+  <span data-back-label>Ver todos los proyectos</span>
+</a>
+
+<style>
+  .back {
+    display: inline-flex; align-items: center; gap: 0.5rem; min-height: 44px;
+    padding: 0.55rem 1.1rem 0.55rem 0.8rem; border-radius: 999px;
+    box-shadow: inset 0 0 0 1.5px currentColor; text-decoration: none; font-weight: 700; font-size: 0.92rem;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+  .back svg { transition: translate 0.3s cubic-bezier(0.2, 0.7, 0, 1); }
+  .back:hover, .back:focus-visible { background: #fff; color: var(--ink); }
+  .back:hover svg, .back:focus-visible svg { translate: -4px 0; }
+</style>
