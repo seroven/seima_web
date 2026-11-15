@@ -39,7 +39,7 @@
 | `components/Photo.astro` | Foto con tratamiento uniforme (duotono negro/rojo → color al interactuar). Placeholder visible si no hay `src`. Props `plain`, `fill`. |
 | `components/ProjectCard.astro` | Tarjeta de proyecto; "después" por defecto, "antes" al pasar el mouse / mantener presionado. `transition:name` para la foto que vuela a la ficha. |
 | `components/CompareSlider.astro` | Comparador antes/después (input range invisible encima; accesible con teclado). |
-| `components/Presentation.astro` | Visor a pantalla completa (`<dialog>`): todas las fotos ordenadas por etapa. Lo abren el botón "Modo presentación" y cualquier foto de la galería (`[data-shot]`, desde esa foto). Un solo listener global. |
+| `components/Presentation.astro` | Visor a pantalla completa (`<dialog>`): todas las fotos ordenadas por etapa. Flechas laterales, arrastre (pointer events), teclado, animación de entrada/salida. Lo abren el botón "Modo presentación" y cualquier foto de la galería (`[data-shot]`, desde esa foto). Un solo listener global. |
 | `components/BackButton.astro` | Botón "Volver" de la ficha (texto según origen). |
 | `components/Cta.astro` | Botón de WhatsApp; sin número → placeholder. |
 | `components/Header.astro`, `Footer.astro` | Cabecera fija y pie. |
@@ -71,7 +71,8 @@
 9. **Probar en celular:** la ventana del navegador de pruebas no se redimensiona; se simula con un `<iframe style="width:390px">` (los media queries leen el ancho del iframe). Comprobar que `scrollWidth === clientWidth`.
 10. **Scripts con `node -e '...'` en bash:** las comillas simples del código (p. ej. `['antes']`) cierran la comilla de bash y se pierden. Para archivos con comillas, `$` o plantillas usar Write/Edit o un script escrito a archivo.
 11. **Mosaico con huecos:** con `grid-auto-flow: dense` y tamaños por posición queda una última fila coja. Solución: construir el mosaico por **bloques que cuadran** (4×2) según la cantidad de fotos.
-12. Astro 7 exige Node ≥ 22.23.4; con `nvm use` en Windows la terminal ya abierta puede no tomar el cambio.
+12. **Carruseles:** un contenedor con `overflow-x: auto` + scroll-snap solo se desliza con dedo/rueda; con mouse no se puede arrastrar. Para "deslizar" en escritorio hay que implementar arrastre con pointer events (y `touch-action: pan-y`). Un `<dialog>` modal no anima solo: animar la entrada con `@keyframes` en `[open]` y la salida con una clase `is-closing` antes de llamar a `close()` (e interceptar `cancel` para Esc).
+13. Astro 7 exige Node ≥ 22.23.4; con `nvm use` en Windows la terminal ya abierta puede no tomar el cambio.
 
 ---
 
@@ -98,6 +99,7 @@
 ### 2026-11-15
 
 **Decisiones**
+- **Visor (modo presentación) rehecho:** el scroll nativo horizontal no se puede arrastrar con mouse y no era intuitivo. Ahora: flechas a los lados (en celular se montan sobre la foto), arrastre propio con pointer events (mouse y dedo, con resistencia en los extremos), teclado (← → Inicio Fin, Esc) y animaciones de entrada (zoom desde la foto tocada + fundido, elementos escalonados) y de salida (inversa). Con "reducir movimiento" abre y cierra sin animar.
 - **Historia de la obra SIN coreografía de scroll:** se descartó el scroll atrapado que "regresa al inicio" para cambiar de etapa. Queda un flujo vertical normal con tres bloques (Antes/Durante/Después), cada uno con su galería, y una barra fija de etapas (botones que saltan + línea roja de avance). Las fotos solo tienen una entrada suave. *(Recomendación mía; Sebas ya había dicho que no quería coreografía ahí.)*
 - **Hasta ~10 fotos por etapa** (dato de Sebas): se muestran todas, sin paginar. Etapas sin fotos se ocultan.
 - **El visor** abre todas las fotos del proyecto (ordenadas por etapa) empezando en la tocada, en vez de limitarse a una etapa; el Modo presentación es el mismo visor desde la primera foto.
@@ -111,8 +113,9 @@
 - La barra de scroll se oculta solo con movimiento activo, y se compensa con la línea de progreso.
 
 **Cambios**
-- *(sin commit aún)* **Historia de la obra con galerías por etapa:** `data/projects.ts` pasa a varias fotos por etapa con `principal`/`orden` y helpers; la tarjeta del catálogo, el comparador y el `og:image` usan la **principal**; la ficha muestra un mosaico por etapa (bloques 4×2 que siempre cuadran) con barra fija de etapas (`story()` en `motion.ts`, sin pin); `Presentation.astro` reutilizado como visor desde cualquier foto. Probado: salto de etapa, etapa activa, visor en la foto correcta (16/23), proyecto sin "durante" y celular sin desborde.
-- *(sin commit aún)* **Documentación:** creado `docs/modelo-datos.md` (fotos por etapa, foto principal, galería, forma de la API), creado este `STATE.md`, añadida a `CLAUDE.md` la sección "Documentación viva (obligatorio)" y "Versionamiento", y enlazados ambos documentos desde `docs/brief.md` §8.
+- *(sin commit aún)* **Visor de fotos rehecho** (`components/Presentation.astro`): flechas laterales, arrastre con mouse/dedo, teclado, contador y pista de uso; animación de entrada (`pres-in`, origen en la foto tocada) y de salida (`is-closing` → `dialog.close()` al terminar). Probado: abre en la foto correcta, flecha siguiente, arrastre real con mouse (1→2), tecla →, Esc con animación (~360 ms) y celular.
+- `53ac0df` — **Historia de la obra con galerías por etapa:** `data/projects.ts` pasa a varias fotos por etapa con `principal`/`orden` y helpers; la tarjeta del catálogo, el comparador y el `og:image` usan la **principal**; la ficha muestra un mosaico por etapa (bloques 4×2 que siempre cuadran) con barra fija de etapas (`story()` en `motion.ts`, sin pin); `Presentation.astro` reutilizado como visor desde cualquier foto. Probado: salto de etapa, etapa activa, visor en la foto correcta (16/23), proyecto sin "durante" y celular sin desborde.
+- `53ac0df` — **Documentación:** creado `docs/modelo-datos.md` (fotos por etapa, foto principal, galería, forma de la API), creado este `STATE.md`, añadida a `CLAUDE.md` la sección "Documentación viva (obligatorio)" y "Versionamiento", y enlazados ambos documentos desde `docs/brief.md` §8.
 - `4df01ae` — **Catálogo y ficha al nivel del v2:**
   - Catálogo: título gigante con contador, bento (tarjetas de distinto tamaño), reacomodo animado con GSAP Flip al filtrar, "antes" al pasar el mouse o mantener presionado (`peek.ts`).
   - Ficha: comparador antes/después con barrido de bienvenida, historia de la obra fijada con scroll (3 etapas, botones que saltan), "Compartir por WhatsApp" (no necesita el número), Modo presentación (`<dialog>`).

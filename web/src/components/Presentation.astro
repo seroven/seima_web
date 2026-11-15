@@ -1,7 +1,8 @@
 ---
-// Visor a pantalla completa: fotos ordenadas por etapa, deslizar con el dedo, sin menús.
-// Lo abren dos cosas: el botón "Modo presentación" (desde la primera foto) y cualquier foto de la galería
-// de la historia (`[data-shot]`, desde esa foto). Pensado para que Luis lo muestre en su celular frente al cliente.
+// Visor a pantalla completa: fotos ordenadas por etapa. Se mueve con flechas a los lados, teclado (← → Inicio Fin),
+// o arrastrando (mouse y dedo). Entra con zoom desde la foto tocada y sale con la animación inversa.
+// Lo abren el botón "Modo presentación" (desde la primera foto) y cualquier foto de la galería (`[data-shot]`).
+// Pensado para que Luis lo muestre en su celular frente al cliente.
 import Photo from './Photo.astro';
 import { etapaLabel, fotosOrdenadas, type Project } from '../data/projects';
 interface Props { project: Project; button?: boolean }
@@ -15,7 +16,7 @@ const todas = fotosOrdenadas(p);
   </button>
 )}
 
-<dialog class="pres" data-pres data-lenis-prevent aria-label={`Fotos: ${p.titulo}`}>
+<dialog class="pres" data-pres tabindex="-1" data-lenis-prevent aria-label={`Fotos: ${p.titulo}`}>
   <div class="pres__bar">
     <span class="pres__count" aria-live="polite"><b data-pres-n>1</b> / {todas.length}</span>
     <span class="pres__title">{p.titulo}</span>
@@ -23,47 +24,149 @@ const todas = fotosOrdenadas(p);
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg>
     </button>
   </div>
-  <div class="pres__track" data-pres-track tabindex="0">
-    {todas.map((f, i) => (
-      <figure class="pres__slide">
-        <Photo src={f.src} alt={f.alt} tone={(p.tono + i) % 6} fill plain label={`[FOTO REAL · ${etapaLabel[f.etapa].toUpperCase()} ${f.orden + 1}]`} />
-        <figcaption>{etapaLabel[f.etapa]}{f.pie ? ` · ${f.pie}` : ''}</figcaption>
-      </figure>
-    ))}
+
+  <div class="pres__stage">
+    <button type="button" class="pres__nav pres__nav--prev" data-pres-prev aria-label="Foto anterior">
+      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+    </button>
+
+    <div class="pres__viewport" data-pres-viewport tabindex="0" aria-roledescription="carrusel" aria-label="Fotos del proyecto">
+      <div class="pres__track" data-pres-track style="--i:0">
+        {todas.map((f, i) => (
+          <figure class="pres__slide" aria-label={`${i + 1} de ${todas.length}`}>
+            <Photo src={f.src} alt={f.alt} tone={(p.tono + i) % 6} fill plain label={`[FOTO REAL · ${etapaLabel[f.etapa].toUpperCase()} ${f.orden + 1}]`} />
+            <figcaption>{etapaLabel[f.etapa]}{f.pie ? ` · ${f.pie}` : ''}</figcaption>
+          </figure>
+        ))}
+      </div>
+    </div>
+
+    <button type="button" class="pres__nav pres__nav--next" data-pres-next aria-label="Foto siguiente">
+      <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+    </button>
   </div>
-  <p class="pres__hint" aria-hidden="true">Desliza para cambiar de foto</p>
+
+  <p class="pres__hint" aria-hidden="true">Usa las flechas, desliza o arrastra la foto</p>
 </dialog>
 
 <script>
+  const EASE_MS = 600; // tope de seguridad para la animación de salida
+
   function setup() {
     const dlg = document.querySelector<HTMLDialogElement>('[data-pres]');
     if (!dlg || dlg.dataset.ready) return;
     dlg.dataset.ready = '1';
+
+    const viewport = dlg.querySelector<HTMLElement>('[data-pres-viewport]')!;
     const track = dlg.querySelector<HTMLElement>('[data-pres-track]')!;
     const n = dlg.querySelector<HTMLElement>('[data-pres-n]')!;
+    const prev = dlg.querySelector<HTMLButtonElement>('[data-pres-prev]')!;
+    const next = dlg.querySelector<HTMLButtonElement>('[data-pres-next]')!;
     const total = track.children.length;
+    const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const index = () => Math.round(track.scrollLeft / track.clientWidth);
-    const go = (i: number) => track.scrollTo({ left: Math.max(0, Math.min(total - 1, i)) * track.clientWidth, behavior: 'smooth' });
-    track.addEventListener('scroll', () => (n.textContent = String(index() + 1)), { passive: true });
+    let i = 0;
+    let closing = false;
 
-    (dlg as any)._open = (i: number) => {
-      if (dlg.open) return;
-      dlg.showModal();
-      document.documentElement.classList.add('pres-on');
-      requestAnimationFrame(() => {
-        track.scrollTo({ left: i * track.clientWidth, behavior: 'instant' as ScrollBehavior });
-        n.textContent = String(i + 1);
-        track.focus();
-      });
+    const render = () => {
+      track.style.setProperty('--i', String(i));
+      n.textContent = String(i + 1);
+      prev.disabled = i === 0;
+      next.disabled = i === total - 1;
+    };
+    const go = (to: number) => {
+      i = Math.max(0, Math.min(total - 1, to));
+      track.style.removeProperty('--dx');
+      render();
     };
 
-    dlg.querySelector('[data-pres-close]')!.addEventListener('click', () => dlg.close());
-    dlg.addEventListener('close', () => document.documentElement.classList.remove('pres-on'));
-    dlg.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight') { e.preventDefault(); go(index() + 1); }
-      if (e.key === 'ArrowLeft') { e.preventDefault(); go(index() - 1); }
+    // ----- Arrastre (mouse y dedo). Los clics en las flechas no inician arrastre. -----
+    let startX = 0, startT = 0, dx = 0, dragging = false;
+    viewport.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      dragging = true;
+      startX = e.clientX;
+      startT = performance.now();
+      dx = 0;
+      try {
+        viewport.setPointerCapture(e.pointerId);
+      } catch {
+        /* puntero sintético: seguimos sin captura */
+      }
+      dlg.classList.add('is-drag');
     });
+    viewport.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      dx = e.clientX - startX;
+      const atEdge = (i === 0 && dx > 0) || (i === total - 1 && dx < 0);
+      track.style.setProperty('--dx', (atEdge ? dx * 0.3 : dx) + 'px'); // resistencia en los extremos
+    });
+    const endDrag = () => {
+      if (!dragging) return;
+      dragging = false;
+      dlg.classList.remove('is-drag');
+      const w = viewport.clientWidth || 1;
+      const v = dx / Math.max(1, performance.now() - startT); // px/ms
+      if (Math.abs(dx) > w * 0.18 || Math.abs(v) > 0.5) go(i + (dx < 0 ? 1 : -1));
+      else go(i);
+    };
+    viewport.addEventListener('pointerup', endDrag);
+    viewport.addEventListener('pointercancel', endDrag);
+
+    prev.addEventListener('click', () => go(i - 1));
+    next.addEventListener('click', () => go(i + 1));
+
+    // ----- Abrir / cerrar con animación -----
+    const open = (index: number, origin?: Element | null) => {
+      if (dlg.open) return;
+      // El zoom de entrada nace en la foto que se tocó
+      const r = origin?.getBoundingClientRect();
+      dlg.style.setProperty('--ox', r ? r.left + r.width / 2 + 'px' : '50%');
+      dlg.style.setProperty('--oy', r ? r.top + r.height / 2 + 'px' : '50%');
+      track.style.transition = 'none'; // saltar a la foto sin deslizar
+      go(index);
+      dlg.showModal();
+      document.documentElement.classList.add('pres-on');
+      void track.offsetWidth;
+      track.style.transition = '';
+      dlg.focus({ preventScroll: true });
+    };
+
+    const close = () => {
+      if (!dlg.open || closing) return;
+      if (reduce()) return dlg.close();
+      closing = true;
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        dlg.classList.remove('is-closing');
+        closing = false;
+        dlg.close();
+      };
+      dlg.classList.add('is-closing');
+      dlg.addEventListener('animationend', (e) => e.target === dlg && finish(), { once: false });
+      setTimeout(finish, EASE_MS);
+    };
+
+    dlg.querySelector('[data-pres-close]')!.addEventListener('click', close);
+    dlg.addEventListener('cancel', (e) => {
+      e.preventDefault(); // Esc: cerrar con animación
+      close();
+    });
+    dlg.addEventListener('close', () => {
+      document.documentElement.classList.remove('pres-on');
+      dlg.classList.remove('is-drag');
+    });
+    dlg.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); go(i + 1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); go(i - 1); }
+      else if (e.key === 'Home') { e.preventDefault(); go(0); }
+      else if (e.key === 'End') { e.preventDefault(); go(total - 1); }
+    });
+
+    (dlg as any)._open = open;
+    render();
   }
   document.addEventListener('astro:page-load', setup);
 
@@ -72,9 +175,10 @@ const todas = fotosOrdenadas(p);
     const t = e.target as Element;
     const dlg = document.querySelector<HTMLDialogElement>('[data-pres]') as any;
     if (!dlg?._open) return;
-    if (t.closest('[data-pres-open]')) dlg._open(0);
+    const btn = t.closest('[data-pres-open]');
+    if (btn) return dlg._open(0, btn);
     const shot = t.closest<HTMLElement>('[data-shot]');
-    if (shot) dlg._open(Number(shot.dataset.global ?? 0));
+    if (shot) dlg._open(Number(shot.dataset.global ?? 0), shot);
   });
 </script>
 
@@ -86,19 +190,60 @@ const todas = fotosOrdenadas(p);
   .pres-open:hover { border-bottom-color: var(--red); }
 
   .pres { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #000; color: #fff; }
-  .pres[open] { display: grid; grid-template-rows: auto 1fr auto; }
+  .pres[open] { display: grid; grid-template-rows: auto 1fr auto; transform-origin: var(--ox, 50%) var(--oy, 50%); }
   .pres::backdrop { background: #000; }
+  .pres:focus { outline: none; }
+
+  /* Entrada: zoom desde la foto tocada + fundido; el resto aparece escalonado */
+  .pres[open] { animation: pres-in 0.55s cubic-bezier(0.2, 0.7, 0, 1) both; }
+  .pres[open]::backdrop { animation: pres-fade 0.4s ease both; }
+  .pres[open] .pres__bar { animation: pres-rise 0.5s 0.2s cubic-bezier(0.2, 0.7, 0, 1) both; }
+  .pres[open] .pres__nav { animation: pres-pop 0.45s 0.35s cubic-bezier(0.2, 0.7, 0, 1) both; }
+  .pres[open] .pres__hint { animation: pres-fade 0.5s 0.55s ease both; }
+  /* Salida: la inversa */
+  .pres.is-closing { animation: pres-out 0.34s cubic-bezier(0.5, 0, 0.75, 0) both; }
+  .pres.is-closing::backdrop { animation: pres-fade-out 0.34s ease both; }
+  @keyframes pres-in { from { opacity: 0; transform: scale(0.35); } to { opacity: 1; transform: none; } }
+  @keyframes pres-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(0.35); } }
+  @keyframes pres-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pres-fade-out { from { opacity: 1; } to { opacity: 0; } }
+  @keyframes pres-rise { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+  @keyframes pres-pop { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
+
   .pres__bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.8rem 1rem; }
   .pres__count { font-size: 0.9rem; color: #bbb; min-width: 4rem; }
   .pres__count b { color: #fff; }
   .pres__title { font-weight: 700; font-size: 0.95rem; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pres__close { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #222; color: #fff; display: grid; place-items: center; cursor: pointer; }
-  .pres__close:hover { background: var(--red); }
-  .pres__track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; min-height: 0; }
-  .pres__track::-webkit-scrollbar { display: none; }
-  .pres__slide { flex: 0 0 100%; scroll-snap-align: center; margin: 0; padding: 0 1rem; position: relative; min-height: 0; display: grid; }
+  .pres__close { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #222; color: #fff; display: grid; place-items: center; cursor: pointer; transition: background-color 0.2s ease, scale 0.2s ease; }
+  .pres__close:hover { background: var(--red); scale: 1.06; }
+
+  /* Escenario: flechas a los lados (en celular se montan sobre la foto) */
+  .pres__stage { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; min-height: 0; padding-inline: 0.75rem; }
+  .pres__nav {
+    width: 56px; height: 56px; border-radius: 50%; border: 1.5px solid #3a3a3a; background: #141414; color: #fff; cursor: pointer;
+    display: grid; place-items: center; transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, scale 0.2s ease;
+  }
+  .pres__nav:hover:not(:disabled) { background: var(--red); border-color: var(--red); scale: 1.08; }
+  .pres__nav:active:not(:disabled) { scale: 0.94; }
+  .pres__nav:disabled { opacity: 0.25; cursor: default; }
+  .pres__nav:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  @media (max-width: 700px) {
+    .pres__stage { grid-template-columns: minmax(0, 1fr); padding-inline: 0; }
+    .pres__nav { position: absolute; top: 50%; translate: 0 -50%; z-index: 5; width: 48px; height: 48px; background: rgb(0 0 0 / 0.6); }
+    .pres__nav--prev { left: 0.6rem; }
+    .pres__nav--next { right: 0.6rem; }
+    .pres__nav:hover:not(:disabled) { scale: 1; }
+  }
+
+  .pres__viewport { height: 100%; min-height: 0; overflow: hidden; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; border-radius: 16px; }
+  .pres.is-drag .pres__viewport { cursor: grabbing; }
+  .pres__viewport:focus-visible { outline: 3px solid #fff; outline-offset: -3px; }
+  .pres__track { display: flex; height: 100%; transform: translate3d(calc(var(--i, 0) * -100% + var(--dx, 0px)), 0, 0); transition: transform 0.5s cubic-bezier(0.2, 0.7, 0, 1); will-change: transform; }
+  .pres.is-drag .pres__track { transition: none; }
+  .pres__slide { flex: 0 0 100%; margin: 0; padding: 0 0.5rem; position: relative; min-height: 0; display: grid; pointer-events: none; }
   .pres__slide :global(.photo) { border-radius: 16px; }
-  .pres__slide figcaption { position: absolute; left: 2rem; top: 1rem; background: var(--red); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.78rem; padding: 0.4rem 0.8rem; border-radius: 999px; }
+  .pres__slide :global(img) { -webkit-user-drag: none; user-select: none; }
+  .pres__slide figcaption { position: absolute; left: 1.5rem; top: 1rem; background: var(--red); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.78rem; padding: 0.4rem 0.8rem; border-radius: 999px; }
   .pres__hint { text-align: center; font-size: 0.8rem; color: #888; padding: 0.7rem; }
   :global(html.pres-on) { overflow: hidden; }
 </style>
