@@ -55,6 +55,8 @@ async function init() {
       story(gsap, ScrollTrigger);
       heroIn(gsap);
       heroIntro(gsap);
+      plan(gsap);
+      proceso(gsap, ScrollTrigger);
       compare(gsap);
       words(gsap);
       reveals(gsap);
@@ -240,6 +242,45 @@ function heroIntro(gsap: any) {
   tl.fromTo(spots, { autoAlpha: 0, scale: 0.6 }, { autoAlpha: 1, scale: 1, duration: 0.45, ease: 'back.out(2)', stagger: 0.1 }, 3.5);
 }
 
+/* ---------- Empresas: el plano de planta se dibuja solo ---------- */
+function plan(gsap: any) {
+  const svg = $(".plan");
+  if (!svg) return;
+  const q = (name: string) => $$(`[data-plan="${name}"]`, svg);
+  const tl = gsap.timeline({ delay: 0.4, defaults: { ease: "power3.out" } });
+  tl.fromTo(q("shell"), { clipPath: "inset(0% 100% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 1.1, ease: "power2.inOut" }, 0);
+  tl.fromTo(q("floor"), { opacity: 0 }, { opacity: 1, duration: 0.6, stagger: 0.1 }, 0.9);
+  tl.fromTo(q("part"), { clipPath: "inset(100% 0% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 0.7, ease: "power2.inOut", stagger: 0.22 }, 1.1);
+  tl.fromTo(q("details"), { opacity: 0 }, { opacity: 0.8, duration: 0.5 }, 2.0);
+  tl.fromTo(q("labels"), { opacity: 0 }, { opacity: 1, duration: 0.6 }, 2.2);
+}
+
+/* ---------- Empresas: la línea del proceso se llena con el scroll y cada paso se enciende (sin pin) ---------- */
+function proceso(gsap: any, ScrollTrigger: any) {
+  const root = $("[data-proc]");
+  if (!root) return;
+  const list = $("[data-proc-list]", root);
+  const fill = $("[data-proc-fill]", root);
+  const steps = $$("[data-pstep]", root);
+  if (!list) return;
+
+  if (fill) {
+    gsap.fromTo(
+      fill,
+      { scaleY: 0 },
+      { scaleY: 1, ease: "none", scrollTrigger: { trigger: list, start: "top 65%", end: "bottom 65%", scrub: 0.4 } },
+    );
+  }
+  steps.forEach((el) => {
+    ScrollTrigger.create({
+      trigger: el,
+      start: "top 65%",
+      onEnter: () => el.classList.add("is-on"),
+      onLeaveBack: () => el.classList.remove("is-on"),
+    });
+  });
+}
+
 /* ---------- Galería horizontal: el scroll vertical la desplaza (solo escritorio) ---------- */
 function gallery(gsap: any) {
   const section = $('[data-gallery]');
@@ -390,15 +431,14 @@ function reveals(gsap: any) {
     const noExit = el.hasAttribute('data-noexit');
     const tl = gsap.timeline({
       defaults: { ease: 'none' },
-      scrollTrigger: { trigger: el, start: 'top 94%', end: 'bottom 6%', scrub: 0.4 },
+      scrollTrigger: { trigger: el, start: 'top 94%', end: noExit ? 'top 62%' : 'bottom 6%', scrub: 0.4 },
     });
     if (curtain) {
-      tl.fromTo(el, { clipPath: 'inset(18% 0% 0% 0% round 28px)', y: 70, opacity: 0 }, { clipPath: 'inset(0% 0% 0% 0% round 28px)', y: 0, opacity: 1, duration: 0.22 });
+      tl.fromTo(el, { clipPath: 'inset(18% 0% 0% 0% round 28px)', y: 70, opacity: 0 }, { clipPath: 'inset(0% 0% 0% 0% round 28px)', y: 0, opacity: 1, duration: noExit ? 1 : 0.22 });
     } else {
-      tl.fromTo(el, { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.2 });
+      tl.fromTo(el, { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: noExit ? 1 : 0.2 });
     }
     if (!noExit) tl.to(el, { y: -40, opacity: 0, duration: 0.2 }, 0.8);
-    else tl.to({}, { duration: 0.8 }, 0.2);
   });
 }
 

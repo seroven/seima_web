@@ -20,8 +20,8 @@
 
 **Git:** remoto `origin` = https://github.com/seroven/seima_web.git. Ramas: `main` (estable) y **`staging` (donde se trabaja)**. Commits se hacen cuando Sebas lo pide. El push no es automático.
 
-**Rutas que existen:** `/` (landing), `/proyectos` (catálogo), `/proyectos/[slug]` (ficha, 7 proyectos de prueba), `/cotizador` (cotizador de 6 pasos).
-**Rutas que faltan:** `/empresas`, 404, menú móvil, API.
+**Rutas que existen:** `/` (landing), `/proyectos` (catálogo), `/proyectos/[slug]` (ficha, 7 proyectos de prueba), `/cotizador` (cotizador de 6 pasos), `/empresas` (página para empresas).
+**Rutas que faltan:** 404, menú móvil completo, API.
 
 **Datos:** `web/src/data/projects.ts` — 7 proyectos **de prueba** (todo `[DATO REAL]` / `[FOTO REAL]`). Se reemplaza por `GET /projects`.
 **Entorno:** `PUBLIC_WHATSAPP_NUMBER` sin configurar → los botones de WhatsApp salen como placeholder punteado "[NÚMERO PENDIENTE]". `PUBLIC_API_URL` sin configurar → el cotizador no guarda la solicitud (no hay API aún) pero igual arma el mensaje. Ver `web/.env.example`.
@@ -40,7 +40,9 @@
 | `components/Photo.astro` | Foto con tratamiento uniforme (duotono negro/rojo → color al interactuar). Placeholder visible si no hay `src`. Props `plain`, `fill`. |
 | `components/ProjectCard.astro` | Tarjeta de proyecto; "después" por defecto, "antes" al pasar el mouse / mantener presionado. `transition:name` para la foto que vuela a la ficha. |
 | `components/CompareSlider.astro` | Comparador antes/después (input range invisible encima; accesible con teclado). |
-| `pages/cotizador.astro` | Página del cotizador (cabecera + isla `Quote`). Acepta `?categoria=` y `?proyecto=` para preseleccionar. |
+| `pages/cotizador.astro` | Página del cotizador (cabecera + isla `Quote`). Acepta `?categoria=`, `?proyecto=` y `?cliente=empresa|persona` (con `cliente` se salta la primera pregunta) para preseleccionar. |
+| `pages/empresas.astro` | Empresas: hero con plano de planta animado, capacidad en bento (12 col.), proyectos de escala (tarjetas del catálogo), cifras reales (+50 proyectos, +10 años, Lima), "Cómo trabajamos" (línea vertical que se llena con el scroll y pasos que se encienden, sin pin) y cierre "Solicitar propuesta" → `/cotizador?cliente=empresa`. |
+| `components/Plan.astro` | Plano de planta SVG de 3 departamentos que se dibuja solo (`plan()` en `motion.ts`). |
 | `components/quote/Quote.tsx` | **Isla de React** (Motion): estado del cotizador, navegación entre los 6 pasos con animación, validación, envío y pantalla final. Guarda el avance en `sessionStorage`. |
 | `components/quote/Steps.tsx` | Los 6 pasos: cliente, servicios (multi-selección), espacio (medidas, acabado, extras de cocina y departamento), lugar/plazo/fotos, datos, resumen con burbuja de WhatsApp. |
 | `components/quote/Summary.tsx`, `quote.css` | Resumen en vivo (columna fija en escritorio, barra inferior desplegable en celular) y estilos propios del cotizador (rejilla, tarjeta, resumen, chat). |
@@ -84,6 +86,7 @@
 15. **`window.open` para WhatsApp** debe llamarse dentro del clic (síncrono) o el navegador lo bloquea; el `POST /quotes` va aparte (fire-and-forget) y nunca debe impedir abrir WhatsApp.
 16. **Pruebas con el navegador automatizado:** la herramienta bloquea imprimir URLs con query string (devuelve `[BLOCKED]`); no devolver `location.search`. Crear/borrar `.env` reinicia Vite y recarga la página (corta una prueba en curso).
 18. **El anillo de foco se recorta con `overflow`:** cualquier ancestro con `overflow` ≠ `visible` (incluido `overflow-x:auto`, que fuerza también el vertical) corta el `outline`/`box-shadow` que sobresale. Reglas: (a) no poner `overflow:hidden` en contenedores de controles (el `fieldset` solo necesita `min-width:0`); (b) en scrollers, dar `padding` ≥ 8px y compensar con margen negativo; (c) animaciones de altura (`Collapse`) solo recortan mientras animan y terminan en `overflow: visible`; (d) en elementos pegados al borde, anillo hacia adentro (`outline-offset` negativo). Causa original: `.q-block { overflow:hidden }` del cotizador.
+19. **Columnas de `1fr` con titulares largos:** `1fr` = `minmax(auto, 1fr)`, así que una palabra larga y grande ensancha su columna y aplasta a la otra. Usar `minmax(0, …fr)` y ajustar el tamaño del titular.
 17. **Heredocs en bash** con comillas/`$`/plantillas fallan a veces: para archivos de código usar la herramienta Write.
 
 ---
@@ -94,8 +97,7 @@
 - Modelo de datos de fotos (etapa, principal, galería) en la API → `docs/modelo-datos.md`. (La parte visual ya está en la web con datos de prueba.)
 
 **Por construir (orden acordado)**
-1. Página Empresas + "Cómo trabajamos".
-2. Detalles globales: menú móvil a pantalla completa, botones magnéticos, cursor "ver", 404.
+1. Detalles globales: **menú móvil a pantalla completa** (hoy en celular el header solo oculta "Inicio" para que quepan Proyectos, Empresas y Cotizar), botones magnéticos, cursor "ver", 404.
 3. API Express (incluye `POST /quotes`: el cotizador ya lo llama si existe `PUBLIC_API_URL`; subida de fotos del cliente a Cloudinary) + PostgreSQL + seed + Cloudinary.
 4. Calidad: Open Graph con imagen real, accesibilidad, prueba en celular real, despliegue en Render.
 
@@ -110,6 +112,7 @@
 ### 2026-11-15
 
 **Decisiones**
+- **Página Empresas** (según `docs/fuentes/contexto-chat.md` §4): hero propio con "Solicitar propuesta", capacidad, proceso de 4 pasos (visita técnica → propuesta por partidas → avance documentado → entrega y revisión). **Solo trabajos reales** (varios departamentos, obras de dos pisos, locales como tiendas y consultorios, solo mano de obra) y cifras reales (+50 proyectos, +10 años de experiencia, dato de Sebas). **Sin facturación ni nombres de clientes.** El proceso es un flujo de scroll normal (línea que se llena + pasos que se encienden), no un pin. En el header se añade el enlace "Empresas"; la tarjeta "Para empresas" de la landing ahora lleva a `/empresas`.
 - **Kit de UI compartido (`components/ui`) y dropdown propio:** los controles del cotizador se extrajeron a componentes reutilizables y el `<datalist>` nativo del distrito se sustituyó por un **`Combobox`** con el estilo de la web: lista con **alto máximo** (15 rem; en celular máx. 38 % de la pantalla) y scroll fino estilizado, coincidencias resaltadas en rojo, opción activa sombreada, marca de la elegida, apertura **hacia arriba** si abajo no hay espacio, teclado completo (↑ ↓ Inicio Fin Enter Esc Tab; Enter elige sin enviar el formulario) y patrón ARIA combobox/listbox. Permite valores libres (`allowCustom`). **Anillo de foco:** se mantiene (sombra roja) pero ya no se recorta (ver lección 18); el recorte era un `overflow:hidden` propio del cotizador y también se corrigió en la barra de etapas de la ficha y en la galería horizontal de la landing.
 - **Cotizador:** 6 pasos (cliente → qué necesita → espacio → dónde/cuándo → datos → resumen), una pregunta por paso, barra de progreso, resumen en vivo (lateral en escritorio; barra inferior en celular). **No muestra precios.** Medidas opcionales (largo × ancho, solo m², o "aún no lo sé"). Preguntas condicionales: acabado (si hay cocina/baño/enchape/departamento), mueble alto y estructura (cocina), n.º de ambientes (departamento). Empresa pide razón social (obligatoria) y RUC (opcional, 11 dígitos); no se menciona facturación. WhatsApp: 9 dígitos que empiezan con 9, con formato `9XX XXX XXX`. Al final: vista previa del mensaje como burbuja (con "escribiendo…"), botón "Enviar por WhatsApp" (abre `wa.me` con el texto) y "Copiar mensaje". **Fotos del cliente:** se pueden elegir (hasta 6, con vista previa) pero por ahora NO se suben (no hay API/Cloudinary): el mensaje dice "las adjunto por este chat" y las envía por WhatsApp. Los botones de cotizar de toda la web (header, portada, cierre, ficha) ahora llevan a `/cotizador`; "Cotizar algo así" en la ficha lo abre con la categoría y el proyecto ya marcados ("Basado en: …"). `components/Cta.astro` queda sin uso (se conserva por si se quiere un enlace directo a WhatsApp).
 - **Se quita el marcador "01 Estructura · 02 Placas · 03 Acabado"** de la portada de la landing (pedido de Sebas): la casa se sigue construyendo igual, pero sin la etiqueta de etapas.
@@ -132,6 +135,7 @@
 - La barra de scroll se oculta solo con movimiento activo, y se compensa con la línea de progreso.
 
 **Cambios**
+- *(sin commit aún)* **Página Empresas** (`pages/empresas.astro`, `components/Plan.astro`, `plan()` y `proceso()` en `motion.ts`, enlace en `Header.astro`, tarjeta de la landing, `?cliente=` en `Quote.tsx`). Probado: hero con el plano dibujándose, bento sin textos cortados (se pasó a rejilla de 12 columnas), proceso con línea y pasos que se encienden, "Solicitar propuesta" abre el cotizador en el paso 2 con "Para: Empresa", celular sin desborde y `npm run build` correcto (11 páginas). Arreglos de paso: (a) el header no cabía en celular con el enlace nuevo → se oculta "Inicio" ≤560 px y se compacta; (b) los bloques que solo entran (`data-noexit`, p. ej. el cierre rojo) ahora terminan de aparecer antes de llegar al fondo de la página (`end: top 62%`).
 - *(sin commit aún)* **Kit de UI + dropdown + anillo de foco** (`components/ui/*`, `quote/Steps.tsx` refactorizado, `quote.css` reducido, `Icon` movido a `ui/`, ajustes en `proyectos/[slug].astro` y `pages/index.astro`). Probado: apertura/filtrado/teclado/selección del dropdown, que Enter no avance el paso, anillo completo en chips, despliegues animados que terminan en `overflow: visible`, dropdown en celular (240 px, sin desborde) y `npm run build` correcto. Ajuste posterior: el ícono del check de `OptionCard` se veía rosa sobre el círculo rojo porque la regla de íconos de la tarjeta seleccionada lo pintaba de `#ff6b7a`; ahora el check va siempre en blanco (selector más específico en `ui.css`), círculo de 28 px e ícono de 16 px. **Lección:** una regla genérica sobre `.ui-icon` dentro de un contenedor afecta también a íconos anidados con otro fondo; fijar el color del ícono anidado explícitamente.
 - *(sin commit aún)* **Cotizador de 6 pasos** (`pages/cotizador.astro`, `components/quote/*`, `lib/quote.ts`, `astro.config.mjs` con `@astrojs/react`, `tsconfig.json` con `jsx: react-jsx`, deps nuevas: `react`, `react-dom`, `@astrojs/react`, `motion`, `@types/react*`; `.env.example` con `PUBLIC_API_URL`). Probado en el navegador: validación por paso, resumen en vivo, bloques condicionales, flujo completo hasta el mensaje, enlace desde una ficha (preselección), envío con un número de prueba temporal (`wa.me/51900000000?text=…`, ya borrado), celular sin desborde (se corrigió el desborde de las tarjetas de servicios) y `npm run build` correcto (10 páginas).
 - commit «Paleta neutra, chips sin borde, cifra +50 y portada sin marcador de etapas» — **Marcador de etapas fuera de la portada:** eliminados el `<ol class="steps">` y su CSS en `pages/index.astro`, y en `motion.ts` la variable `steps`, `setStep` y sus tres `tl.call`; el zoom a la cocina ahora desvanece solo los puntos (`spots`). Probado: la casa se construye, el scroll por las capas funciona y no hay errores en consola.

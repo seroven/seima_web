@@ -1,0 +1,55 @@
+---
+// Plano de planta de tres departamentos que se dibuja solo (muros → divisiones → ambientes → rótulos).
+// Ilustración propia (no es un proyecto real). Cada grupo [data-plan] lo anima motion.ts.
+const units = [0, 1, 2].map((i) => ({ i, ox: 20 + i * 200 }));
+const rooms = ['SALA', 'DORM.', 'BAÑO'];
+---
+<svg class="plan" viewBox="0 0 640 420" role="img" aria-label="Plano de planta de tres departamentos con sus divisiones">
+  <!-- ambientes (tinte de piso) -->
+  <g data-plan="floor">
+    {units.map((u) => (
+      <>
+        <rect x={u.ox + 5} y="45" width="105" height="155" fill="#fff" opacity=".05" />
+        <rect x={u.ox + 5} y="255" width="105" height="120" fill="#e0283c" opacity=".12" />
+        <rect x={u.ox + 115} y="45" width={u.i === 2 ? 95 : 90} height="330" fill="#fff" opacity=".03" />
+      </>
+    ))}
+  </g>
+
+  <!-- muros perimetrales y medianeras -->
+  <g data-plan="shell" fill="none" stroke="#3b3b3b" stroke-width="10" stroke-linejoin="round">
+    <rect x="20" y="40" width="600" height="340" />
+    <path d="M220 40V380M420 40V380" />
+  </g>
+
+  <!-- divisiones en drywall (rojo SEIMA) -->
+  {units.map((u) => (
+    <g data-plan="part" fill="none" stroke="#e0283c" stroke-width="5" stroke-linecap="round">
+      <path d={`M${u.ox + 110} 45V200M${u.ox + 5} 200H${u.ox + 75}M${u.ox + 5} 255H${u.ox + 75}M${u.ox + 110} 255V375`} />
+    </g>
+  ))}
+
+  <!-- ventanas y puertas -->
+  <g data-plan="details" stroke="#fff" stroke-width="3" fill="none" opacity=".8" stroke-linecap="round">
+    {units.map((u) => (
+      <path d={`M${u.ox + 40} 40h50M${u.ox + 130} 40h50M${u.ox + 80} 380h40`} />
+    ))}
+  </g>
+
+  <!-- rótulos -->
+  <g data-plan="labels" font-family="inherit" font-size="11" font-weight="700" letter-spacing="1.5" fill="#9a9a9a">
+    {units.map((u) => (
+      <>
+        <text x={u.ox + 14} y="128">{rooms[1]}</text>
+        <text x={u.ox + 14} y="322">{rooms[2]}</text>
+        <text x={u.ox + 124} y="214">{rooms[0]}</text>
+        <text x={u.ox + 14} y="30" fill="#fff" font-size="12">DEPARTAMENTO {u.i + 1}</text>
+      </>
+    ))}
+  </g>
+</svg>
+
+<style>
+  .plan { width: 100%; height: auto; max-width: 720px; margin-inline: auto; }
+  .plan :global([data-plan]) { transform-box: fill-box; }
+</style>

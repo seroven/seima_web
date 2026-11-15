@@ -11,6 +11,7 @@ const active = (p: string) => (p === '/' ? path === '/' : path.startsWith(p)) ? 
     <nav class="nav" aria-label="Principal">
       <a href="/" aria-current={active('/')}>Inicio</a>
       <a href="/proyectos" aria-current={active('/proyectos')}>Proyectos</a>
+      <a href="/empresas" aria-current={active('/empresas')}>Empresas</a>
       <a class="btn" href="/cotizador">Cotizar</a>
     </nav>
   </div>

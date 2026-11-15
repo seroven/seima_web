@@ -280,6 +280,12 @@ html.restoring main {
     display: none;
   }
 }
+@media (max-width: 560px) {
+  .nav a[href="/"] { display: none; } /* el logo ya lleva al inicio */
+  .nav { gap: 0.8rem; font-size: 0.88rem; }
+  .nav .btn { padding: 0.5rem 0.85rem; }
+  .brand svg { width: 26px; height: 26px; }
+}
 
 main {
   padding-top: var(--header);

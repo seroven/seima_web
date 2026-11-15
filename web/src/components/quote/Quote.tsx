@@ -39,9 +39,15 @@ export default function Quote() {
     const cat = q.get('categoria');
     const slug = q.get('proyecto');
     const servicio = cat ? CATEGORIA_A_SERVICIO[cat] : undefined;
+    const cli = q.get('cliente');
+    if (cli === 'empresa' || cli === 'persona') {
+      // Viene de la página Empresas ("Solicitar propuesta"): ya sabemos quién es, se salta la primera pregunta
+      setData((d) => ({ ...d, cliente: cli }));
+      setStep(1);
+    }
     if (servicio || slug) {
       setData((d) => ({ ...d, servicios: servicio ? [servicio] : d.servicios, proyecto: projects.some((p) => p.slug === slug) ? slug : null }));
-    } else {
+    } else if (!cli) {
       try {
         const saved = JSON.parse(sessionStorage.getItem(KEY) ?? 'null');
         if (saved?.data) {
