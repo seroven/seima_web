@@ -145,7 +145,6 @@ function scenes(gsap: any) {
     const house = $('[data-house]', hero)!;
     const spots = $('.house__spots', hero);
     const copy = $('[data-hero-copy]', hero)!;
-    const steps = $('.steps', hero);
     const kx = 295 / 600;
     const ky = 310 / 440; // centro de la cocina dentro del dibujo
     const target = () => {
@@ -170,7 +169,7 @@ function scenes(gsap: any) {
 
     tl.to({}, { duration: 0.5 }, 0); // la casa se termina de construir antes de moverse
     tl.to(copy, { y: -90, autoAlpha: 0, duration: 0.7, ease: 'power2.in' }, 0.5);
-    tl.to([spots, steps], { opacity: 0, duration: 0.3 }, 0.5);
+    tl.to(spots, { opacity: 0, duration: 0.3 }, 0.5);
     tl.fromTo(
       house,
       { scale: 1, x: 0, y: 0, transformOrigin: `${kx * 100}% ${ky * 100}%` },
@@ -230,18 +229,13 @@ function heroIntro(gsap: any) {
   const plates = $$('[data-plate]', art);
   const finish = $('[data-layer=finish]', art);
   const spots = $$('.spot', art);
-  const steps = $$('[data-step]', art);
-  const setStep = (i: number) => steps.forEach((s, n) => s.classList.toggle('is-active', n === i));
 
   const tl = gsap.timeline({ delay: 0.3, defaults: { ease: 'power3.out' } });
-  tl.call(setStep, [0], 0);
   tl.fromTo(tracks, { scaleX: 0, transformOrigin: '0% 50%' }, { scaleX: 1, duration: 0.7, stagger: 0.08 }, 0);
   tl.fromTo(cols, { scaleY: 0, transformOrigin: '50% 100%' }, { scaleY: 1, duration: 0.8, stagger: 0.07 }, 0.15);
   tl.fromTo(thin, { scaleY: 0, transformOrigin: '50% 100%' }, { scaleY: 1, duration: 0.7, stagger: 0.025 }, 0.4);
-  tl.call(setStep, [1], 1.5);
   tl.fromTo(plates, { clipPath: 'inset(0% 100% 0% 0%)' }, { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.7, ease: 'power3.inOut', stagger: 0.16 }, 1.5);
   tl.to(structure, { opacity: 0.4, duration: 0.6 }, 2.3);
-  tl.call(setStep, [2], 2.7);
   tl.fromTo(finish, { clipPath: 'inset(0% 100% 0% 0%)', opacity: 0.4 }, { clipPath: 'inset(0% 0% 0% 0%)', opacity: 1, duration: 1.1, ease: 'power2.inOut' }, 2.7);
   tl.fromTo(spots, { autoAlpha: 0, scale: 0.6 }, { autoAlpha: 1, scale: 1, duration: 0.45, ease: 'back.out(2)', stagger: 0.1 }, 3.5);
 }

@@ -220,10 +220,10 @@ const todas = fotosOrdenadas(p);
   /* Escenario: flechas a los lados (en celular se montan sobre la foto) */
   .pres__stage { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.75rem; min-height: 0; padding-inline: 0.75rem; }
   .pres__nav {
-    width: 56px; height: 56px; border-radius: 50%; border: 1.5px solid #3a3a3a; background: #141414; color: #fff; cursor: pointer;
+    width: 56px; height: 56px; border-radius: 50%; border: 0; background: #1d1d1d; color: #fff; cursor: pointer;
     display: grid; place-items: center; transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease, scale 0.2s ease;
   }
-  .pres__nav:hover:not(:disabled) { background: var(--red); border-color: var(--red); scale: 1.08; }
+  .pres__nav:hover:not(:disabled) { background: var(--red); scale: 1.08; }
   .pres__nav:active:not(:disabled) { scale: 0.94; }
   .pres__nav:disabled { opacity: 0.25; cursor: default; }
   .pres__nav:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }

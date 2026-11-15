@@ -152,19 +152,19 @@ const share = `https://wa.me/?text=${encodeURIComponent(`${p.titulo} · SEIMA Se
 
   /* Historia de la obra: tres bloques seguidos, cada uno con su mosaico. Sin scroll atrapado. */
   .story { padding-bottom: clamp(3rem, 7vw, 5rem); }
-  .story__nav { position: sticky; top: var(--header); z-index: 20; background: var(--paper); border-bottom: 1px solid #e2ddd5; }
+  .story__nav { position: sticky; top: var(--header); z-index: 20; background: var(--paper); box-shadow: 0 10px 26px rgb(0 0 0 / 0.05); }
   .story__navin { display: grid; gap: 0.5rem; padding-block: 0.7rem 0; }
   .story__label { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--red-text); }
   .story__chips { display: flex; gap: 0.5rem; overflow-x: auto; scrollbar-width: none; padding-bottom: 0.6rem; }
   .story__chips::-webkit-scrollbar { display: none; }
   .story__chip {
     flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0.4rem 1rem; border-radius: 999px;
-    font-weight: 700; font-size: 0.88rem; text-decoration: none; color: var(--ink); border: 1.5px solid #cfc8bd;
-    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+    font-weight: 700; font-size: 0.88rem; text-decoration: none; color: var(--ink); background: var(--tint);
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
-  .story__chip:hover { border-color: var(--ink); }
-  .story__chip[aria-current='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }
-  .story__bar { display: none; height: 3px; background: #ddd6cb; overflow: hidden; }
+  .story__chip:hover { background: var(--tint-2); }
+  .story__chip[aria-current='true'] { background: var(--ink); color: #fff; }
+  .story__bar { display: none; height: 3px; background: #ececec; overflow: hidden; }
   :global(html.motion) .story__bar { display: block; }
   .story__bar i { display: block; height: 100%; background: var(--red); transform-origin: 0 50%; transform: scaleX(0); }
 
@@ -188,7 +188,7 @@ const share = `https://wa.me/?text=${encodeURIComponent(`${p.titulo} · SEIMA Se
     .mosaic__item[data-t='F'] { grid-column: span 4; }
   }
   :global(html.motion) .shot { opacity: 0; }
-  .story__text { margin-top: clamp(2rem, 5vw, 3rem); max-width: 52ch; color: #3d3a36; font-size: 1.05rem; }
+  .story__text { margin-top: clamp(2rem, 5vw, 3rem); max-width: 52ch; color: #3a3a3a; font-size: 1.05rem; }
 
   .cta { padding-block: clamp(3.5rem, 9vw, 6rem); }
   .cta .wrap { display: grid; gap: 1.5rem; justify-items: start; }

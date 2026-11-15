@@ -38,7 +38,7 @@ _por definir_
 
 ## 6. Tono y estilo visual
 - Limpio, moderno y muy profesional, **pero no una landing común**: con animaciones, transiciones y elementos modernos.
-- **Dirección C (mixta):** secciones de impacto en oscuro (#0E0E0E + rojo SEIMA), catálogo y cotizador en claro cálido (#F4F1EC) para leer y llenar datos fácil.
+- **Dirección C (mixta):** secciones de impacto en oscuro (#0E0E0E + rojo SEIMA), catálogo y cotizador en **claro neutro** (blanco `#FFFFFF` con grises `#F2F2F2`; **no crema/amarillento**: el logo es solo blanco, negro y rojo) para leer y llenar datos fácil. _(Cambio decidido el 2026-11-15; antes era `#F4F1EC`.)_
 - Concepto: **"construimos tu espacio, capa por capa"**: la portada muestra una casa que se arma (estructura → placas → acabado) con ambientes clicables.
 - Fotos de obra (no profesionales) con **tratamiento uniforme**: tono negro/rojo que pasa a color al interactuar; recortes y marcos consistentes.
 - Movimiento con propósito: títulos que entran palabra por palabra, marquesina de servicios, tarjetas apiladas al hacer scroll, galería horizontal, revelado tipo cortina, contadores, transición foto → ficha, microinteracciones en el cotizador.

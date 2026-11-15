@@ -63,7 +63,8 @@ Modelo de datos orientativo (ajustable; **las decisiones sobre fotos están en `
 ## Dirección visual
 
 - **Dirección C (mixta):** secciones de impacto en oscuro, catálogo y cotizador en claro.
-  - Oscuro `#0E0E0E`, claro cálido `#F4F1EC`, rojo SEIMA `#E0283C` (texto rojo sobre claro: `#C81D30` para contraste).
+  - Oscuro `#0E0E0E`, claro **neutro** `#FFFFFF` (grises `#F2F2F2` para superficies), rojo SEIMA `#E0283C` (texto rojo sobre claro: `#C81D30` para contraste). **Nada de crema/amarillento**: el logo es solo blanco, negro y rojo. (Antes el claro era `#F4F1EC`; cambiado el 2026-11-15.)
+  - **Chips y controles sin borde:** los estados (reposo, hover, activo) se resuelven con sombreado/tono del fondo, no con líneas de borde (se ven toscas).
   - Títulos: Archivo ancha y pesada (`font-stretch` ~118%, peso 800–900). Ajustable.
 - Concepto: **"Construimos tu espacio, capa por capa."** La portada muestra una casa que se arma (estructura → placas → acabado) con ambientes clicables que filtran el catálogo.
 - Fotos de obra no profesionales → **tratamiento uniforme** (tono negro/rojo que pasa a color al interactuar, mismos recortes y radios).

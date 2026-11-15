@@ -4,12 +4,14 @@
   --ink: #0e0e0e;
   --ink-2: #181818;
   --ink-3: #262626;
-  --paper: #f4f1ec;
-  --paper-2: #e8e3da;
+  --paper: #ffffff;
+  --paper-2: #f2f2f2;
+  --tint: rgb(14 14 14 / 0.06); /* fondo de chips en reposo */
+  --tint-2: rgb(14 14 14 / 0.11); /* hover */
   --red: #e0283c;
   --red-text: #c81d30; /* texto rojo sobre claro (contraste AA) */
-  --muted-dark: #a8a39b;
-  --muted-light: #5d5851;
+  --muted-dark: #a6a6a6;
+  --muted-light: #5c5c5c;
   --header: 60px;
   --r: 14px;
   --pad: clamp(1.25rem, 5vw, 4rem);
@@ -356,8 +358,8 @@ main {
     repeating-linear-gradient(135deg, rgb(255 255 255 / 0.07) 0 2px, transparent 2px 16px),
     linear-gradient(
       160deg,
-      hsl(calc(18 + var(--tone, 0) * 9) 38% 46%),
-      hsl(calc(10 + var(--tone, 0) * 9) 26% 17%)
+      hsl(calc(8 + var(--tone, 0) * 5) 36% 44%),
+      hsl(calc(6 + var(--tone, 0) * 5) 26% 16%)
     );
 }
 .photo__mono {

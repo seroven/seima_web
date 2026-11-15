@@ -17,9 +17,9 @@ const services = [
 ];
 const marquee = ['Drywall', 'Enchapado', 'Electricidad', 'Melamina', 'Pintura', 'Remodelaciones'];
 
-// Solo cifras reales (docs/fuentes/tiktok-analisis.md). Lo demás, placeholder.
+// Solo cifras reales: TikTok (docs/fuentes/tiktok-analisis.md) y el dato de Sebas (+50 proyectos, aproximado). Lo demás, placeholder.
 const stats = [
-  { v: null, label: 'proyectos entregados', ph: '[DATO REAL]', hot: true },
+  { v: 50, dec: 0, prefix: '+', label: 'proyectos entregados', hot: true },
   { v: 464, dec: 0, suffix: 'K', label: 'vistas en su video más visto' },
   { v: 7.3, dec: 1, suffix: 'K', label: 'seguidores en TikTok' },
   { v: null, label: 'y provincias', ph: 'Lima' },
@@ -46,11 +46,6 @@ const stats = [
         </div>
         <div class="hero__art">
           <House />
-          <ol class="steps" aria-label="Etapas de la obra">
-            <li data-step>01 Estructura</li>
-            <li data-step>02 Placas</li>
-            <li data-step>03 Acabado</li>
-          </ol>
         </div>
       </div>
     </section>
@@ -115,7 +110,7 @@ const stats = [
           <div class={`stat ${s.hot ? 'stat--hot' : ''}`} data-reveal>
             <p class:list={['stat__n', s.v === null && s.ph?.startsWith('[') && 'stat__n--ph']}>
               {s.v !== null
-                ? <><span data-count={s.v} data-dec={s.dec}>{s.v.toFixed(s.dec)}</span>{s.suffix}</>
+                ? <>{s.prefix}<span data-count={s.v} data-dec={s.dec}>{s.v.toFixed(s.dec)}</span>{s.suffix}</>
                 : <>{s.ph}</>}
             </p>
             <p class="stat__l">{s.label}</p>
@@ -175,16 +170,8 @@ const stats = [
   .hero__lead { color: #b5b5b5; font-size: clamp(1.02rem, 2.4vw, 1.2rem); max-width: 34rem; }
   .hero__cta { display: flex; flex-wrap: wrap; gap: 0.75rem; }
   .hero__art { display: grid; gap: 1rem; }
-  .steps { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; }
-  .steps li {
-    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-    padding: 0.3rem 0.7rem; border-radius: 999px; border: 1px solid #333; color: var(--muted-dark);
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-  }
-  .steps li.is-active { background: var(--red); border-color: var(--red); color: #fff; }
   @media (min-width: 900px) {
     .hero__grid { grid-template-columns: 1fr 1.3fr; gap: 3rem; }
-    .steps { justify-content: flex-end; }
     .scene--hero .eyebrow { font-size: 0.78rem; letter-spacing: 0.14em; }
   }
 
@@ -257,7 +244,7 @@ const stats = [
     transition: translate 0.35s cubic-bezier(0.2, 0.7, 0, 1);
   }
   .dcard:hover { translate: 0 -6px; }
-  .dcard--light { background: #fff; }
+  .dcard--light { background: var(--paper-2); }
   .dcard--dark { background: var(--ink-2); color: #fff; }
   .dcard--dark .eyebrow { color: #ff6b7a; }
   .dcard__t { font-stretch: 118%; font-weight: 900; font-size: clamp(1.7rem, 4.5vw, 2.5rem); line-height: 1.05; }

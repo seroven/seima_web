@@ -2,7 +2,14 @@
 import Base from '../../layouts/Base.astro';
 import Words from '../../components/Words.astro';
 import ProjectCard from '../../components/ProjectCard.astro';
+import CategoryIcon from '../../components/CategoryIcon.astro';
 import { projects, categories } from '../../data/projects';
+
+// Filtros: "Todos" + cada ambiente, con cuántos proyectos tiene
+const filters = [
+  { slug: '', nombre: 'Todos', n: projects.length },
+  ...categories.map((c) => ({ slug: c.slug, nombre: c.nombre, n: projects.filter((p) => p.categoria === c.slug).length })),
+];
 ---
 <Base
   title="Proyectos · SEIMA Servicios Generales"
@@ -15,12 +22,39 @@ import { projects, categories } from '../../data/projects';
         <h1><Words text="Proyectos" /> <span class="head__count" aria-live="polite">(<span data-count-out>{projects.length}</span>)</span></h1>
         <p class="head__note">Proyectos de prueba: las fotos y datos reales se cargan después. Pasa el mouse (o mantén presionada una tarjeta) para ver el antes.</p>
       </header>
+    </div>
 
-      <div class="chips" role="group" aria-label="Filtrar por categoría">
-        <button type="button" class="chip" data-filter="" aria-pressed="true">Todos</button>
-        {categories.map((c) => <button type="button" class="chip" data-filter={c.slug} aria-pressed="false">{c.nombre}</button>)}
+    <!-- Filtros por ambiente: chips con ícono. La fila se queda pegada arriba al bajar. -->
+    <div class="fsentinel" data-fsentinel aria-hidden="true"></div>
+    <div class="fbar" data-fbar>
+      <div class="wrap">
+        <div class="fscroll" data-fscroll>
+          <div class="fchips" data-fchips role="group" aria-label="Filtrar por ambiente">
+            {filters.map((f, i) => (
+              <button type="button" class:list={['fchip', f.n === 0 && 'is-empty']} data-filter={f.slug} aria-pressed={i === 0 ? 'true' : 'false'} style={`--i:${i}`}>
+                <CategoryIcon slug={f.slug} size={18} />
+                <span class="fchip__t">{f.nombre}</span>
+              </button>
+            ))}
+            <!-- Capa oscura idéntica; el recorte (clip-path) se desliza hasta el chip activo -->
+            <div class="fchips__lit" data-flit aria-hidden="true">
+              {filters.map((f) => (
+                <span class="fchip fchip--lit">
+                  <CategoryIcon slug={f.slug} size={18} />
+                  <span class="fchip__t">{f.nombre}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
-      <p class="status sr-only" role="status" aria-live="polite" data-status></p>
+    </div>
+
+    <div class="wrap">
+      <p class="result" role="status" aria-live="polite">
+        <span data-result>Mostrando todos los proyectos</span>
+        <button type="button" class="result__clear" data-clear hidden>Quitar filtro <span aria-hidden="true">✕</span></button>
+      </p>
 
       <div class="grid" data-grid>
         {projects.map((p, i) => (
@@ -35,19 +69,27 @@ import { projects, categories } from '../../data/projects';
 </Base>
 
 <script>
-  // Filtro del catálogo. Al cambiar, las tarjetas que salen se desvanecen y las que quedan se reacomodan (GSAP Flip).
+  // Filtro del catálogo. Al cambiar: las tarjetas que salen se desvanecen y las que quedan se reacomodan (GSAP Flip).
   let busy = false;
   let pending: string | null = null;
 
   async function setup() {
     const root = document.querySelector<HTMLElement>('[data-catalog]');
     if (!root) return;
-    const chips = [...root.querySelectorAll<HTMLButtonElement>('[data-filter]')];
+    const chips = [...root.querySelectorAll<HTMLButtonElement>('.fchip[data-filter]')];
     const items = [...root.querySelectorAll<HTMLElement>('.grid__item')];
     const empty = root.querySelector<HTMLElement>('[data-empty]')!;
-    const status = root.querySelector<HTMLElement>('[data-status]')!;
+    const result = root.querySelector<HTMLElement>('[data-result]')!;
+    const clear = root.querySelector<HTMLButtonElement>('[data-clear]')!;
     const countOut = root.querySelector<HTMLElement>('[data-count-out]')!;
-    const valid = new Set(chips.map((c) => c.dataset.filter));
+    const fchips = root.querySelector<HTMLElement>('[data-fchips]')!;
+    const fscroll = root.querySelector<HTMLElement>('[data-fscroll]')!;
+    const fbar = root.querySelector<HTMLElement>('[data-fbar]')!;
+    const sentinel = root.querySelector<HTMLElement>('[data-fsentinel]')!;
+    const valid = new Set(chips.map((b) => b.dataset.filter));
+    const updFade = () => fbar.classList.toggle('fade-r', fscroll.scrollLeft + fscroll.clientWidth < fscroll.scrollWidth - 6);
+    fscroll.addEventListener('scroll', updFade, { passive: true });
+    const nombre = (slug: string) => chips.find((c) => c.dataset.filter === slug)?.querySelector('.fchip__t')?.textContent ?? slug;
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     let libs: Promise<{ gsap: any; Flip: any }> | null = null;
@@ -61,11 +103,21 @@ import { projects, categories } from '../../data/projects';
     // Bento: el tamaño depende de la posición entre las tarjetas visibles
     const layout = (visible: HTMLElement[]) => visible.forEach((el, i) => (el.dataset.slot = String(i % 5)));
 
+    // Chip oscuro que se desliza: se recorta (clip-path) la capa oscura hasta el chip activo
+    const moveHighlight = (cat: string, animate = true) => {
+      const c = chips.find((x) => x.dataset.filter === cat) ?? chips[0];
+      fchips.style.setProperty('--hl', animate && !reduce ? '0.5s' : '0s');
+      fchips.style.setProperty('--l', c.offsetLeft + 'px');
+      fchips.style.setProperty('--r', fchips.offsetWidth - (c.offsetLeft + c.offsetWidth) + 'px');
+      if (animate) fscroll.scrollTo({ left: c.offsetLeft - (fscroll.clientWidth - c.offsetWidth) / 2, behavior: reduce ? 'auto' : 'smooth' });
+    };
+
     const paint = (cat: string, shown: number, push: boolean) => {
-      chips.forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.filter === cat)));
+      chips.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === cat)));
       empty.hidden = shown > 0;
       countOut.textContent = String(shown);
-      status.textContent = `${shown} proyecto${shown === 1 ? '' : 's'}`;
+      result.textContent = cat ? `Mostrando ${shown} de ${items.length} · ${nombre(cat)}` : `Mostrando todos los proyectos`;
+      clear.hidden = !cat;
       if (push) {
         const url = new URL(location.href);
         if (cat) url.searchParams.set('categoria', cat);
@@ -82,6 +134,7 @@ import { projects, categories } from '../../data/projects';
       const next = items.filter((el) => !cat || el.dataset.cat === cat);
       const was = items.filter((el) => !el.hidden);
       paint(cat, next.length, push);
+      moveHighlight(cat, animate);
 
       if (!animate || reduce) {
         items.forEach((el) => (el.hidden = !next.includes(el)));
@@ -117,37 +170,86 @@ import { projects, categories } from '../../data/projects';
       }
     };
 
-    chips.forEach((c) => c.addEventListener('click', () => apply(c.dataset.filter ?? '')));
+    chips.forEach((b) => b.addEventListener('click', () => apply(b.dataset.filter ?? '')));
+    clear.addEventListener('click', () => apply(''));
+
+    // La fila se pega bajo el header: cuando está pegada, se le da fondo y sombra
+    const io = new IntersectionObserver(([e]) => fbar.classList.toggle('is-stuck', !e.isIntersecting && e.boundingClientRect.top < 0), { rootMargin: '-61px 0px 0px 0px' });
+    io.observe(sentinel);
+    addEventListener('resize', updFade, { passive: true });
+    addEventListener('resize', () => moveHighlight(chips.find((b) => b.getAttribute('aria-pressed') === 'true')?.dataset.filter ?? '', false), { passive: true });
+
+    // Estado inicial (desde la URL), sin animar
     const initial = new URLSearchParams(location.search).get('categoria') ?? '';
     const cat = valid.has(initial) ? initial : '';
     const next = items.filter((el) => !cat || el.dataset.cat === cat);
     items.forEach((el) => (el.hidden = !next.includes(el)));
     layout(next);
     paint(cat, next.length, false);
-    status.textContent = '';
+    moveHighlight(cat, false);
+    updFade();
+    if (cat) requestAnimationFrame(() => requestAnimationFrame(() => {
+      const c = chips.find((x) => x.dataset.filter === cat)!;
+      fscroll.scrollLeft = c.offsetLeft - (fscroll.clientWidth - c.offsetWidth) / 2;
+    }));
   }
   document.addEventListener('astro:page-load', setup);
 </script>
 
 <style>
   .catalog { padding-block: clamp(2.5rem, 7vw, 5rem) clamp(4rem, 9vw, 7rem); min-height: 80svh; }
-  .head { display: grid; gap: 0.9rem; margin-bottom: clamp(1.4rem, 4vw, 2.4rem); }
+  .head { display: grid; gap: 0.9rem; margin-bottom: clamp(1.2rem, 3vw, 1.8rem); }
   .head h1 { font-size: clamp(3rem, 12vw, 6rem); line-height: 0.95; letter-spacing: -0.02em; }
   .head__count { font-size: 0.32em; color: var(--red-text); vertical-align: top; font-weight: 800; letter-spacing: 0; margin-left: 0.2em; }
   .head__note { color: var(--muted-light); font-size: 0.9rem; max-width: 40rem; }
 
-  .chips { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.9rem; scrollbar-width: none; }
-  .chips::-webkit-scrollbar { display: none; }
-  .chip {
-    flex: none; font: inherit; font-weight: 600; font-size: 0.92rem; cursor: pointer; min-height: 44px;
-    padding: 0.55rem 1.1rem; border-radius: 999px; border: 1.5px solid #cfc8bd; background: transparent; color: var(--ink);
-    transition: transform 0.2s cubic-bezier(0.2, 0.7, 0, 1), background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-  }
-  .chip:hover { translate: 0 -3px; border-color: var(--ink); }
-  .chip:active { scale: 0.97; }
-  .chip[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  /* ---------- Chips de ambiente (fila pegajosa) ---------- */
+  .fsentinel { height: 1px; margin-top: -1px; }
+  .fbar { position: sticky; top: var(--header); z-index: 30; background: var(--paper); transition: box-shadow 0.3s ease; }
+  .fbar.is-stuck { box-shadow: 0 12px 28px rgb(0 0 0 / 0.07); }
+  .fbar .wrap { position: relative; }
+  .fbar .wrap::after { content: ''; position: absolute; top: 0; bottom: 0; right: 0; width: 3.5rem; pointer-events: none; background: linear-gradient(90deg, transparent, var(--paper)); opacity: 0; transition: opacity 0.3s ease; }
+  .fbar.fade-r .wrap::after { opacity: 1; }
+  .fscroll { overflow-x: auto; scrollbar-width: none; margin-inline: calc(var(--pad) * -1); padding: 0.7rem var(--pad); padding-right: 3.5rem; }
+  .fscroll::-webkit-scrollbar { display: none; }
+  .fchips { position: relative; display: flex; gap: 0.4rem; width: max-content; }
 
-  /* Bento */
+  .fchip {
+    flex: none; display: inline-flex; align-items: center; gap: 0.45rem; min-height: 44px; padding: 0.3rem 0.95rem 0.3rem 0.75rem; border-radius: 999px;
+    font: inherit; font-weight: 700; font-size: 0.88rem; color: var(--ink); background: var(--tint); border: 0; cursor: pointer;
+    transition: background-color 0.25s ease, translate 0.3s cubic-bezier(0.2, 0.7, 0, 1);
+  }
+  .fchip :global(.cicon) { color: var(--red-text); }
+  .fchip:hover { background: var(--tint-2); translate: 0 -2px; }
+  .fchip:hover :global(.cicon) { transform: scale(1.14) rotate(-6deg); }
+  .fchip:active { scale: 0.97; }
+  .fchip:focus-visible { outline: 3px solid var(--red); outline-offset: 3px; }
+  .fchip.is-empty { opacity: 0.55; }
+
+  /* Capa oscura: no interactiva, mismas medidas; solo se ve el tramo del chip activo */
+  .fchips__lit {
+    position: absolute; inset: 0; display: flex; gap: 0.4rem; pointer-events: none;
+    clip-path: inset(0 var(--r, 0px) 0 var(--l, 0px) round 999px);
+    transition: clip-path var(--hl, 0s) cubic-bezier(0.2, 0.7, 0, 1);
+  }
+  .fchip--lit { background: var(--ink); color: #fff; }
+  .fchip--lit :global(.cicon) { color: #ff6b7a; }
+
+  /* Entrada escalonada */
+  :global(html.motion) .fchip:not(.fchip--lit) { animation: fchip-in 0.6s calc(0.3s + var(--i) * 55ms) cubic-bezier(0.2, 0.7, 0, 1) both; }
+  @keyframes fchip-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- Línea de resultado ---------- */
+  .result { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; min-height: 2.4rem; margin: 0.9rem 0 1rem; font-size: 0.9rem; font-weight: 600; color: var(--muted-light); }
+  .result__clear {
+    display: inline-flex; align-items: center; gap: 0.4rem; min-height: 36px; padding: 0.3rem 0.8rem; border-radius: 999px; cursor: pointer;
+    font: inherit; font-weight: 700; font-size: 0.82rem; color: var(--ink); background: var(--tint); border: 0;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+  .result__clear:hover { background: var(--ink); color: #fff; }
+  .result__clear[hidden] { display: none; }
+
+  /* ---------- Bento ---------- */
   .grid { display: grid; gap: clamp(1.4rem, 3vw, 2.2rem) clamp(1rem, 2vw, 1.6rem); grid-template-columns: 1fr; margin-top: 0.6rem; }
   .grid__item { --h: 17rem; }
   .grid__item[hidden] { display: none; }
