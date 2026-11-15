@@ -1,29 +1,33 @@
 ---
-// Modo presentación: fotos a pantalla completa, deslizar con el dedo, sin menús.
-// Para que Luis lo muestre en su celular frente al cliente.
+// Visor a pantalla completa: fotos ordenadas por etapa, deslizar con el dedo, sin menús.
+// Lo abren dos cosas: el botón "Modo presentación" (desde la primera foto) y cualquier foto de la galería
+// de la historia (`[data-shot]`, desde esa foto). Pensado para que Luis lo muestre en su celular frente al cliente.
 import Photo from './Photo.astro';
-import { etapaLabel, type Project } from '../data/projects';
-interface Props { project: Project }
-const { project: p } = Astro.props;
+import { etapaLabel, fotosOrdenadas, type Project } from '../data/projects';
+interface Props { project: Project; button?: boolean }
+const { project: p, button = true } = Astro.props;
+const todas = fotosOrdenadas(p);
 ---
-<button type="button" class="pres-open" data-pres-open>
-  <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor" /></svg>
-  Modo presentación
-</button>
+{button && (
+  <button type="button" class="pres-open" data-pres-open>
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor" /></svg>
+    Modo presentación
+  </button>
+)}
 
-<dialog class="pres" data-pres data-lenis-prevent aria-label={`Presentación: ${p.titulo}`}>
+<dialog class="pres" data-pres data-lenis-prevent aria-label={`Fotos: ${p.titulo}`}>
   <div class="pres__bar">
-    <span class="pres__count" aria-live="polite"><b data-pres-n>1</b> / {p.fotos.length}</span>
+    <span class="pres__count" aria-live="polite"><b data-pres-n>1</b> / {todas.length}</span>
     <span class="pres__title">{p.titulo}</span>
-    <button type="button" class="pres__close" data-pres-close aria-label="Cerrar presentación">
+    <button type="button" class="pres__close" data-pres-close aria-label="Cerrar visor">
       <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg>
     </button>
   </div>
   <div class="pres__track" data-pres-track tabindex="0">
-    {p.fotos.map((f) => (
+    {todas.map((f, i) => (
       <figure class="pres__slide">
-        <Photo src={f.src} alt={f.alt} tone={p.tono} fill plain label={`[FOTO REAL · ${etapaLabel[f.etapa].toUpperCase()}]`} />
-        <figcaption>{etapaLabel[f.etapa]}</figcaption>
+        <Photo src={f.src} alt={f.alt} tone={(p.tono + i) % 6} fill plain label={`[FOTO REAL · ${etapaLabel[f.etapa].toUpperCase()} ${f.orden + 1}]`} />
+        <figcaption>{etapaLabel[f.etapa]}{f.pie ? ` · ${f.pie}` : ''}</figcaption>
       </figure>
     ))}
   </div>
@@ -33,25 +37,28 @@ const { project: p } = Astro.props;
 <script>
   function setup() {
     const dlg = document.querySelector<HTMLDialogElement>('[data-pres]');
-    const open = document.querySelector<HTMLElement>('[data-pres-open]');
-    if (!dlg || !open || dlg.dataset.ready) return;
+    if (!dlg || dlg.dataset.ready) return;
     dlg.dataset.ready = '1';
     const track = dlg.querySelector<HTMLElement>('[data-pres-track]')!;
     const n = dlg.querySelector<HTMLElement>('[data-pres-n]')!;
-    const slides = [...track.children] as HTMLElement[];
+    const total = track.children.length;
 
     const index = () => Math.round(track.scrollLeft / track.clientWidth);
-    const go = (i: number) => track.scrollTo({ left: Math.max(0, Math.min(slides.length - 1, i)) * track.clientWidth, behavior: 'smooth' });
+    const go = (i: number) => track.scrollTo({ left: Math.max(0, Math.min(total - 1, i)) * track.clientWidth, behavior: 'smooth' });
     track.addEventListener('scroll', () => (n.textContent = String(index() + 1)), { passive: true });
 
-    open.addEventListener('click', () => {
+    (dlg as any)._open = (i: number) => {
+      if (dlg.open) return;
       dlg.showModal();
       document.documentElement.classList.add('pres-on');
-      track.scrollTo({ left: 0 });
-      track.focus();
-    });
-    const close = () => dlg.close();
-    dlg.querySelector('[data-pres-close]')!.addEventListener('click', close);
+      requestAnimationFrame(() => {
+        track.scrollTo({ left: i * track.clientWidth, behavior: 'instant' as ScrollBehavior });
+        n.textContent = String(i + 1);
+        track.focus();
+      });
+    };
+
+    dlg.querySelector('[data-pres-close]')!.addEventListener('click', () => dlg.close());
     dlg.addEventListener('close', () => document.documentElement.classList.remove('pres-on'));
     dlg.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowRight') { e.preventDefault(); go(index() + 1); }
@@ -59,6 +66,16 @@ const { project: p } = Astro.props;
     });
   }
   document.addEventListener('astro:page-load', setup);
+
+  // Un solo listener global (con ClientRouter el módulo vive entre páginas): abre el visor de la página actual.
+  document.addEventListener('click', (e) => {
+    const t = e.target as Element;
+    const dlg = document.querySelector<HTMLDialogElement>('[data-pres]') as any;
+    if (!dlg?._open) return;
+    if (t.closest('[data-pres-open]')) dlg._open(0);
+    const shot = t.closest<HTMLElement>('[data-shot]');
+    if (shot) dlg._open(Number(shot.dataset.global ?? 0));
+  });
 </script>
 
 <style>

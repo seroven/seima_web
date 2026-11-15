@@ -1,11 +1,11 @@
 ---
 // Comparador antes/después. El <input type="range"> cubre toda el área: funciona con mouse, dedo y teclado.
 import Photo from './Photo.astro';
-import type { Project } from '../data/projects';
+import { principal, type Project } from '../data/projects';
 interface Props { project: Project }
 const { project: p } = Astro.props;
-const before = p.fotos.find((f) => f.etapa === 'antes') ?? p.fotos[0];
-const after = p.fotos.find((f) => f.etapa === 'despues') ?? p.fotos[p.fotos.length - 1];
+const before = principal(p, 'antes') ?? p.fotos[0];
+const after = principal(p, 'despues') ?? p.fotos[p.fotos.length - 1];
 ---
 <div class="cmp" data-compare style="--p:50">
   <div class="cmp__layer"><Photo src={after.src} alt={after.alt} tone={p.tono} fill label="[FOTO REAL · DESPUÉS]" plain /></div>

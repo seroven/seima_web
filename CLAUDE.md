@@ -2,17 +2,34 @@
 
 Web pública del negocio de **Luis Rodríguez** (SEIMA): drywall, enchapado, electricidad, melamina y pintura en Lima y provincias. Es un **portafolio/catálogo de proyectos con un cotizador guiado**, no una landing genérica.
 
-**Antes de construir cualquier cosa, lee `docs/brief.md`.** Ahí están las decisiones (objetivo, público, servicios, estilo, stack). Material de referencia en `docs/fuentes/`. Si algo del brief contradice este archivo, manda el brief y avisa.
+**Antes de construir cualquier cosa, lee `docs/brief.md` y `STATE.md`.** El brief tiene las decisiones (objetivo, público, servicios, estilo, stack); `STATE.md` tiene el estado real del proyecto, el historial y las lecciones técnicas. Material de referencia en `docs/fuentes/`. Si algo del brief contradice este archivo, manda el brief y avisa.
+
+## Documentación viva (obligatorio)
+
+`STATE.md` (raíz) es la memoria del proyecto: permite que un agente nuevo sepa todo lo hecho sin que se lo expliquen desde cero.
+
+- **En cada interacción en la que cambies algo o se tome una decisión, actualiza `STATE.md` antes de dar la tarea por terminada.** No es opcional ni se deja "para después".
+- Qué registrar, bajo la **fecha del día** (formato `AAAA-MM-DD`, lo más reciente arriba en el Historial):
+  - **Decisiones** (qué se decidió y por qué, incluidas las que descartamos) y **Cambios** (qué se construyó, archivos clave, hash del commit si lo hay).
+  - Si cambia el estado: actualiza también la sección "Estado actual" (rutas, componentes, stack) y "Pendientes".
+  - Errores que costaron tiempo → sección "Lecciones técnicas".
+- Si una decisión afecta la base de datos, anótala además en `docs/modelo-datos.md`; si afecta producto, en `docs/brief.md` (solo lo decidido).
+- Un cambio sin su entrada en `STATE.md` cuenta como incompleto.
 
 ## Estructura del repo
 
 ```
 seima_web/
 ├── CLAUDE.md
-├── docs/            # brief.md (fuente de verdad) + fuentes/
+├── STATE.md         # estado e historial vivo (se actualiza siempre)
+├── docs/            # brief.md (fuente de verdad), modelo-datos.md + fuentes/
 ├── web/             # Astro (web pública)
 └── api/             # Express (backend)
 ```
+
+## Versionamiento
+
+Repo en GitHub (`origin` = seroven/seima_web). Ramas: `main` (estable) y **`staging` (aquí se trabaja)**. Se pasa a `main` solo por merge/PR desde `staging`. No hagas commit ni push sin que Sebas lo pida. Commits en español, con el trailer de atribución indicado por el entorno.
 
 El **panel administrativo es un proyecto aparte y está fuera de alcance** en esta etapa. No crear login ni rutas de administración.
 
@@ -33,7 +50,7 @@ El **panel administrativo es un proyecto aparte y está fuera de alcance** en es
    - `POST /quotes` (guarda la solicitud y devuelve el texto para WhatsApp)
 3. Script de **seed** para cargar proyectos (no hay panel todavía).
 
-Modelo de datos orientativo (ajustable): `categories`, `projects` (slug, título, categoría, distrito, área m², días, servicios, descripción, destacado, tipo de cliente), `project_photos` (project_id, etapa: antes|durante|después, cloudinary_id, orden), `quotes` (tipo cliente, servicios, medidas, acabado, distrito, plazo, nombre, whatsapp, razón social/RUC opcionales, fotos, fecha).
+Modelo de datos orientativo (ajustable; **las decisiones sobre fotos están en `docs/modelo-datos.md`**: etapa, foto principal por etapa, galería): `categories`, `projects` (slug, título, categoría, distrito, área m², días, servicios, descripción, destacado, tipo de cliente), `project_photos` (project_id, etapa: antes|durante|después, cloudinary_id, orden), `quotes` (tipo cliente, servicios, medidas, acabado, distrito, plazo, nombre, whatsapp, razón social/RUC opcionales, fotos, fecha).
 
 ## Reglas de contenido (no negociables)
 

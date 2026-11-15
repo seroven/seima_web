@@ -51,8 +51,8 @@ async function init() {
       // 1) Pines, en orden de aparición
       scenes(gsap);
       gallery(gsap);
-      story(gsap);
       // 2) Resto
+      story(gsap, ScrollTrigger);
       heroIn(gsap);
       heroIntro(gsap);
       compare(gsap);
@@ -289,62 +289,59 @@ function gallery(gsap: any) {
   cleanups.push(() => mm.revert());
 }
 
-/* ---------- Ficha: la historia de la obra se fija y avanza con el scroll ---------- */
-function story(gsap: any) {
+/* ---------- Ficha: historia de la obra (SIN pin: el scroll sigue libre) ----------
+   Barra fija con las etapas: la línea roja se llena con el avance y el botón activo sigue al bloque que estás viendo.
+   Los botones saltan al bloque. Las fotos entran suaves al aparecer. */
+function story(gsap: any, ScrollTrigger: any) {
   const root = $("[data-story]");
   if (!root) return;
-  const figs = $$("[data-fig]", root);
-  const fill = $("[data-story-fill]", root);
+  const stages = $$("[data-stage-block]", root);
   const chips = $$("[data-story-chip]", root);
-  const n = figs.length;
-  if (n < 2) return;
-  const STEP = 1.2;
-  const mm = gsap.matchMedia();
+  const fill = $("[data-story-fill]", root);
+  const nav = $("[data-story-nav]", root);
 
-  mm.add("(min-height: 520px)", () => {
-    root.classList.add("is-scrub");
-    const tl = gsap.timeline({
-      defaults: { ease: "none" },
-      scrollTrigger: {
-        trigger: root,
-        start: "top top+=60",
-        end: () => "+=" + window.innerHeight * 1.6,
-        pin: true,
-        scrub: 0.6,
-        anticipatePin: 1,
-        invalidateOnRefresh: true,
-        onUpdate: (self: any) => {
-          const idx = Math.min(n - 1, Math.floor(self.progress * n * 0.999));
-          chips.forEach((c, i) => c.setAttribute("aria-pressed", String(i === idx)));
-        },
-      },
-    });
-    figs.slice(1).forEach((f, i) => {
-      tl.fromTo(f, { clipPath: "inset(0% 0% 0% 100%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 1, ease: "power2.inOut" }, i * STEP + 0.2);
-    });
-    const total = (n - 1) * STEP + 0.6;
-    tl.fromTo(fill, { scaleX: 0 }, { scaleX: 1, duration: total }, 0);
-    tl.to({}, { duration: 0.4 }, total);
+  const setActive = (id: string) => chips.forEach((c) => c.setAttribute("aria-current", String(c.dataset.stage === id)));
 
-    // Los botones de etapa saltan a su punto del scroll
-    const onChip = (i: number) => () => {
-      const st = tl.scrollTrigger;
-      if (!st) return;
-      const y = st.start + ((st.end - st.start) * (i / (n - 1))) * 0.9;
-      if (lenisRef) lenisRef.scrollTo(y, { duration: 1.1 });
-      else window.scrollTo({ top: y, behavior: "smooth" });
-    };
-    const handlers = chips.map((c, i) => {
-      const h = onChip(i);
-      c.addEventListener("click", h);
-      return () => c.removeEventListener("click", h);
+  stages.forEach((el) => {
+    ScrollTrigger.create({
+      trigger: el,
+      start: "top 45%",
+      end: "bottom 45%",
+      onToggle: (self: any) => self.isActive && setActive(el.dataset.stageBlock as string),
     });
-    return () => {
-      handlers.forEach((off) => off());
-      root.classList.remove("is-scrub");
-    };
   });
-  cleanups.push(() => mm.revert());
+
+  if (fill) {
+    gsap.fromTo(
+      fill,
+      { scaleX: 0 },
+      { scaleX: 1, ease: "none", scrollTrigger: { trigger: root, start: "top 40%", end: "bottom 70%", scrub: 0.4 } },
+    );
+  }
+
+  // Salto suave a la etapa (con Lenis); sin Lenis queda el ancla nativa
+  chips.forEach((c) => {
+    c.addEventListener("click", (e) => {
+      const target = $("#etapa-" + c.dataset.stage);
+      if (!target || !lenisRef) return;
+      e.preventDefault();
+      const offset = -((nav?.offsetHeight ?? 0) + 60 + 12);
+      lenisRef.scrollTo(target, { offset, duration: 1.1 });
+      setActive(c.dataset.stage as string);
+    });
+  });
+
+  // Las fotos entran suaves, en tandas, al aparecer (solo entrada: no hay coreografía de scroll)
+  ScrollTrigger.batch($$("[data-shot]", root), {
+    start: "top 92%",
+    once: true,
+    onEnter: (batch: any[]) =>
+      gsap.fromTo(
+        batch,
+        { opacity: 0, y: 36, clipPath: "inset(12% 0% 0% 0% round 14px)" },
+        { opacity: 1, y: 0, clipPath: "inset(0% 0% 0% 0% round 14px)", duration: 0.7, ease: "power3.out", stagger: 0.07, clearProps: "clipPath" },
+      ),
+  });
 }
 
 /* ---------- Ficha: el comparador hace un barrido de bienvenida ---------- */

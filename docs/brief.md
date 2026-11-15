@@ -77,6 +77,9 @@ _por definir_
 - `docs/fuentes/librerias-animacion.md` — librerías de animación y cómo se hacen las webs "hechas con Claude"
 - `docs/fuentes/ideas-navegacion.md` — ideas de navegación investigadas + enlace al prototipo boceto
 - `docs/fuentes/tiktok-analisis.md` — revisión del TikTok (servicios, videos top, comentarios, precios mencionados)
+- `docs/fuentes/contexto-chat.md` — contexto del brainstorm (técnicas por sección, cotizador, Empresas, pendientes con Luis)
+- `docs/modelo-datos.md` — decisiones de base de datos (fotos por etapa, foto principal, galería)
+- `STATE.md` (raíz) — estado actual e historial de cambios y decisiones de la web
 
 ## 9. Pendientes
 - Testimonios: deben ser reales (frases de clientes con su permiso); fotos con clientes también requieren su autorización

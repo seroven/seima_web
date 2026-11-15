@@ -6,7 +6,7 @@ import Words from '../../components/Words.astro';
 import BackButton from '../../components/BackButton.astro';
 import CompareSlider from '../../components/CompareSlider.astro';
 import Presentation from '../../components/Presentation.astro';
-import { projects, categoryName, etapaLabel, show, type Project } from '../../data/projects';
+import { projects, categoryName, etapaLabel, etapas, fotosDe, fotosOrdenadas, principal, show, type Foto, type Project } from '../../data/projects';
 
 export function getStaticPaths() {
   return projects.map((project) => ({ params: { slug: project.slug }, props: { project } }));
@@ -14,7 +14,22 @@ export function getStaticPaths() {
 
 const { project: p } = Astro.props as { project: Project };
 const cat = categoryName(p.categoria);
-const cover = p.fotos.find((f) => f.etapa === 'despues') ?? p.fotos[0];
+const cover = principal(p, 'despues') ?? p.fotos[0];
+// Etapas que tienen fotos (una etapa sin fotos, p. ej. "durante", simplemente no se muestra)
+// Mosaico en bloques que siempre cuadran (4 columnas × 2 filas): L = 2×2, W = 2×1, S = 1×1, F = 4×2
+const BLOQUES: Record<string, string[]> = { A: ['L', 'S', 'S', 'S', 'S'], B: ['L', 'S', 'S', 'W'], C: ['L', 'W', 'W'], D: ['L', 'L'], E: ['F'] };
+const PLAN: Record<number, string[]> = { 1: ['E'], 2: ['D'], 3: ['C'], 4: ['B'], 5: ['A'], 6: ['C', 'C'], 7: ['A', 'D'], 8: ['B', 'B'], 9: ['A', 'B'], 10: ['A', 'A'] };
+const tiposPara = (n: number) => {
+  const bloques: string[] = [];
+  while (n > 10) { bloques.push('A'); n -= 5; }
+  return [...bloques, ...(PLAN[n] ?? [])].flatMap((b) => BLOQUES[b]);
+};
+const etapasConFotos = etapas
+  .map((id) => ({ id, label: etapaLabel[id], fotos: fotosDe(p, id) }))
+  .filter((e) => e.fotos.length > 0)
+  .map((e) => ({ ...e, tipos: tiposPara(e.fotos.length) }));
+const ordenadas = fotosOrdenadas(p);
+const globalIndex = (f: Foto) => ordenadas.indexOf(f);
 const meta = [
   { k: 'Distrito', v: show(p.distrito) },
   { k: 'Área', v: show(p.areaM2, ' m²') },
@@ -66,27 +81,43 @@ const share = `https://wa.me/?text=${encodeURIComponent(`${p.titulo} · SEIMA Se
     </div>
   </section>
 
-  <!-- HISTORIA DE LA OBRA: avanza sola con el scroll -->
-  <section class="story light" data-story aria-label="La historia de la obra">
-    <div class="wrap">
-      <p class="eyebrow">La historia de la obra</p>
+  <!-- HISTORIA DE LA OBRA: una galería por etapa (sin foto principal aquí; las principales viven en el comparador) -->
+  <section class="story light" data-story aria-labelledby="story-title">
+    <div class="story__nav" data-story-nav>
+      <div class="wrap story__navin">
+        <p class="story__label" id="story-title">La historia de la obra</p>
+        <nav class="story__chips" aria-label="Etapas de la obra">
+          {etapasConFotos.map((e, i) => (
+            <a class="story__chip" href={`#etapa-${e.id}`} data-story-chip data-stage={e.id} aria-current={i === 0 ? 'true' : undefined}>0{i + 1} · {e.label}</a>
+          ))}
+        </nav>
+      </div>
       <div class="story__bar" aria-hidden="true"><i data-story-fill></i></div>
-      <div class="story__chips" role="group" aria-label="Etapas de la obra">
-        {p.fotos.map((f, i) => (
-          <button type="button" class="story__chip" data-story-chip aria-pressed={i === 0 ? 'true' : 'false'}>0{i + 1} · {etapaLabel[f.etapa]}</button>
-        ))}
-      </div>
-      <div class="story__frame" data-story-frame>
-        {p.fotos.map((f) => (
-          <figure class="story__fig" data-fig>
-            <Photo src={f.src} alt={f.alt} tone={p.tono} fill label={`[FOTO REAL · ${etapaLabel[f.etapa].toUpperCase()}]`} />
-            <figcaption class="story__cap">{etapaLabel[f.etapa]}</figcaption>
-          </figure>
-        ))}
-      </div>
+    </div>
+
+    <div class="wrap">
+      {etapasConFotos.map((e, i) => (
+        <section class="stage" id={`etapa-${e.id}`} data-stage-block={e.id} aria-label={e.label}>
+          <header class="stage__head">
+            <span class="stage__n">0{i + 1}</span>
+            <h3>{e.label}</h3>
+            <span class="stage__count">{e.fotos.length} foto{e.fotos.length === 1 ? '' : 's'}</span>
+          </header>
+          <ul class="mosaic">
+            {e.fotos.map((f, j) => (
+              <li class="mosaic__item" data-t={e.tipos[j]}>
+                <button type="button" class="shot" data-shot data-global={globalIndex(f)} aria-label={`Ver foto ${j + 1} de ${e.fotos.length} — ${e.label}`}>
+                  <Photo src={f.src} alt={f.alt} tone={(p.tono + i * 2 + j) % 6} fill label={`[FOTO REAL · ${e.label.toUpperCase()} ${j + 1}]`} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
       <p class="story__text">[DESCRIPCIÓN REAL: qué pidió el cliente, qué se hizo y con qué materiales, en 3–4 líneas.]</p>
     </div>
   </section>
+
 
   <section class="cta dark">
     <div class="wrap">
@@ -119,32 +150,45 @@ const share = `https://wa.me/?text=${encodeURIComponent(`${p.titulo} · SEIMA Se
   .tags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
   .test { font-size: 0.85rem; color: var(--muted-light); }
 
-  /* Historia: sin JS se ven las 3 fotos en fila; con JS se fija y avanza con el scroll */
-  .story { padding-block: clamp(2rem, 5vw, 4rem) clamp(3rem, 7vw, 5rem); }
-  .story__bar, .story__chips { display: none; }
-  .story__frame { display: grid; grid-auto-flow: column; grid-auto-columns: 78%; gap: 1rem; overflow-x: auto; scroll-snap-type: x mandatory; margin: 1.2rem calc(var(--pad) * -1) 0; padding-inline: var(--pad); padding-bottom: 1rem; }
-  .story__fig { margin: 0; position: relative; scroll-snap-align: start; }
-  .story__fig :global(.photo) { aspect-ratio: 4 / 5; height: auto; }
-  .story__cap { margin-top: 0.6rem; font-weight: 700; font-stretch: 112%; }
-  .story__text { margin-top: 1rem; max-width: 52ch; color: #3d3a36; font-size: 1.05rem; }
-  @media (min-width: 800px) {
-    .story__frame { grid-auto-flow: row; grid-template-columns: repeat(3, 1fr); grid-auto-columns: auto; overflow: visible; margin-inline: 0; padding-inline: 0; }
-  }
-
-  .story.is-scrub { padding-block: 1rem; display: grid; align-content: center; min-height: calc(100svh - var(--header)); }
-  .is-scrub .story__bar { display: block; height: 4px; background: #ddd6cb; border-radius: 4px; overflow: hidden; margin-top: 0.8rem; }
-  .is-scrub .story__bar i { display: block; height: 100%; background: var(--red); transform-origin: 0 50%; transform: scaleX(0); }
-  .is-scrub .story__chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.8rem; }
+  /* Historia de la obra: tres bloques seguidos, cada uno con su mosaico. Sin scroll atrapado. */
+  .story { padding-bottom: clamp(3rem, 7vw, 5rem); }
+  .story__nav { position: sticky; top: var(--header); z-index: 20; background: var(--paper); border-bottom: 1px solid #e2ddd5; }
+  .story__navin { display: grid; gap: 0.5rem; padding-block: 0.7rem 0; }
+  .story__label { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--red-text); }
+  .story__chips { display: flex; gap: 0.5rem; overflow-x: auto; scrollbar-width: none; padding-bottom: 0.6rem; }
+  .story__chips::-webkit-scrollbar { display: none; }
   .story__chip {
-    font: inherit; font-weight: 700; font-size: 0.88rem; cursor: pointer; min-height: 44px; padding: 0.5rem 1rem; border-radius: 999px;
-    border: 1.5px solid #cfc8bd; background: transparent; color: var(--ink); transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+    flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0.4rem 1rem; border-radius: 999px;
+    font-weight: 700; font-size: 0.88rem; text-decoration: none; color: var(--ink); border: 1.5px solid #cfc8bd;
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
   }
-  .story__chip[aria-pressed='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }
-  .is-scrub .story__frame { display: block; position: relative; overflow: hidden; margin: 1rem 0 0; padding: 0; height: min(52svh, 34rem); border-radius: 24px; }
-  .is-scrub .story__fig { position: absolute; inset: 0; }
-  .is-scrub .story__fig :global(.photo) { aspect-ratio: auto; height: 100%; border-radius: 0; }
-  .is-scrub .story__cap { position: absolute; left: 1rem; top: 1rem; margin: 0; background: var(--red); color: #fff; font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.4rem 0.85rem; border-radius: 999px; }
-  .is-scrub .story__text { margin-top: 0.9rem; }
+  .story__chip:hover { border-color: var(--ink); }
+  .story__chip[aria-current='true'] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .story__bar { display: none; height: 3px; background: #ddd6cb; overflow: hidden; }
+  :global(html.motion) .story__bar { display: block; }
+  .story__bar i { display: block; height: 100%; background: var(--red); transform-origin: 0 50%; transform: scaleX(0); }
+
+  .stage { padding-top: clamp(2.2rem, 6vw, 4rem); scroll-margin-top: calc(var(--header) + 7rem); }
+  .stage__head { display: flex; align-items: baseline; gap: 0.9rem; margin-bottom: 1.2rem; }
+  .stage__n { color: var(--red-text); font-weight: 800; font-size: 0.95rem; }
+  .stage h3 { font-size: clamp(1.8rem, 5vw, 3rem); }
+  .stage__count { margin-left: auto; font-size: 0.85rem; color: var(--muted-light); }
+
+  /* Mosaico: tamaños variados. Hasta ~10 fotos por etapa, así que se muestran todas. */
+  .mosaic { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); grid-auto-rows: 9.5rem; grid-auto-flow: dense; gap: 0.6rem; }
+  .mosaic__item { position: relative; min-height: 0; }
+  .mosaic__item[data-t='L'] { grid-column: span 2; grid-row: span 2; }
+  .mosaic__item[data-t='W'] { grid-column: span 2; }
+  .mosaic__item[data-t='F'] { grid-column: span 2; grid-row: span 2; }
+  .shot { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; border-radius: var(--r); overflow: hidden; }
+  .shot :global(.photo) { border-radius: var(--r); }
+  .shot:focus-visible { outline: 3px solid var(--red); outline-offset: 3px; }
+  @media (min-width: 800px) {
+    .mosaic { grid-template-columns: repeat(4, 1fr); grid-auto-rows: 11rem; gap: 0.8rem; }
+    .mosaic__item[data-t='F'] { grid-column: span 4; }
+  }
+  :global(html.motion) .shot { opacity: 0; }
+  .story__text { margin-top: clamp(2rem, 5vw, 3rem); max-width: 52ch; color: #3d3a36; font-size: 1.05rem; }
 
   .cta { padding-block: clamp(3.5rem, 9vw, 6rem); }
   .cta .wrap { display: grid; gap: 1.5rem; justify-items: start; }
