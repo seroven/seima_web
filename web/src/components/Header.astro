@@ -1,5 +1,4 @@
 ---
-import Cta from './Cta.astro';
 const path = Astro.url.pathname;
 const active = (p: string) => (p === '/' ? path === '/' : path.startsWith(p)) ? 'page' : undefined;
 ---
@@ -12,7 +11,7 @@ const active = (p: string) => (p === '/' ? path === '/' : path.startsWith(p)) ? 
     <nav class="nav" aria-label="Principal">
       <a href="/" aria-current={active('/')}>Inicio</a>
       <a href="/proyectos" aria-current={active('/proyectos')}>Proyectos</a>
-      <Cta text="Hola SEIMA, quiero cotizar un trabajo." label="Cotizar" compact />
+      <a class="btn" href="/cotizador">Cotizar</a>
     </nav>
   </div>
 </header>

@@ -13,18 +13,18 @@
 **Qué es:** web pública de SEIMA Servicios Generales (Luis Rodríguez). Portafolio/catálogo con cotizador guiado. Etapa 1.
 
 **Stack real hoy**
-- `web/` — Astro **7.4.12**, GSAP + ScrollTrigger (+ Flip), Lenis, fuente Archivo variable (`@fontsource-variable/archivo/wdth.css`). **Sin React todavía** (la isla de React se reserva para el cotizador).
+- `web/` — Astro **7.4.12**, GSAP + ScrollTrigger (+ Flip), Lenis, fuente Archivo variable (`@fontsource-variable/archivo/wdth.css`). **React 19 + `@astrojs/react` + Motion (`motion/react`) solo para el cotizador** (isla `client:load`). El resto sigue siendo Astro/GSAP.
 - `api/` — **no existe todavía** (Express + PostgreSQL + Cloudinary, ver `CLAUDE.md`).
 - Node **≥ 22.23.4** (Astro 7 lo exige). Con `nvm use 22.23.4`.
 - Correr: `cd web && npm run dev` → http://localhost:4321/ (si el `node` de la terminal es viejo: `nvm use 22.23.4`).
 
 **Git:** remoto `origin` = https://github.com/seroven/seima_web.git. Ramas: `main` (estable) y **`staging` (donde se trabaja)**. Commits se hacen cuando Sebas lo pide. El push no es automático.
 
-**Rutas que existen:** `/` (landing), `/proyectos` (catálogo), `/proyectos/[slug]` (ficha, 7 proyectos de prueba).
-**Rutas que faltan:** `/cotizador`, `/empresas`, 404, menú móvil, API.
+**Rutas que existen:** `/` (landing), `/proyectos` (catálogo), `/proyectos/[slug]` (ficha, 7 proyectos de prueba), `/cotizador` (cotizador de 6 pasos).
+**Rutas que faltan:** `/empresas`, 404, menú móvil, API.
 
 **Datos:** `web/src/data/projects.ts` — 7 proyectos **de prueba** (todo `[DATO REAL]` / `[FOTO REAL]`). Se reemplaza por `GET /projects`.
-**Entorno:** `PUBLIC_WHATSAPP_NUMBER` sin configurar → los botones de WhatsApp salen como placeholder punteado "[NÚMERO PENDIENTE]". Ver `web/.env.example`.
+**Entorno:** `PUBLIC_WHATSAPP_NUMBER` sin configurar → los botones de WhatsApp salen como placeholder punteado "[NÚMERO PENDIENTE]". `PUBLIC_API_URL` sin configurar → el cotizador no guarda la solicitud (no hay API aún) pero igual arma el mensaje. Ver `web/.env.example`.
 
 ### Mapa del código (`web/src/`)
 | Archivo | Qué hace |
@@ -40,6 +40,11 @@
 | `components/Photo.astro` | Foto con tratamiento uniforme (duotono negro/rojo → color al interactuar). Placeholder visible si no hay `src`. Props `plain`, `fill`. |
 | `components/ProjectCard.astro` | Tarjeta de proyecto; "después" por defecto, "antes" al pasar el mouse / mantener presionado. `transition:name` para la foto que vuela a la ficha. |
 | `components/CompareSlider.astro` | Comparador antes/después (input range invisible encima; accesible con teclado). |
+| `pages/cotizador.astro` | Página del cotizador (cabecera + isla `Quote`). Acepta `?categoria=` y `?proyecto=` para preseleccionar. |
+| `components/quote/Quote.tsx` | **Isla de React** (Motion): estado del cotizador, navegación entre los 6 pasos con animación, validación, envío y pantalla final. Guarda el avance en `sessionStorage`. |
+| `components/quote/Steps.tsx` | Los 6 pasos: cliente, servicios (multi-selección), espacio (medidas, acabado, extras de cocina y departamento), lugar/plazo/fotos, datos, resumen con burbuja de WhatsApp. |
+| `components/quote/Summary.tsx`, `Icon.tsx`, `quote.css` | Resumen en vivo (columna fija en escritorio, barra inferior desplegable en celular), íconos de línea y estilos. |
+| `lib/quote.ts` | Lógica pura del cotizador: tipos, opciones, validación, `buildMessage` (texto de WhatsApp), `waHref`, `submitQuote` (POST /quotes). |
 | `components/Presentation.astro` | Visor a pantalla completa (`<dialog>`): todas las fotos ordenadas por etapa. Flechas laterales, arrastre (pointer events), teclado, animación de entrada/salida. Lo abren el botón "Modo presentación" y cualquier foto de la galería (`[data-shot]`, desde esa foto). Un solo listener global. |
 | `components/BackButton.astro` | Botón "Volver" de la ficha (texto según origen). |
 | `components/Cta.astro` | Botón de WhatsApp; sin número → placeholder. |
@@ -74,6 +79,10 @@
 11. **Mosaico con huecos:** con `grid-auto-flow: dense` y tamaños por posición queda una última fila coja. Solución: construir el mosaico por **bloques que cuadran** (4×2) según la cantidad de fotos.
 12. **Carruseles:** un contenedor con `overflow-x: auto` + scroll-snap solo se desliza con dedo/rueda; con mouse no se puede arrastrar. Para "deslizar" en escritorio hay que implementar arrastre con pointer events (y `touch-action: pan-y`). Un `<dialog>` modal no anima solo: animar la entrada con `@keyframes` en `[open]` y la salida con una clase `is-closing` antes de llamar a `close()` (e interceptar `cancel` para Esc).
 13. Astro 7 exige Node ≥ 22.23.4; con `nvm use` en Windows la terminal ya abierta puede no tomar el cambio.
+14. **Isla de React + SSR:** leer `location`/`sessionStorage` solo dentro de `useEffect` (tras montar) para no romper la hidratación; las variables `PUBLIC_*` se leen con `import.meta.env` también en el cliente.
+15. **`window.open` para WhatsApp** debe llamarse dentro del clic (síncrono) o el navegador lo bloquea; el `POST /quotes` va aparte (fire-and-forget) y nunca debe impedir abrir WhatsApp.
+16. **Pruebas con el navegador automatizado:** la herramienta bloquea imprimir URLs con query string (devuelve `[BLOCKED]`); no devolver `location.search`. Crear/borrar `.env` reinicia Vite y recarga la página (corta una prueba en curso).
+17. **Heredocs en bash** con comillas/`$`/plantillas fallan a veces: para archivos de código usar la herramienta Write.
 
 ---
 
@@ -83,11 +92,10 @@
 - Modelo de datos de fotos (etapa, principal, galería) en la API → `docs/modelo-datos.md`. (La parte visual ya está en la web con datos de prueba.)
 
 **Por construir (orden acordado)**
-1. Cotizador de 6 pasos (isla de React, Motion) con preselección desde "Cotizar algo así".
-2. Página Empresas + "Cómo trabajamos".
-3. Detalles globales: menú móvil a pantalla completa, botones magnéticos, cursor "ver", 404.
-4. API Express + PostgreSQL + seed + Cloudinary.
-5. Calidad: Open Graph con imagen real, accesibilidad, prueba en celular real, despliegue en Render.
+1. Página Empresas + "Cómo trabajamos".
+2. Detalles globales: menú móvil a pantalla completa, botones magnéticos, cursor "ver", 404.
+3. API Express (incluye `POST /quotes`: el cotizador ya lo llama si existe `PUBLIC_API_URL`; subida de fotos del cliente a Cloudinary) + PostgreSQL + seed + Cloudinary.
+4. Calidad: Open Graph con imagen real, accesibilidad, prueba en celular real, despliegue en Render.
 
 **Bloqueado por Luis (contenido real):** número de WhatsApp, fotos de 8–12 proyectos (antes/durante/después), cifras, testimonios, precios referenciales sí/no, equipo/"Nosotros". Ver `docs/fuentes/contexto-chat.md` §7.
 
@@ -100,6 +108,7 @@
 ### 2026-11-15
 
 **Decisiones**
+- **Cotizador:** 6 pasos (cliente → qué necesita → espacio → dónde/cuándo → datos → resumen), una pregunta por paso, barra de progreso, resumen en vivo (lateral en escritorio; barra inferior en celular). **No muestra precios.** Medidas opcionales (largo × ancho, solo m², o "aún no lo sé"). Preguntas condicionales: acabado (si hay cocina/baño/enchape/departamento), mueble alto y estructura (cocina), n.º de ambientes (departamento). Empresa pide razón social (obligatoria) y RUC (opcional, 11 dígitos); no se menciona facturación. WhatsApp: 9 dígitos que empiezan con 9, con formato `9XX XXX XXX`. Al final: vista previa del mensaje como burbuja (con "escribiendo…"), botón "Enviar por WhatsApp" (abre `wa.me` con el texto) y "Copiar mensaje". **Fotos del cliente:** se pueden elegir (hasta 6, con vista previa) pero por ahora NO se suben (no hay API/Cloudinary): el mensaje dice "las adjunto por este chat" y las envía por WhatsApp. Los botones de cotizar de toda la web (header, portada, cierre, ficha) ahora llevan a `/cotizador`; "Cotizar algo así" en la ficha lo abre con la categoría y el proyecto ya marcados ("Basado en: …"). `components/Cta.astro` queda sin uso (se conserva por si se quiere un enlace directo a WhatsApp).
 - **Se quita el marcador "01 Estructura · 02 Placas · 03 Acabado"** de la portada de la landing (pedido de Sebas): la casa se sigue construyendo igual, pero sin la etiqueta de etapas.
 - **Datos reales confirmados por Sebas:** **+50 proyectos entregados** (aproximado) y **más de 10 años de experiencia** de Luis en el rubro. El +50 ya se muestra en la landing (cifras). Los 10 años **aún no se muestran** (dato guardado; candidato a cifra o a la página Empresas/Nosotros). Siguen sin dato: m² construidos, número de WhatsApp, testimonios.
 - **Fondo claro neutro (blanco) en vez de crema, y controles sin borde:** el crema `#F4F1EC` se sentía amarillento y desentonaba con el logo (solo blanco, negro y rojo). Ahora `--paper: #FFFFFF`, `--paper-2: #F2F2F2` (superficies), grises neutros en textos secundarios. Las superficies claras que antes eran blancas sobre crema (p. ej. tarjeta "Para tu hogar") pasan a `--paper-2` para separarse del fondo. Los chips (catálogo, etapas de la ficha), el botón "Quitar filtro" y las flechas del visor ya no llevan borde: reposo = `--tint` (negro al 6 %), hover = `--tint-2` (11 %), activo = negro. Quedan como ghost con contorno solo los botones sobre fondo oscuro (`.btn--ghost`, Volver). Decisión de Sebas; actualizados `brief.md` y `CLAUDE.md`.
@@ -120,6 +129,7 @@
 - La barra de scroll se oculta solo con movimiento activo, y se compensa con la línea de progreso.
 
 **Cambios**
+- *(sin commit aún)* **Cotizador de 6 pasos** (`pages/cotizador.astro`, `components/quote/*`, `lib/quote.ts`, `astro.config.mjs` con `@astrojs/react`, `tsconfig.json` con `jsx: react-jsx`, deps nuevas: `react`, `react-dom`, `@astrojs/react`, `motion`, `@types/react*`; `.env.example` con `PUBLIC_API_URL`). Probado en el navegador: validación por paso, resumen en vivo, bloques condicionales, flujo completo hasta el mensaje, enlace desde una ficha (preselección), envío con un número de prueba temporal (`wa.me/51900000000?text=…`, ya borrado), celular sin desborde (se corrigió el desborde de las tarjetas de servicios) y `npm run build` correcto (10 páginas).
 - commit «Paleta neutra, chips sin borde, cifra +50 y portada sin marcador de etapas» — **Marcador de etapas fuera de la portada:** eliminados el `<ol class="steps">` y su CSS en `pages/index.astro`, y en `motion.ts` la variable `steps`, `setStep` y sus tres `tl.call`; el zoom a la cocina ahora desvanece solo los puntos (`spots`). Probado: la casa se construye, el scroll por las capas funciona y no hay errores en consola.
 - commit «Paleta neutra, chips sin borde, cifra +50 y portada sin marcador de etapas» — **Cifra "+50 proyectos entregados"** en la landing (`pages/index.astro`): sustituye al placeholder `[DATO REAL]`; contador animado con prefijo `+` fijo (`prefix` en el arreglo `stats`). Probado: se lee "+50" tras la animación.
 - commit «Paleta neutra, chips sin borde, cifra +50 y portada sin marcador de etapas» — **Paleta neutra y chips sin borde:** `global.css` (`--paper`, `--paper-2`, `--muted-*`, nuevas `--tint`/`--tint-2`), chips y "Quitar filtro" del catálogo, chips y barra de etapas de la ficha, flechas del visor, tarjeta clara de la landing, blancos de la casa; `brief.md` y `CLAUDE.md` actualizados.

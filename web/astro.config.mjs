@@ -1,5 +1,8 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import react from '@astrojs/react';
 
-// https://astro.build/config
-export default defineConfig({});
+// React solo para islas con interactividad real (el cotizador).
+export default defineConfig({
+  integrations: [react()],
+});

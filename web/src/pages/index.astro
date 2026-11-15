@@ -4,7 +4,6 @@ import House from '../components/House.astro';
 import Wall from '../components/Wall.astro';
 import Words from '../components/Words.astro';
 import ProjectCard from '../components/ProjectCard.astro';
-import Cta from '../components/Cta.astro';
 import { projects } from '../data/projects';
 
 // Cada servicio es una capa de la pared (mismo orden que el brief).
@@ -41,7 +40,7 @@ const stats = [
           <p class="hero__lead" data-hero-in>Desde una cocina hasta un departamento completo. Toca un ambiente de la casa y mira lo que hemos hecho ahí.</p>
           <div class="hero__cta" data-hero-in>
             <a class="btn btn--lg" href="/proyectos">Ver proyectos →</a>
-            <Cta class="btn--lg" text="Hola SEIMA, quiero cotizar un trabajo." label="Cotizar por WhatsApp" compact />
+            <a class="btn btn--ghost btn--lg" href="/cotizador">Arma tu cotización</a>
           </div>
         </div>
         <div class="hero__art">
@@ -139,7 +138,7 @@ const stats = [
     <section class="wrap closing-wrap">
       <div class="closing" data-reveal="curtain" data-noexit>
         <h2><Words text="¿Tienes un espacio" accent="en mente?" br /></h2>
-        <Cta class="btn--ink btn--lg" text="Hola SEIMA, quiero cotizar un trabajo." label="Empezar mi cotización →" />
+        <a class="btn btn--ink btn--lg" href="/cotizador">Empezar mi cotización →</a>
       </div>
     </section>
   </div>
