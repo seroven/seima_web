@@ -71,12 +71,13 @@ El **panel administrativo es un proyecto aparte y está fuera de alcance** en es
    - `GET /categories`
    - `GET /projects?categoria=` (lista; `category` también vale)
    - `GET /projects/:slug` (ficha con fotos antes/durante/después)
-   - `POST /quotes` (guarda la solicitud en la base y devuelve `{ id, mensaje, creadaEn }`)
+   - `GET /quote-form` (servicios y preguntas del cotizador, desde la base)
+   - `POST /quotes` (guarda la solicitud **como filas**: servicios, respuestas por pregunta, fotos y notas; devuelve `{ id, mensaje, creadaEn }`)
    - `POST /uploads/quote-photos/signature` (firma para que el navegador suba las fotos del cliente directo a Cloudinary)
    - Autenticación del panel: `POST /auth/login`, `GET /auth/me` (JWT). El resto de rutas del panel irán protegidas con `authenticate`.
 3. Script de **seed** para cargar proyectos (no hay panel todavía).
 
-Modelo de datos orientativo (ajustable; **las decisiones sobre fotos están en `docs/modelo-datos.md`**: etapa, foto principal por etapa, galería): `categories`, `projects` (slug, título, categoría, distrito, área m², días, servicios, descripción, destacado, tipo de cliente), `project_photos` (project_id, etapa: antes|durante|después, cloudinary_id, orden), `quotes` (tipo cliente, servicios, medidas, acabado, distrito, plazo, nombre, whatsapp, razón social/RUC opcionales, fotos [tabla `quote_photos`: public_id de Cloudinary + orden], consentimiento, estado, fecha).
+Modelo de datos orientativo (ajustable; **las decisiones sobre fotos están en `docs/modelo-datos.md`**: etapa, foto principal por etapa, galería): `categories`, `projects` (slug, título, categoría, distrito, área m², días, servicios, descripción, destacado, tipo de cliente), `project_photos` (project_id, etapa: antes|durante|después, cloudinary_id, orden), `quotes` (tipo cliente, servicios, medidas, acabado, distrito, plazo, nombre, whatsapp, razón social/RUC opcionales, fotos [tabla `quote_photos`: public_id de Cloudinary + orden], consentimiento, estado, fecha). **Los servicios y las preguntas del cotizador son datos, no código:** tablas `services`, `questions`, `question_options`, `question_services`; cada cotización guarda `quote_services` y `quote_answers` (una fila por respuesta) para poder filtrar en el panel. Para cambiar una pregunta se edita `api/src/database/seeds/catalog.data.ts` (no la web).
 
 ## Reglas de contenido (no negociables)
 
