@@ -29,7 +29,8 @@
     "test:unit": "node scripts/run.js --env=test vitest run --project unit",
     "test:integration": "node scripts/run.js --env=test vitest run --project integration",
     "test:watch": "node scripts/run.js --env=test vitest --project unit",
-    "db:schema": "node scripts/run.js --guard=write tsx src/database/ensure-schema.ts"
+    "db:schema": "node scripts/run.js --guard=write tsx src/database/ensure-schema.ts",
+    "seed:catalog": "node scripts/run.js --guard=write tsx src/database/seeds/run.ts catalog"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
