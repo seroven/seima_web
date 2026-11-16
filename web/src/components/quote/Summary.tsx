@@ -1,6 +1,6 @@
 // Resumen en vivo: se va armando mientras la persona responde.
 import { AnimatePresence, motion } from 'motion/react';
-import { PLAZOS, filasRespuestas, formatCelular, medidasTexto, servicioNombre, type Catalogo, type QuoteData } from '../../lib/quote';
+import { PLAZOS, filasRespuestas, formatCelular, servicioNombre, type Catalogo, type QuoteData } from '../../lib/quote';
 
 interface Row {
   key: string;
@@ -13,8 +13,6 @@ export function resumenFilas(d: QuoteData, tituloProyecto: string | null, catalo
   if (tituloProyecto) rows.push({ key: 'ref', label: 'Basado en', value: tituloProyecto });
   if (d.cliente) rows.push({ key: 'cliente', label: 'Para', value: d.cliente === 'empresa' ? `Empresa${d.razonSocial ? ` · ${d.razonSocial}` : ''}` : 'Persona' });
   if (d.servicios.length) rows.push({ key: 'serv', label: 'Necesitas', value: d.servicios.map((s) => servicioNombre(catalogo, s)).join(', ') });
-  const medidas = medidasTexto(d);
-  if (d.servicios.length && (d.largo || d.ancho || d.m2 || d.medidasModo === 'nose')) rows.push({ key: 'med', label: 'Medidas', value: medidas });
   // Respuestas a las preguntas de los servicios elegidos (en el orden del catálogo)
   if (catalogo) for (const r of filasRespuestas(catalogo, d.servicios, d.respuestas)) rows.push({ key: `r-${r.slug}`, label: r.etiqueta, value: r.valor });
   if (d.distrito.trim()) rows.push({ key: 'dist', label: 'Lugar', value: d.distrito.trim() });

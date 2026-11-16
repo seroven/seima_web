@@ -3,11 +3,14 @@
 // registrada en la base de datos. WhatsApp ya no es el canal de envío, solo el de respuesta.
 
 export type Cliente = 'persona' | 'empresa';
-export type MedidasModo = 'lxa' | 'm2' | 'nose';
 
-/** Respuesta a una pregunta: un slug de opción, varios (pregunta múltiple) o un número. */
-export type Respuesta = string | string[] | number;
-export type Respuestas = Record<string, Respuesta>;
+/** Una opción elegida y, si la opción pedía un dato extra ("Otro" → ¿cuál?, "Sé el área" → m²), ese dato. */
+export interface Seleccion {
+  opcion: string;
+  valor?: string;
+}
+/** { pregunta: [opciones elegidas] }: siempre una lista (una pregunta de opción única lleva una sola). */
+export type Respuestas = Record<string, Seleccion[]>;
 
 /* ---------- Catálogo (GET /quote-form): qué servicios hay y qué se pregunta en cada uno ---------- */
 export interface ServicioCatalogo {
@@ -16,15 +19,24 @@ export interface ServicioCatalogo {
   /** Nombre del ícono (components/ui/Icon). */
   icono: string;
 }
+/** ¿Al elegir la opción se pide un dato más? ninguna | texto | numero. */
+export type TipoEntrada = 'ninguna' | 'texto' | 'numero';
+export interface OpcionCatalogo {
+  slug: string;
+  etiqueta: string;
+  descripcion: string | null;
+  tipoEntrada: TipoEntrada;
+  /** Texto de ejemplo (texto) o unidad (numero) del campo. */
+  entradaAyuda: string | null;
+}
 export interface PreguntaCatalogo {
   slug: string;
   texto: string;
   /** Nombre corto para resúmenes. */
   etiqueta: string;
-  tipo: 'unica' | 'multiple' | 'numero';
-  min: number | null;
-  max: number | null;
-  opciones: { slug: string; etiqueta: string; descripcion: string | null }[];
+  /** unica = una opción · multiple = varias */
+  tipo: 'unica' | 'multiple';
+  opciones: OpcionCatalogo[];
   /** slugs de los servicios en los que se hace. */
   servicios: string[];
 }
@@ -36,11 +48,7 @@ export interface Catalogo {
 export interface QuoteData {
   cliente: Cliente | null;
   servicios: string[];
-  medidasModo: MedidasModo;
-  largo: string;
-  ancho: string;
-  m2: string;
-  /** Respuestas a las preguntas de los servicios elegidos, por slug de pregunta. */
+  /** Respuestas a las preguntas de los servicios elegidos (incluye las medidas), por slug de pregunta. */
   respuestas: Respuestas;
   distrito: string;
   plazo: string | null;
@@ -58,10 +66,6 @@ export interface QuoteData {
 export const emptyQuote: QuoteData = {
   cliente: null,
   servicios: [],
-  medidasModo: 'lxa',
-  largo: '',
-  ancho: '',
-  m2: '',
   respuestas: {},
   distrito: '',
   plazo: null,
@@ -75,9 +79,18 @@ export const emptyQuote: QuoteData = {
 };
 
 export const MAX_NOTAS = 500;
+/** Mismos límites que la API (api/src/modules/catalog/catalog.types.ts). */
+export const MAX_VALOR_TEXTO = 200;
+export const MAX_VALOR_NUMERO = 100000;
 
 /** Nombre legible de un servicio (si aún no cargó el catálogo, el slug). */
 export const servicioNombre = (c: Catalogo | null, slug: string) => c?.servicios.find((x) => x.slug === slug)?.nombre ?? slug;
+
+/** Las opciones elegidas de una pregunta. Ignora formatos viejos o dañados (p. ej. un borrador guardado por una versión anterior). */
+export const seleccionesDe = (r: Respuestas, slug: string): Seleccion[] => {
+  const v = r[slug] as unknown;
+  return Array.isArray(v) ? (v as Seleccion[]).filter((x) => x && typeof x.opcion === 'string') : [];
+};
 
 /** Preguntas que aplican a los servicios elegidos, en el orden del catálogo (cada una una sola vez). */
 export const preguntasAplicables = (c: Catalogo, elegidos: string[]): PreguntaCatalogo[] =>
@@ -111,35 +124,64 @@ export function gruposDePreguntas(c: Catalogo, elegidos: string[]): GrupoPregunt
 }
 
 /**
- * Deja solo las respuestas que valen: de preguntas que aplican a los servicios elegidos y con opciones que existen.
- * A las preguntas numéricas sin contestar les pone el mínimo (el contador siempre muestra un valor).
+ * Deja solo las respuestas que valen: de preguntas que aplican a los servicios elegidos y con opciones que existen
+ * (una sola en las de opción única, sin repetidos en las múltiples). El dato extra solo se conserva en las opciones que lo piden.
  */
 export function normalizarRespuestas(c: Catalogo, elegidos: string[], r: Respuestas): Respuestas {
   const salida: Respuestas = {};
   for (const p of preguntasAplicables(c, elegidos)) {
-    const v = r[p.slug];
-    if (p.tipo === 'numero') {
-      const min = p.min ?? 0;
-      const max = p.max ?? Number.MAX_SAFE_INTEGER;
-      salida[p.slug] = typeof v === 'number' && v >= min && v <= max ? v : min;
-    } else if (p.tipo === 'unica') {
-      if (typeof v === 'string' && p.opciones.some((o) => o.slug === v)) salida[p.slug] = v;
-    } else {
-      const lista = Array.isArray(v) ? v.filter((x) => p.opciones.some((o) => o.slug === x)) : [];
-      if (lista.length) salida[p.slug] = lista;
+    const vistas = new Set<string>();
+    const lista: Seleccion[] = [];
+    for (const sel of seleccionesDe(r, p.slug)) {
+      const o = p.opciones.find((x) => x.slug === sel.opcion);
+      if (!o || vistas.has(o.slug)) continue;
+      vistas.add(o.slug);
+      lista.push(o.tipoEntrada === 'ninguna' ? { opcion: o.slug } : { opcion: o.slug, valor: sel.valor ?? '' });
     }
+    if (lista.length) salida[p.slug] = p.tipo === 'unica' ? lista.slice(0, 1) : lista;
   }
   return salida;
+}
+
+/** Cómo se muestra una opción elegida: su etiqueta y, si pidió un dato extra, "etiqueta: dato" (con la unidad si es un número). */
+export function textoDeOpcion(o: Pick<OpcionCatalogo, 'etiqueta' | 'tipoEntrada' | 'entradaAyuda'>, valor?: string): string {
+  const v = valor?.trim();
+  if (!v) return o.etiqueta;
+  return `${o.etiqueta}: ${o.tipoEntrada === 'numero' && o.entradaAyuda ? `${v} ${o.entradaAyuda}` : v}`;
+}
+
+/** Valida el dato extra de una opción (misma regla que la API). Devuelve el mensaje de error o null si está bien. */
+export function errorDeValor(o: Pick<OpcionCatalogo, 'etiqueta' | 'tipoEntrada'>, valor: string | undefined): string | null {
+  if (o.tipoEntrada === 'ninguna') return null;
+  const t = (valor ?? '').trim();
+  if (!t) return `Completa lo que pide «${o.etiqueta}».`;
+  if (o.tipoEntrada === 'texto') return t.length > MAX_VALOR_TEXTO ? `«${o.etiqueta}»: máximo ${MAX_VALOR_TEXTO} caracteres.` : null;
+  const normal = t.replace(',', '.');
+  const n = Number(normal);
+  return /^\d+(\.\d{1,2})?$/.test(normal) && n > 0 && n <= MAX_VALOR_NUMERO ? null : `Escribe un número válido en «${o.etiqueta}».`;
+}
+
+/** El primer problema en las respuestas dadas (opciones que piden un dato y no lo tienen o no es válido), o null. */
+export function errorDeRespuestas(c: Catalogo, elegidos: string[], r: Respuestas): string | null {
+  for (const p of preguntasAplicables(c, elegidos)) {
+    for (const sel of seleccionesDe(r, p.slug)) {
+      const o = p.opciones.find((x) => x.slug === sel.opcion);
+      const e = o ? errorDeValor(o, sel.valor) : null;
+      if (e) return e;
+    }
+  }
+  return null;
 }
 
 /** Las respuestas ya contestadas, como etiqueta + texto, en el orden del catálogo (para el resumen). */
 export function filasRespuestas(c: Catalogo, elegidos: string[], r: Respuestas): { slug: string; etiqueta: string; valor: string }[] {
   const filas: { slug: string; etiqueta: string; valor: string }[] = [];
   for (const p of preguntasAplicables(c, elegidos)) {
-    const v = r[p.slug];
-    if (v === undefined) continue;
-    const nombres = (Array.isArray(v) ? v : [v]).map((x) => (p.tipo === 'numero' ? String(x) : (p.opciones.find((o) => o.slug === x)?.etiqueta ?? String(x))));
-    filas.push({ slug: p.slug, etiqueta: p.etiqueta, valor: nombres.join(', ') });
+    const textos = seleccionesDe(r, p.slug).flatMap((sel) => {
+      const o = p.opciones.find((x) => x.slug === sel.opcion);
+      return o ? [textoDeOpcion(o, sel.valor)] : [];
+    });
+    if (textos.length) filas.push({ slug: p.slug, etiqueta: p.etiqueta, valor: textos.join(', ') });
   }
   return filas;
 }
@@ -168,29 +210,6 @@ export const DISTRITOS = [
   'Miraflores', 'Jesús María', 'Magdalena', 'Villa El Salvador', 'Chorrillos', 'Otra ciudad o provincia',
 ];
 
-const num = (s: string) => {
-  const n = parseFloat(s.replace(',', '.'));
-  return Number.isFinite(n) && n > 0 ? n : null;
-};
-
-export const areaDe = (d: QuoteData): number | null => {
-  if (d.medidasModo === 'm2') return num(d.m2);
-  if (d.medidasModo === 'lxa') {
-    const l = num(d.largo);
-    const a = num(d.ancho);
-    return l && a ? Math.round(l * a * 10) / 10 : null;
-  }
-  return null;
-};
-
-export const medidasTexto = (d: QuoteData): string => {
-  if (d.medidasModo === 'nose') return 'por definir';
-  if (d.medidasModo === 'm2') return num(d.m2) ? `${num(d.m2)} m²` : 'por definir';
-  const l = num(d.largo);
-  const a = num(d.ancho);
-  return l && a ? `${l} × ${a} m (≈ ${areaDe(d)} m²)` : 'por definir';
-};
-
 /* ---------- Validación ---------- */
 export const soloDigitos = (s: string) => s.replace(/\D/g, '');
 export const celularValido = (s: string) => /^9\d{8}$/.test(soloDigitos(s));
@@ -199,12 +218,14 @@ export const formatCelular = (s: string) => {
   return [d.slice(0, 3), d.slice(3, 6), d.slice(6, 9)].filter(Boolean).join(' ');
 };
 
-export function validarPaso(step: number, d: QuoteData): string | null {
+export function validarPaso(step: number, d: QuoteData, catalogo: Catalogo | null = null): string | null {
   switch (step) {
     case 0:
       return d.cliente ? null : 'Elige si es para ti o para una empresa.';
     case 1:
       return d.servicios.length ? null : 'Elige al menos una opción.';
+    case 2:
+      return catalogo ? errorDeRespuestas(catalogo, d.servicios, d.respuestas) : null;
     case 3:
       if (d.distrito.trim().length < 2) return 'Cuéntanos en qué distrito o ciudad es la obra.';
       return d.plazo ? null : 'Elige un plazo aproximado.';

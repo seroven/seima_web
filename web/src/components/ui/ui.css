@@ -27,6 +27,7 @@
 .ui-prefix { display: flex; align-items: center; gap: 0.7rem; min-height: 52px; padding: 0 1rem 0 0.9rem; border-radius: 14px; background: #fff; transition: box-shadow 0.2s ease; }
 .ui-prefix:focus-within { box-shadow: var(--ring); }
 .ui-prefix > span { font-weight: 800; color: var(--muted-light); }
+.ui-prefix > .ui-suffix { order: 2; }
 .ui-prefix .ui-input { min-height: 50px; padding: 0; background: transparent; }
 .ui-prefix .ui-input:focus { box-shadow: none; }
 

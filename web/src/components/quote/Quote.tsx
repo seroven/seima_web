@@ -15,7 +15,7 @@ import './quote.css';
 
 const TITLES = ['¿Para quién es?', '¿Qué necesitas?', 'Cuéntanos del espacio', '¿Dónde y cuándo?', 'Tus datos', 'Revisa y envía'];
 const LAST = TITLES.length - 1;
-const KEY = 'seima:quote:v1';
+const KEY = 'seima:quote:v2'; // v2: las respuestas cambiaron de formato (lista de opciones con su dato extra)
 const EASE = [0.2, 0.7, 0, 1] as const;
 
 // Aunque la API responda al instante, la pantalla de carga se ve un momento para que se entienda (y no parpadee).
@@ -133,7 +133,7 @@ export default function Quote() {
   };
 
   const next = () => {
-    const e = validarPaso(step, data);
+    const e = validarPaso(step, data, catalogo);
     if (e) return setError(e);
     go(step + 1);
   };

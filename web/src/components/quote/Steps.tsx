@@ -3,10 +3,10 @@
 // Los servicios y las preguntas por servicio NO están escritos aquí: vienen del catálogo de la API (GET /quote-form).
 import { motion } from 'motion/react';
 import { useEffect, useId, useMemo, useRef } from 'react';
-import { Chip, Chips, Collapse, Combobox, Field, Icon, OptionCard, OptionGrid, Stepper, TextArea, TextInput } from '../ui';
+import { Chip, Chips, Collapse, Combobox, Field, Icon, OptionCard, OptionGrid, TextArea, TextInput } from '../ui';
 import {
-  DISTRITOS, MAX_FOTOS, MAX_NOTAS, PLAZOS, areaDe, formatCelular, gruposDePreguntas,
-  type Catalogo, type PreguntaCatalogo, type QuoteData, type Respuesta,
+  DISTRITOS, MAX_FOTOS, MAX_NOTAS, MAX_VALOR_TEXTO, PLAZOS, errorDeValor, formatCelular, gruposDePreguntas, seleccionesDe,
+  type Catalogo, type OpcionCatalogo, type PreguntaCatalogo, type QuoteData, type Seleccion,
 } from '../../lib/quote';
 import { resumenFilas } from './Summary';
 
@@ -62,101 +62,89 @@ export function StepServicios({ data, set, catalogo, catalogoError, onReintentar
   );
 }
 
-/* ---------- Una pregunta del catálogo, con el control que le toca según su tipo ---------- */
-function PreguntaControl({ p, valor, onChange }: { p: PreguntaCatalogo; valor: Respuesta | undefined; onChange: (v: Respuesta | undefined) => void }) {
-  if (p.tipo === 'numero') {
-    const min = p.min ?? 0;
-    return <Stepper value={typeof valor === 'number' ? valor : min} onChange={onChange} min={min} max={p.max ?? 99} label={p.etiqueta.toLowerCase()} />;
-  }
-
-  if (p.tipo === 'multiple') {
-    const elegidas = Array.isArray(valor) ? valor : [];
-    const alternar = (slug: string) => {
-      const siguiente = elegidas.includes(slug) ? elegidas.filter((x) => x !== slug) : [...elegidas, slug];
-      onChange(siguiente.length ? siguiente : undefined);
-    };
-    return (
-      <Chips label={p.texto}>
-        {p.opciones.map((o) => <Chip key={o.slug} checked={elegidas.includes(o.slug)} onClick={() => alternar(o.slug)}>{o.etiqueta}</Chip>)}
-      </Chips>
-    );
-  }
-
-  // Una sola opción: tarjetas si TODAS las opciones traen descripción (p. ej. el acabado); si no, chips (se puede volver a tocar para quitar la elección)
-  if (p.opciones.length > 0 && p.opciones.every((o) => o.descripcion)) {
-    return (
-      <OptionGrid role="radiogroup" label={p.texto}>
-        {p.opciones.map((o) => (
-          <OptionCard key={o.slug} type="radio" name={p.slug} checked={valor === o.slug} onChange={() => onChange(o.slug)} title={o.etiqueta} desc={o.descripcion ?? undefined} compact />
-        ))}
-      </OptionGrid>
-    );
-  }
+/* ---------- Campo que aparece al elegir una opción que pide un dato extra ("Otro" → ¿cuál?, "Sé el área" → m²) ---------- */
+function CampoEntrada({ opcion, valor, onChange }: { opcion: OpcionCatalogo; valor: string; onChange: (v: string) => void }) {
+  const id = useId();
+  const numero = opcion.tipoEntrada === 'numero';
+  // Solo se marca error cuando ya escribió algo inválido (vacío no se regaña hasta que intenta continuar)
+  const error = valor.trim() !== '' ? errorDeValor(opcion, valor) : null;
   return (
-    <Chips label={p.texto}>
-      {p.opciones.map((o) => <Chip key={o.slug} checked={valor === o.slug} onClick={() => onChange(valor === o.slug ? undefined : o.slug)}>{o.etiqueta}</Chip>)}
-    </Chips>
+    <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: [0.2, 0.7, 0, 1] }}>
+      <Field id={id} label={opcion.etiqueta} error={error}>
+        <TextInput
+          id={id}
+          autoFocus
+          value={valor}
+          onChange={(e) => onChange(e.target.value)}
+          inputMode={numero ? 'decimal' : 'text'}
+          maxLength={numero ? 9 : MAX_VALOR_TEXTO}
+          placeholder={numero ? '0' : (opcion.entradaAyuda ?? 'Escribe aquí')}
+          suffix={numero ? (opcion.entradaAyuda ?? undefined) : undefined}
+          aria-invalid={error ? true : undefined}
+        />
+      </Field>
+    </motion.div>
+  );
+}
+
+/**
+ * Una pregunta del catálogo: sus opciones como chips (o tarjetas si TODAS traen descripción) y, para cada opción elegida
+ * que pide un dato extra, su campo. Sirve igual para preguntas de una opción o de varias.
+ */
+function PreguntaControl({ p, sel, onChange }: { p: PreguntaCatalogo; sel: Seleccion[]; onChange: (s: Seleccion[]) => void }) {
+  const elegida = (slug: string) => sel.some((x) => x.opcion === slug);
+  const nueva = (o: OpcionCatalogo): Seleccion => (o.tipoEntrada === 'ninguna' ? { opcion: o.slug } : { opcion: o.slug, valor: '' });
+  const alternar = (o: OpcionCatalogo) => {
+    if (p.tipo === 'unica') onChange(elegida(o.slug) ? [] : [nueva(o)]); // tocar de nuevo la elegida la quita
+    else onChange(elegida(o.slug) ? sel.filter((x) => x.opcion !== o.slug) : [...sel, nueva(o)]);
+  };
+  const cambiarValor = (slug: string, valor: string) => onChange(sel.map((x) => (x.opcion === slug ? { ...x, valor } : x)));
+  const conCampo = p.opciones.filter((o) => elegida(o.slug) && o.tipoEntrada !== 'ninguna');
+
+  return (
+    <>
+      {p.opciones.length > 0 && p.opciones.every((o) => o.descripcion) ? (
+        <OptionGrid role="radiogroup" label={p.texto}>
+          {p.opciones.map((o) => (
+            <OptionCard key={o.slug} type="radio" name={p.slug} checked={elegida(o.slug)} onChange={() => onChange([nueva(o)])} title={o.etiqueta} desc={o.descripcion ?? undefined} compact />
+          ))}
+        </OptionGrid>
+      ) : (
+        <Chips label={p.texto}>
+          {p.opciones.map((o) => <Chip key={o.slug} checked={elegida(o.slug)} onClick={() => alternar(o)}>{o.etiqueta}</Chip>)}
+        </Chips>
+      )}
+      {conCampo.map((o) => (
+        <CampoEntrada key={o.slug} opcion={o} valor={sel.find((x) => x.opcion === o.slug)?.valor ?? ''} onChange={(v) => cambiarValor(o.slug, v)} />
+      ))}
+    </>
   );
 }
 
 /* ---------- 3 · Cuéntanos del espacio ---------- */
 export function StepEspacio({ data, set, catalogo }: P & { catalogo: Catalogo | null }) {
-  const idL = useId();
-  const idA = useId();
-  const idM = useId();
-  const area = areaDe(data);
   const grupos = catalogo ? gruposDePreguntas(catalogo, data.servicios) : [];
 
-  const responder = (slug: string, v: Respuesta | undefined) => {
+  const responder = (slug: string, lista: Seleccion[]) => {
     const { [slug]: _quitada, ...resto } = data.respuestas;
-    set('respuestas', v === undefined ? resto : { ...resto, [slug]: v });
+    set('respuestas', lista.length ? { ...resto, [slug]: lista } : resto);
   };
 
+  // Las medidas ya no son un bloque aparte: son la pregunta "Área" del catálogo, como las demás
   return (
     <div className="q-stack">
-      <fieldset className="q-block">
-        <legend>Medidas aproximadas</legend>
-        <Chips label="Cómo prefieres indicar las medidas">
-          <Chip checked={data.medidasModo === 'lxa'} onClick={() => set('medidasModo', 'lxa')}>Largo × ancho</Chip>
-          <Chip checked={data.medidasModo === 'm2'} onClick={() => set('medidasModo', 'm2')}>Solo los m²</Chip>
-          <Chip checked={data.medidasModo === 'nose'} onClick={() => set('medidasModo', 'nose')}>Aún no lo sé</Chip>
-        </Chips>
-        <Collapse show={data.medidasModo === 'lxa'}>
-          <div className="q-row">
-            <Field id={idL} label="Largo (m)">
-              <TextInput id={idL} inputMode="decimal" placeholder="4" value={data.largo} onChange={(e) => set('largo', e.target.value)} />
-            </Field>
-            <span className="q-x" aria-hidden="true">×</span>
-            <Field id={idA} label="Ancho (m)">
-              <TextInput id={idA} inputMode="decimal" placeholder="3" value={data.ancho} onChange={(e) => set('ancho', e.target.value)} />
-            </Field>
-            <p className="q-area" aria-live="polite">{area ? `≈ ${area} m²` : ''}</p>
-          </div>
-        </Collapse>
-        <Collapse show={data.medidasModo === 'm2'}>
-          <div className="q-row">
-            <Field id={idM} label="Área (m²)">
-              <TextInput id={idM} inputMode="decimal" placeholder="12" value={data.m2} onChange={(e) => set('m2', e.target.value)} />
-            </Field>
-          </div>
-        </Collapse>
-        <Collapse show={data.medidasModo === 'nose'}>
-          <p className="q-help q-help--top">Sin problema: podemos ir a medir o tú nos las mandas luego.</p>
-        </Collapse>
-      </fieldset>
-
-      {/* Preguntas según lo que pidió: salen del catálogo de la API */}
       {grupos.map((g) => (
         <fieldset className="q-block" key={g.clave}>
           <legend>{g.titulo}</legend>
           {g.preguntas.map((p) => (
             <div key={p.slug} className="q-pregunta">
               <p className="q-sub">{p.texto}</p>
-              <PreguntaControl p={p} valor={data.respuestas[p.slug]} onChange={(v) => responder(p.slug, v)} />
+              <PreguntaControl p={p} sel={seleccionesDe(data.respuestas, p.slug)} onChange={(l) => responder(p.slug, l)} />
             </div>
           ))}
         </fieldset>
       ))}
+      {catalogo && grupos.length === 0 && <p className="q-help">No hay más preguntas para lo que elegiste. Puedes continuar.</p>}
     </div>
   );
 }
