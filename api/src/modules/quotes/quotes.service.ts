@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { ProjectsRepository } from '../projects/projects.repository';
 import { buildQuoteMessage } from './quote-message';
 import { SERVICIOS_CON_ACABADO } from './quote.constants';
@@ -19,6 +20,9 @@ export class QuotesService {
   ) {}
 
   async create(input: CreateQuoteInput): Promise<CreatedQuoteDto> {
+    // Campo trampa lleno = robot. Se responde como si todo hubiera ido bien, pero no se guarda nada.
+    if (input.website) return { id: randomUUID(), mensaje: '', creadaEn: new Date().toISOString() };
+
     // Si el proyecto de referencia no existe o no está publicado, simplemente no se enlaza (no es un error del cliente)
     const proyecto = input.proyecto ? await this.projects.findPublishedBySlug(input.proyecto) : null;
 
@@ -42,7 +46,8 @@ export class QuotesService {
       ambientes: input.servicios.includes('departamento') ? (input.ambientes ?? null) : null,
       distrito: input.distrito,
       plazo: input.plazo,
-      fotosCount: input.fotos,
+      fotosIds: input.fotos,
+      consentimientoEn: new Date(),
       nombre: input.nombre,
       whatsapp: input.whatsapp,
       razonSocial: input.cliente === 'empresa' ? (input.razonSocial ?? null) : null,
@@ -50,7 +55,7 @@ export class QuotesService {
       proyectoId: proyecto?.id ?? null,
     };
 
-    const mensaje = buildQuoteMessage({ ...datos, fotos: input.fotos }, proyecto?.titulo);
+    const mensaje = buildQuoteMessage({ ...datos, fotos: input.fotos.length }, proyecto?.titulo);
     const guardada = await this.repository.create({ ...datos, mensaje });
     return { id: guardada.id, mensaje, creadaEn: guardada.createdAt.toISOString() };
   }

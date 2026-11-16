@@ -48,13 +48,9 @@ export class Quote {
   @Column({ type: 'varchar', length: 20 })
   plazo!: string;
 
-  /** Cuántas fotos dijo que enviará por WhatsApp (por ahora no se suben). */
-  @Column({ type: 'int', default: 0 })
-  fotosCount!: number;
-
-  /** Enlaces de fotos subidas (cuando exista la subida a Cloudinary). */
+  /** public_id de Cloudinary de las fotos que subió el cliente (la URL se arma al mostrarlas). */
   @Column({ type: 'text', array: true, default: () => "'{}'" })
-  fotosUrls!: string[];
+  fotosIds!: string[];
 
   @Column({ type: 'varchar', length: 120 })
   nombre!: string;
@@ -77,9 +73,13 @@ export class Quote {
   @JoinColumn({ name: 'proyecto_id' })
   proyecto!: Relation<Project> | null;
 
-  /** Texto exacto armado para WhatsApp. */
+  /** Resumen de la solicitud en texto (el panel lo muestra y sirve para responder por WhatsApp). */
   @Column({ type: 'text' })
   mensaje!: string;
+
+  /** Momento en que aceptó el tratamiento de sus datos (constancia). */
+  @Column({ type: 'timestamptz', default: () => 'now()' })
+  consentimientoEn!: Date;
 
   @Column({ type: 'enum', enum: ESTADOS_COTIZACION, enumName: 'quote_estado', default: 'nueva' })
   estado!: EstadoCotizacion;

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { AppDataSource } from '../../src/database/data-source';
+import { Quote } from '../../src/modules/quotes/quote.entity';
 import { API, agent, cotizacionValida, useDatabase } from './helpers';
 
 useDatabase();
@@ -91,10 +93,10 @@ describe('GET /projects/:slug (público)', () => {
 });
 
 describe('POST /quotes (público)', () => {
-  it('guarda la solicitud, calcula el área y devuelve el mensaje de WhatsApp', async () => {
+  it('guarda la solicitud, calcula el área y devuelve el resumen', async () => {
     const res = await agent()
       .post(`${API}/quotes`)
-      .send({ ...cotizacionValida, servicios: ['cocina', 'departamento', 'cocina'], acabado: 'corte45', muebleAlto: 'si', estructura: 'cero', ambientes: 3, fotos: 2, proyecto: 'cocina-drywall-porcelanato' });
+      .send({ ...cotizacionValida, servicios: ['cocina', 'departamento', 'cocina'], acabado: 'corte45', muebleAlto: 'si', estructura: 'cero', ambientes: 3, fotos: ['seima/quotes/uno', 'seima/quotes/dos'], proyecto: 'cocina-drywall-porcelanato' });
     expect(res.status).toBe(201);
     const { id, mensaje } = res.body.data;
     expect(id).toMatch(/^[0-9a-f-]{36}$/);
@@ -106,16 +108,46 @@ describe('POST /quotes (público)', () => {
   });
 
   it('acepta EXACTAMENTE el cuerpo que arma el cotizador de la web (cadenas vacías y null incluidos)', async () => {
-    // Forma real de QuoteData en web/src/lib/quote.ts → submitQuote (whatsapp y ruc ya vienen solo con dígitos)
+    // Forma real del cuerpo que arma web/src/lib/quote.ts → submitQuote (whatsapp y ruc ya vienen solo con dígitos)
     const deLaWeb = {
       cliente: 'persona', servicios: ['pintura'], medidasModo: 'nose', largo: '', ancho: '', m2: '', acabado: null, muebleAlto: null,
-      estructura: null, ambientes: 2, distrito: 'Los Olivos', plazo: 'asap', fotos: 0, nombre: 'Ana Test', whatsapp: '987654321',
+      estructura: null, ambientes: 2, distrito: 'Los Olivos', plazo: 'asap', fotos: [], nombre: 'Ana Test', whatsapp: '987654321', consentimiento: true, website: '',
       razonSocial: '', ruc: '', proyecto: null,
     };
     const res = await agent().post(`${API}/quotes`).send(deLaWeb);
     expect(res.status).toBe(201);
     expect(res.body.data.mensaje).toContain('Medidas: por definir');
     expect(res.body.data.mensaje).toContain('Contacto: Ana Test · 987 654 321');
+  });
+
+  it('guarda las fotos subidas (public_id), la constancia de consentimiento y deja la solicitud lista para el panel', async () => {
+    const res = await agent().post(`${API}/quotes`).send({ ...cotizacionValida, fotos: ['seima/quotes/abc123', 'seima/quotes/def456'] });
+    expect(res.status).toBe(201);
+    const fila = await AppDataSource.getRepository(Quote).findOneByOrFail({ id: res.body.data.id });
+    expect(fila.fotosIds).toEqual(['seima/quotes/abc123', 'seima/quotes/def456']);
+    expect(fila.consentimientoEn).toBeInstanceOf(Date);
+    expect(fila.estado).toBe('nueva');
+    expect(fila.mensaje).toContain('Fotos: 2 adjuntas');
+  });
+
+  it('sin consentimiento → 422 y no se guarda', async () => {
+    const antes = await AppDataSource.getRepository(Quote).count();
+    const res = await agent().post(`${API}/quotes`).send({ ...cotizacionValida, consentimiento: false });
+    expect(res.status).toBe(422);
+    expect(res.body.error.details[0].campo).toBe('consentimiento');
+    expect(await AppDataSource.getRepository(Quote).count()).toBe(antes);
+  });
+
+  it('fotos que no son de la carpeta de cotizaciones → 422', async () => {
+    const res = await agent().post(`${API}/quotes`).send({ ...cotizacionValida, fotos: ['otra-carpeta/foto'] });
+    expect(res.status).toBe(422);
+  });
+
+  it('robot (campo trampa lleno): 201 aparente pero no se guarda nada', async () => {
+    const antes = await AppDataSource.getRepository(Quote).count();
+    const res = await agent().post(`${API}/quotes`).send({ ...cotizacionValida, website: 'http://spam.example' });
+    expect(res.status).toBe(201);
+    expect(await AppDataSource.getRepository(Quote).count()).toBe(antes);
   });
 
   it('ignora lo que no aplica al pedido (acabado sin enchape, extras de cocina sin cocina)', async () => {

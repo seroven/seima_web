@@ -28,4 +28,5 @@ export const cotizacionValida = {
   plazo: '1mes',
   nombre: 'Ana Prueba',
   whatsapp: '987 654 321',
+  consentimiento: true,
 };

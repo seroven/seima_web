@@ -7,8 +7,9 @@ import { QuotesService } from '../../src/modules/quotes/quotes.service';
 
 const valida = {
   cliente: 'persona', servicios: ['cocina'], medidasModo: 'lxa', largo: '4', ancho: '3',
-  distrito: 'Comas', plazo: '1mes', nombre: 'Ana Prueba', whatsapp: '987 654 321',
+  distrito: 'Comas', plazo: '1mes', nombre: 'Ana Prueba', whatsapp: '987 654 321', consentimiento: true,
 };
+const foto = (n: number | string) => `seima/quotes/foto${n}`;
 const parse = (extra: Record<string, unknown> = {}) => createQuoteSchema.safeParse({ ...valida, ...extra });
 const ok = (extra: Record<string, unknown> = {}) => {
   const r = parse(extra);
@@ -19,7 +20,7 @@ const ok = (extra: Record<string, unknown> = {}) => {
 describe('createQuoteSchema', () => {
   it('acepta un pedido válido y normaliza (whatsapp solo dígitos, números, defaults)', () => {
     const d = ok();
-    expect(d).toMatchObject({ whatsapp: '987654321', largo: 4, ancho: 3, fotos: 0, medidasModo: 'lxa' });
+    expect(d).toMatchObject({ whatsapp: '987654321', largo: 4, ancho: 3, fotos: [], medidasModo: 'lxa' });
   });
 
   it.each([
@@ -31,6 +32,27 @@ describe('createQuoteSchema', () => {
 
   it.each([[''], [null], ['   ']])('largo vacío (%j) = no enviado', (v) => expect(ok({ largo: v }).largo).toBeUndefined());
   it.each([['0'], ['-3'], ['abc'], ['100001']])('largo inválido %j', (v) => expect(parse({ largo: v }).success).toBe(false));
+
+  it('el consentimiento es obligatorio y debe ser exactamente true', () => {
+    expect(parse({ consentimiento: undefined }).success).toBe(false);
+    expect(parse({ consentimiento: false }).success).toBe(false);
+    expect(parse({ consentimiento: 'true' }).success).toBe(false);
+    expect(parse({ consentimiento: true }).success).toBe(true);
+  });
+
+  it('fotos: solo public_id de la carpeta de cotizaciones, sin repetidos, máximo 6', () => {
+    expect(ok({ fotos: [foto(1), foto(1), foto(2)] }).fotos).toEqual([foto(1), foto(2)]);
+    for (const mala of ['otra/carpeta/x', 'seima/quotes', 'seima/quotes/../secreto', 'seima/quotesX/a', 'http://evil.com/x.jpg', '', 'seima/quotes/a b']) {
+      expect(parse({ fotos: [mala] }).success, mala).toBe(false);
+    }
+    expect(parse({ fotos: [1] }).success).toBe(false); // el viejo formato (un número) ya no se acepta
+    expect(parse({ fotos: Array.from({ length: 6 }, (_, i) => foto(i)) }).success).toBe(true);
+  });
+
+  it('el campo trampa vacío = no enviado; lleno se conserva (el servicio lo descarta)', () => {
+    expect(ok({ website: '' }).website).toBeUndefined();
+    expect(ok({ website: 'spam' }).website).toBe('spam');
+  });
 
   it('quita servicios repetidos', () => {
     expect(ok({ servicios: ['cocina', 'bano', 'cocina'] }).servicios).toEqual(['cocina', 'bano']);
@@ -64,7 +86,7 @@ describe('createQuoteSchema', () => {
   });
 
   it('rechaza valores fuera de catálogo', () => {
-    for (const mal of [{ plazo: 'ayer' }, { cliente: 'robot' }, { acabado: 'oro' }, { muebleAlto: 'tal vez' }, { ambientes: 11 }, { fotos: 7 }, { nombre: 'A' }, { distrito: 'x' }, { proyecto: 'Con Mayúsculas' }]) {
+    for (const mal of [{ plazo: 'ayer' }, { cliente: 'robot' }, { acabado: 'oro' }, { muebleAlto: 'tal vez' }, { ambientes: 11 }, { fotos: Array.from({ length: 7 }, (_, i) => foto(i)) }, { nombre: 'A' }, { distrito: 'x' }, { proyecto: 'Con Mayúsculas' }]) {
       expect(parse(mal).success, JSON.stringify(mal)).toBe(false);
     }
   });
@@ -97,7 +119,7 @@ describe('buildQuoteMessage', () => {
   it('mensaje mínimo', () => {
     expect(msg().split('\n')).toEqual([
       '*Nueva solicitud · SEIMA web*', 'Cliente: Persona', 'Servicios: Pintura', 'Medidas: por definir',
-      'Distrito: Comas · Plazo: Lo antes posible', 'Fotos: sin fotos por ahora', 'Contacto: Ana · 987 654 321',
+      'Distrito: Comas · Plazo: Lo antes posible', 'Fotos: sin fotos', 'Contacto: Ana · 987 654 321',
     ]);
   });
   it('empresa con y sin RUC', () => {
@@ -118,7 +140,8 @@ describe('buildQuoteMessage', () => {
   it('acabado, fotos y proyecto de referencia', () => {
     const m = msg({ acabado: 'corte45', fotos: 2 }, 'Cocina en drywall');
     expect(m).toContain('Acabado: Corte 45° + resina');
-    expect(m).toContain('Fotos: 2 (las adjunto por este chat)');
+    expect(m).toContain('Fotos: 2 adjuntas');
+    expect(msg({ fotos: 1 })).toContain('Fotos: 1 adjunta\n');
     expect(m).toContain('Referencia: proyecto «Cocina en drywall»');
     expect(msg()).not.toContain('Referencia');
   });
@@ -205,9 +228,20 @@ describe('QuotesService', () => {
     expect(b.projects.findPublishedBySlug).not.toHaveBeenCalled();
   });
 
-  it('guarda cuántas fotos dijo enviar y los datos de contacto normalizados', async () => {
+  it('guarda los public_id de las fotos subidas, la constancia de consentimiento y el contacto normalizado', async () => {
     const t = armar();
-    await t.crear({ fotos: 3 });
-    expect(t.guardado()).toMatchObject({ fotosCount: 3, whatsapp: '987654321', nombre: 'Ana Prueba', distrito: 'Comas' });
+    const antes = Date.now();
+    const r = await t.crear({ fotos: [foto(1), foto(2)] });
+    expect(t.guardado()).toMatchObject({ fotosIds: [foto(1), foto(2)], whatsapp: '987654321', nombre: 'Ana Prueba', distrito: 'Comas' });
+    expect((t.guardado().consentimientoEn as Date).getTime()).toBeGreaterThanOrEqual(antes);
+    expect(r.mensaje).toContain('Fotos: 2 adjuntas');
+  });
+
+  it('campo trampa lleno (robot): responde como si nada pero NO guarda ni consulta nada', async () => {
+    const t = armar();
+    const r = await t.crear({ website: 'http://spam.example' });
+    expect(r.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(t.quotes.create).not.toHaveBeenCalled();
+    expect(t.projects.findPublishedBySlug).not.toHaveBeenCalled();
   });
 });

@@ -131,9 +131,12 @@ Módulos: `categories`, `projects` (incluye `project_photos`), `quotes`, `auth` 
 | `GET /categories` | Categorías activas, en orden |
 | `GET /projects?categoria=&destacado=&page=&limit=` | Proyectos publicados, destacados primero. `category` también vale como alias. Cada uno trae su **portada** (`antes` y `despues`: la foto principal de la etapa). `limit` máx. 100 (por defecto 50) |
 | `GET /projects/:slug` | Ficha completa: `fotos` agrupadas por etapa (`antes`, `durante`, `despues`), cada etapa ordenada, más la `portada` |
-| `POST /quotes` | Guarda la cotización y devuelve `{ id, mensaje, creadaEn }` (el `mensaje` es el texto para abrir WhatsApp). Límite por IP (10/hora por defecto) |
+| `POST /quotes` | Guarda la cotización y devuelve `{ id, mensaje, creadaEn }` (`mensaje` = resumen en texto). Exige `consentimiento: true`; `fotos` es la lista de public_id ya subidos a Cloudinary (máx. 6, de la carpeta de cotizaciones); `website` es un campo trampa (si viene lleno se descarta en silencio). Límite por IP (10/hora por defecto) |
+| `POST /uploads/quote-photos/signature` | Devuelve la firma para subir las fotos **directo a Cloudinary** (`uploadUrl`, `apiKey`, `timestamp`, `folder`, `allowedFormats`, `signature`…). El API secret nunca sale del servidor. 503 si faltan las credenciales de Cloudinary. Límite por IP (20/hora) |
 
 Cada foto: `{ id, etapa, orden, esPrincipal, pie, ancho, alto, cloudinaryId, url }`. `url` es la URL pública de Cloudinary (`f_auto,q_auto`) o `null` en los datos de prueba (ids `demo/…`).
+
+**Fotos del cotizador:** la web pide la firma, sube cada foto a Cloudinary (`multipart` a `uploadUrl` con `file`, `api_key`, `timestamp`, `folder`, `allowed_formats`, `signature`) y luego manda los `public_id` que devuelve Cloudinary en `POST /quotes`. Requiere `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` en el `.env` del entorno.
 
 ### Autenticación del panel
 | Método y ruta | Descripción |

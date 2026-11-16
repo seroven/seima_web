@@ -1,4 +1,4 @@
-// Arma el texto que llega a WhatsApp. Mismo formato que web/src/lib/quote.ts (buildMessage).
+// Resumen en texto de una solicitud (se guarda en quotes.mensaje; el panel lo muestra y sirve para responder por WhatsApp).
 import { ACABADOS, PLAZOS, SERVICIOS } from './quote.constants';
 import type { Cliente, MedidasModo } from './quote.constants';
 
@@ -43,7 +43,7 @@ export function buildQuoteMessage(d: MessageInput, tituloProyecto?: string | nul
   }
   if (d.servicios.includes('departamento') && d.ambientes) lines.push(`Departamento: ${d.ambientes} ambiente${d.ambientes === 1 ? '' : 's'}`);
   lines.push(`Distrito: ${d.distrito} · Plazo: ${PLAZOS[d.plazo] ?? d.plazo}`);
-  lines.push(d.fotos > 0 ? `Fotos: ${d.fotos} (las adjunto por este chat)` : 'Fotos: sin fotos por ahora');
+  lines.push(d.fotos > 0 ? `Fotos: ${d.fotos} adjunta${d.fotos === 1 ? '' : 's'}` : 'Fotos: sin fotos');
   if (tituloProyecto) lines.push(`Referencia: proyecto «${tituloProyecto}»`);
   lines.push(`Contacto: ${d.nombre} · ${formatCelular(d.whatsapp)}`);
   return lines.join('\n');
