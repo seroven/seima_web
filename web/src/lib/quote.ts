@@ -1,5 +1,6 @@
-// Lógica del cotizador: tipos, opciones, validación, mensaje de WhatsApp y envío.
-// El mensaje se arma aquí por ahora; cuando exista la API, POST /quotes devolverá el mismo texto.
+// Lógica del cotizador: tipos, opciones, validación y envío.
+// El envío es directo a la API (POST /quotes): las fotos del cliente se suben antes a Cloudinary y la solicitud queda
+// registrada en la base de datos. WhatsApp ya no es el canal de envío, solo el de respuesta.
 
 export type Cliente = 'persona' | 'empresa';
 export type MedidasModo = 'lxa' | 'm2' | 'nose';
@@ -147,51 +148,136 @@ export function validarPaso(step: number, d: QuoteData): string | null {
   }
 }
 
-/* ---------- Mensaje para WhatsApp ---------- */
-export function buildMessage(d: QuoteData, tituloProyecto?: string | null): string {
-  const plazo = PLAZOS.find((p) => p.id === d.plazo)?.label ?? '—';
-  const lines: string[] = ['*Nueva solicitud · SEIMA web*'];
-  lines.push(
-    d.cliente === 'empresa'
-      ? `Cliente: Empresa — ${d.razonSocial.trim()}${d.ruc ? ` (RUC ${soloDigitos(d.ruc)})` : ''}`
-      : 'Cliente: Persona',
-  );
-  lines.push(`Servicios: ${d.servicios.map(servicioLabel).join(', ') || '—'}`);
-  lines.push(`Medidas: ${medidasTexto(d)}`);
-  if (pideAcabado(d)) lines.push(`Acabado: ${ACABADOS.find((a) => a.id === d.acabado)?.label ?? 'por definir'}`);
-  if (d.servicios.includes('cocina')) {
-    const alto = d.muebleAlto === 'si' ? 'con mueble alto' : d.muebleAlto === 'no' ? 'sin mueble alto' : 'mueble alto por definir';
-    const est = d.estructura === 'hay' ? 'ya hay estructura' : d.estructura === 'cero' ? 'desde cero' : 'estructura por definir';
-    lines.push(`Cocina: ${alto}, ${est}`);
+/* ---------- Envío ---------- */
+export const MAX_FOTOS = 6;
+const MAX_LADO = 1600; // las fotos se reducen en el navegador antes de subirlas (más rápido con datos móviles)
+const MAX_BYTES = 10 * 1024 * 1024;
+
+export type SendErrorKind = 'config' | 'network' | 'server' | 'rate' | 'validation' | 'photos';
+export class SendError extends Error {
+  constructor(public readonly kind: SendErrorKind, message: string) {
+    super(message);
+    this.name = 'SendError';
   }
-  if (d.servicios.includes('departamento')) lines.push(`Departamento: ${d.ambientes} ambiente${d.ambientes === 1 ? '' : 's'}`);
-  lines.push(`Distrito: ${d.distrito.trim()} · Plazo: ${plazo}`);
-  lines.push(d.fotos > 0 ? `Fotos: ${d.fotos} (las adjunto por este chat)` : 'Fotos: sin fotos por ahora');
-  if (tituloProyecto) lines.push(`Referencia: proyecto «${tituloProyecto}»`);
-  lines.push(`Contacto: ${d.nombre.trim()} · ${formatCelular(d.whatsapp)}`);
-  return lines.join('\n');
 }
 
-/** Enlace de WhatsApp (el número va en la variable de entorno). null si aún no está configurado. */
-export function waHref(text: string): string | null {
-  const n = import.meta.env.PUBLIC_WHATSAPP_NUMBER;
-  return n ? `https://wa.me/${n}?text=${encodeURIComponent(text)}` : null;
+const GENERICO = 'No pudimos enviar tu solicitud. Revisa tu conexión e inténtalo otra vez.';
+
+const apiBase = () => {
+  const b = import.meta.env.PUBLIC_API_URL;
+  return b ? String(b).replace(/\/$/, '') : null;
+};
+/** ¿Hay una API configurada? Sin ella el cotizador no puede enviar (se muestra un aviso). */
+export const apiConfigurada = () => apiBase() !== null;
+
+interface Firma {
+  uploadUrl: string;
+  apiKey: string;
+  timestamp: number;
+  folder: string;
+  allowedFormats: string;
+  signature: string;
 }
 
-/** Guarda la solicitud en la API (POST /quotes). Si no hay API configurada o falla, no bloquea el envío por WhatsApp. */
-export async function submitQuote(d: QuoteData): Promise<{ ok: boolean; skipped?: boolean }> {
-  const base = import.meta.env.PUBLIC_API_URL;
-  if (!base) return { ok: false, skipped: true };
+interface ApiError {
+  error?: { code?: string; message?: string; details?: { mensaje?: string }[] };
+}
+
+/** Llama a la API y devuelve `data`; traduce cualquier fallo a un SendError con un mensaje claro para la persona. */
+async function api<T>(base: string, path: string, body: unknown, timeoutMs: number): Promise<T> {
+  let res: Response;
   try {
-    const res = await fetch(`${String(base).replace(/\/$/, '')}/quotes`, {
+    res = await fetch(`${base}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...d, whatsapp: soloDigitos(d.whatsapp), ruc: soloDigitos(d.ruc) }),
-      keepalive: true,
-      signal: AbortSignal.timeout(5000),
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(timeoutMs),
     });
-    return { ok: res.ok };
   } catch {
-    return { ok: false };
+    throw new SendError('network', GENERICO);
   }
+  const json = (await res.json().catch(() => ({}))) as { data?: T } & ApiError;
+  if (res.ok) return json.data as T;
+  const msg = json.error?.message;
+  if (res.status === 422) throw new SendError('validation', json.error?.details?.[0]?.mensaje ?? msg ?? 'Revisa los datos de la solicitud.');
+  if (res.status === 429) throw new SendError('rate', msg ?? 'Demasiados envíos seguidos. Intenta de nuevo en un rato.');
+  if (res.status === 503) throw new SendError('photos', 'La subida de fotos no está disponible por ahora. Puedes quitar las fotos y enviar igual.');
+  throw new SendError('server', GENERICO);
+}
+
+/** Reduce la foto (máx. 1600 px, JPEG) para subirla más rápido. Si el navegador no puede leerla, sube la original si no pesa demasiado. */
+async function prepararFoto(file: File): Promise<Blob | File> {
+  try {
+    const bmp = await createImageBitmap(file); // respeta la orientación EXIF
+    const escala = Math.min(1, MAX_LADO / Math.max(bmp.width, bmp.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bmp.width * escala);
+    canvas.height = Math.round(bmp.height * escala);
+    canvas.getContext('2d')?.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    bmp.close?.();
+    const blob = await new Promise<Blob | null>((ok) => canvas.toBlob(ok, 'image/jpeg', 0.82));
+    if (blob) return blob;
+  } catch {
+    /* formato que el navegador no decodifica (p. ej. HEIC en Chrome): se intenta con el original */
+  }
+  if (file.size <= MAX_BYTES) return file;
+  throw new SendError('photos', `La foto «${file.name}» pesa demasiado (máximo 10 MB). Quítala o elige otra.`);
+}
+
+/** Fotos ya subidas, para no repetir la subida si la persona reintenta el envío. */
+const yaSubidas = new WeakMap<File, string>();
+
+async function subirFotos(base: string, files: File[], onProgress: (hechas: number, total: number) => void): Promise<string[]> {
+  if (files.length === 0) return [];
+  const firma = await api<Firma>(base, '/uploads/quote-photos/signature', undefined, 20_000);
+  const ids: string[] = [];
+  for (const [i, file] of files.entries()) {
+    const previa = yaSubidas.get(file);
+    if (previa) {
+      ids.push(previa);
+      continue;
+    }
+    onProgress(i, files.length);
+    const blob = await prepararFoto(file);
+    const form = new FormData();
+    form.append('file', blob, blob instanceof File ? blob.name : `foto-${i + 1}.jpg`);
+    form.append('api_key', firma.apiKey);
+    form.append('timestamp', String(firma.timestamp));
+    form.append('folder', firma.folder);
+    form.append('allowed_formats', firma.allowedFormats);
+    form.append('signature', firma.signature);
+    let id: string | undefined;
+    try {
+      const res = await fetch(firma.uploadUrl, { method: 'POST', body: form, signal: AbortSignal.timeout(90_000) });
+      if (res.ok) id = ((await res.json()) as { public_id?: string }).public_id;
+    } catch {
+      /* se informa abajo */
+    }
+    if (!id) throw new SendError('photos', `No pudimos subir la foto ${i + 1}. Inténtalo otra vez o quítala.`);
+    yaSubidas.set(file, id);
+    ids.push(id);
+  }
+  onProgress(files.length, files.length);
+  return ids;
+}
+
+export interface SubmitOptions {
+  files: File[];
+  /** Campo trampa (debe ir vacío; los robots lo llenan). */
+  website: string;
+  onProgress: (hechas: number, total: number) => void;
+}
+
+/** Sube las fotos a Cloudinary y registra la solicitud en la base (POST /quotes). Lanza SendError con un mensaje listo para mostrar. */
+export async function submitQuote(d: QuoteData, { files, website, onProgress }: SubmitOptions): Promise<{ id: string }> {
+  const base = apiBase();
+  if (!base) throw new SendError('config', 'El envío todavía no está configurado [API PENDIENTE].');
+  const fotos = await subirFotos(base, files, onProgress);
+  const { fotos: _cuantas, ...resto } = d;
+  return api<{ id: string }>(
+    base,
+    '/quotes',
+    { ...resto, fotos, whatsapp: soloDigitos(d.whatsapp), ruc: soloDigitos(d.ruc), consentimiento: true, website },
+    30_000,
+  );
 }

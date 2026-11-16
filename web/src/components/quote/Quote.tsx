@@ -1,14 +1,14 @@
 // Cotizador guiado (isla de React + Motion). Un paso = una pregunta.
-// Al final se guarda vía POST /quotes (si hay API) y se abre WhatsApp con el mensaje ya armado.
+// Al final se envía directo a la API: las fotos se suben a Cloudinary y la solicitud queda registrada en la base de datos.
+// WhatsApp ya no es el canal de envío: es donde respondemos (y un botón opcional para escribirnos).
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../ui';
 import Summary, { resumenFilas } from './Summary';
 import { StepCliente, StepDatos, StepEspacio, StepLugar, StepResumen, StepServicios } from './Steps';
 import { projects } from '../../data/projects';
-import {
-  CATEGORIA_A_SERVICIO, buildMessage, emptyQuote, submitQuote, validarPaso, waHref, type QuoteData,
-} from '../../lib/quote';
+import { CATEGORIA_A_SERVICIO, SendError, emptyQuote, formatCelular, submitQuote, validarPaso, type QuoteData } from '../../lib/quote';
+import { waLink } from '../../lib/whatsapp';
 import './quote.css';
 
 const TITLES = ['¿Para quién es?', '¿Qué necesitas?', 'Cuéntanos del espacio', '¿Dónde y cuándo?', 'Tus datos', 'Revisa y envía'];
@@ -24,7 +24,10 @@ export default function Quote() {
   const [error, setError] = useState<string | null>(null);
   const [sheet, setSheet] = useState(false);
   const [sent, setSent] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [progress, setProgress] = useState('');
+  const [consent, setConsent] = useState(false); // se pide en cada envío: no se recuerda
+  const [website, setWebsite] = useState(''); // campo trampa anti-robots (siempre vacío para una persona)
   const [ready, setReady] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const top = useRef<HTMLDivElement>(null);
@@ -99,34 +102,44 @@ export default function Quote() {
     go(step + 1);
   };
 
-  const message = buildMessage(data, tituloProyecto);
-  const href = waHref(message);
-
-  const send = () => {
-    if (href) window.open(href, '_blank', 'noopener'); // dentro del clic, para que no lo bloqueen
-    void submitQuote(data); // guarda en la API si existe; si falla, WhatsApp igual salió
-    setSent(true);
+  const clearSaved = () => {
+    try {
+      sessionStorage.removeItem(KEY);
+    } catch {
+      /* nada */
+    }
   };
 
-  const copy = async () => {
+  const send = async () => {
+    if (sending) return;
+    if (!consent) return setError('Marca la casilla para poder enviar tu solicitud.');
+    setSending(true);
+    setError(null);
+    setProgress(files.length ? 'Preparando tus fotos…' : 'Enviando tu solicitud…');
     try {
-      await navigator.clipboard.writeText(message);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2200);
-    } catch {
-      setError('No se pudo copiar. Selecciona el texto y cópialo manualmente.');
+      await submitQuote(data, {
+        files,
+        website,
+        onProgress: (hechas, total) => setProgress(hechas < total ? `Subiendo foto ${hechas + 1} de ${total}…` : 'Enviando tu solicitud…'),
+      });
+      clearSaved();
+      setSent(true);
+      top.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+    } catch (e) {
+      // Nada se pierde: lo que escribió y las fotos siguen ahí para reintentar
+      setError(e instanceof SendError ? e.message : 'No pudimos enviar tu solicitud. Inténtalo otra vez.');
+    } finally {
+      setSending(false);
     }
   };
 
   const reset = () => {
     setData(emptyQuote);
     setFiles([]);
+    setConsent(false);
+    setWebsite('');
     setSent(false);
-    try {
-      sessionStorage.removeItem(KEY);
-    } catch {
-      /* nada */
-    }
+    clearSaved();
     setStep(0);
     setDir(-1);
   };
@@ -138,26 +151,31 @@ export default function Quote() {
   };
 
   const filas = resumenFilas(data, tituloProyecto);
+  const nombre = data.nombre.trim().split(' ')[0];
+  const wa = waLink(`Hola, soy ${data.nombre.trim()}. Acabo de enviar una solicitud desde la web de SEIMA.`);
 
   return (
     <div className="q" ref={top}>
       <div className="q-main">
-        <div className="q-progress" role="progressbar" aria-label="Progreso del cotizador" aria-valuemin={1} aria-valuemax={TITLES.length} aria-valuenow={step + 1}>
-          <motion.i initial={false} animate={{ scaleX: (step + 1) / TITLES.length }} transition={{ duration: reduce ? 0 : 0.5, ease: [0.2, 0.7, 0, 1] }} />
+        <div className="q-progress" role="progressbar" aria-label="Progreso del cotizador" aria-valuemin={1} aria-valuemax={TITLES.length} aria-valuenow={sent ? TITLES.length : step + 1}>
+          <motion.i initial={false} animate={{ scaleX: sent ? 1 : (step + 1) / TITLES.length }} transition={{ duration: reduce ? 0 : 0.5, ease: [0.2, 0.7, 0, 1] }} />
         </div>
-        <p className="q-stepno" aria-live="polite">Paso {step + 1} de {TITLES.length}</p>
+        <p className="q-stepno" aria-live="polite">{sent ? 'Solicitud enviada' : `Paso ${step + 1} de ${TITLES.length}`}</p>
 
         {sent ? (
           <motion.div className="q-done" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             <span className="q-done__icon"><Icon name="check" size={30} /></span>
-            <h2>¡Listo, {data.nombre.split(' ')[0] || 'gracias'}!</h2>
+            <h2>¡Recibimos tu solicitud{nombre ? `, ${nombre}` : ''}!</h2>
             <p>
-              {href
-                ? 'Se abrió WhatsApp con tu solicitud. Envía el mensaje (y las fotos, si tienes) y te respondemos por ahí.'
-                : 'Tu solicitud está lista. Aún no está configurado nuestro número de WhatsApp [NÚMERO PENDIENTE]: copia el mensaje y envíalo.'}
+              Revisamos tu pedido y te escribimos por WhatsApp al <strong>{formatCelular(data.whatsapp)}</strong> con la cotización.
+              {' '}Si prefieres, también puedes escribirnos tú.
             </p>
             <div className="q-nav">
-              {!href && <button type="button" className="btn q-next" onClick={copy}>{copied ? 'Copiado ✓' : 'Copiar mensaje'}</button>}
+              {wa ? (
+                <a className="btn btn--ghost" href={wa} target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
+              ) : (
+                <span className="btn btn--off q-off" aria-disabled="true">Escríbenos por WhatsApp · [NÚMERO PENDIENTE]</span>
+              )}
               <button type="button" className="q-back" onClick={reset}>Hacer otra cotización</button>
             </div>
           </motion.div>
@@ -166,7 +184,7 @@ export default function Quote() {
             noValidate
             onSubmit={(e) => {
               e.preventDefault();
-              if (step === LAST) send();
+              if (step === LAST) void send();
               else next();
             }}
           >
@@ -178,7 +196,19 @@ export default function Quote() {
                 {step === 2 && <StepEspacio data={data} set={set} />}
                 {step === 3 && <StepLugar data={data} set={set} files={files} onFiles={setFiles} />}
                 {step === 4 && <StepDatos data={data} set={set} />}
-                {step === 5 && <StepResumen data={data} tituloProyecto={tituloProyecto} />}
+                {step === 5 && (
+                  <StepResumen
+                    data={data}
+                    tituloProyecto={tituloProyecto}
+                    consent={consent}
+                    onConsent={(v) => {
+                      setConsent(v);
+                      setError(null);
+                    }}
+                    website={website}
+                    onWebsite={setWebsite}
+                  />
+                )}
               </motion.div>
             </AnimatePresence>
 
@@ -186,7 +216,7 @@ export default function Quote() {
 
             <div className="q-nav">
               {step > 0 && (
-                <button type="button" className="q-back" onClick={() => go(step - 1)}>
+                <button type="button" className="q-back" disabled={sending} onClick={() => go(step - 1)}>
                   <Icon name="arrow-left" size={18} /> Atrás
                 </button>
               )}
@@ -195,21 +225,11 @@ export default function Quote() {
                   Continuar <Icon name="arrow-right" size={18} />
                 </motion.button>
               ) : (
-                <>
-                  {href ? (
-                    <motion.button type="submit" className="btn q-next" whileTap={{ scale: 0.97 }}>
-                      Enviar por WhatsApp <Icon name="arrow-right" size={18} />
-                    </motion.button>
-                  ) : (
-                    <span className="btn btn--off q-next" aria-disabled="true">Enviar por WhatsApp · [NÚMERO PENDIENTE]</span>
-                  )}
-                  <button type="button" className="q-back" onClick={copy}>{copied ? 'Copiado ✓' : 'Copiar mensaje'}</button>
-                </>
+                <motion.button type="submit" className="btn q-next" disabled={sending} aria-busy={sending} whileTap={{ scale: 0.97 }}>
+                  {sending ? progress : <>Enviar solicitud <Icon name="arrow-right" size={18} /></>}
+                </motion.button>
               )}
             </div>
-            {step === LAST && !href && (
-              <p className="q-help">Mientras no esté nuestro número, puedes copiar el mensaje y enviarlo.</p>
-            )}
           </form>
         )}
       </div>

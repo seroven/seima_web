@@ -1,12 +1,13 @@
 // Los 6 pasos del cotizador. Cada paso es una pregunta; la lógica y las opciones viven en lib/quote.ts
 // y los controles (campos, chips, tarjetas, dropdown…) en el kit compartido components/ui.
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { motion } from 'motion/react';
+import { useEffect, useId, useMemo, useRef } from 'react';
 import { Chip, Chips, Collapse, Combobox, Field, Icon, OptionCard, OptionGrid, Stepper, TextInput } from '../ui';
 import {
-  ACABADOS, DISTRITOS, PLAZOS, SERVICIOS, areaDe, buildMessage, formatCelular, pideAcabado,
+  ACABADOS, DISTRITOS, MAX_FOTOS, PLAZOS, SERVICIOS, areaDe, formatCelular, pideAcabado,
   type QuoteData,
 } from '../../lib/quote';
+import { resumenFilas } from './Summary';
 
 type SetFn = <K extends keyof QuoteData>(key: K, value: QuoteData[K]) => void;
 interface P {
@@ -127,7 +128,7 @@ export function StepLugar({ data, set, files, onFiles }: P & { files: File[]; on
 
   const add = (list: FileList | null) => {
     if (!list) return;
-    onFiles([...files, ...Array.from(list).filter((f) => f.type.startsWith('image/'))].slice(0, 6));
+    onFiles([...files, ...Array.from(list).filter((f) => f.type.startsWith('image/'))].slice(0, MAX_FOTOS));
   };
 
   return (
@@ -153,14 +154,14 @@ export function StepLugar({ data, set, files, onFiles }: P & { files: File[]; on
               <button type="button" aria-label={`Quitar foto ${i + 1}`} onClick={() => onFiles(files.filter((_, j) => j !== i))}><Icon name="close" size={14} /></button>
             </motion.div>
           ))}
-          {files.length < 6 && (
+          {files.length < MAX_FOTOS && (
             <button type="button" className="q-photo q-photo--add" onClick={() => inputRef.current?.click()}>
               <Icon name="camera" size={24} />
               <span>Añadir</span>
             </button>
           )}
         </div>
-        <p className="q-help">Hasta 6 fotos. Por ahora nos las envías por el mismo chat de WhatsApp al final.</p>
+        <p className="q-help">Hasta 6 fotos. Se envían junto con tu solicitud.</p>
       </fieldset>
     </div>
   );
@@ -194,37 +195,44 @@ export function StepDatos({ data, set }: P) {
   );
 }
 
-/* ---------- 6 · Resumen: el mensaje aparece como burbuja ---------- */
-export function StepResumen({ data, tituloProyecto }: { data: QuoteData; tituloProyecto: string | null }) {
-  const reduce = useReducedMotion();
-  const text = buildMessage(data, tituloProyecto);
-  const lines = text.split('\n');
-  const [typing, setTyping] = useState(!reduce);
-  useEffect(() => {
-    if (reduce) return;
-    const t = setTimeout(() => setTyping(false), 900);
-    return () => clearTimeout(t);
-  }, [reduce]);
+/* ---------- 6 · Revisa y envía ---------- */
+interface ResumenProps {
+  data: QuoteData;
+  tituloProyecto: string | null;
+  consent: boolean;
+  onConsent: (v: boolean) => void;
+  website: string;
+  onWebsite: (v: string) => void;
+}
 
+export function StepResumen({ data, tituloProyecto, consent, onConsent, website, onWebsite }: ResumenProps) {
+  const idW = useId();
+  const filas = resumenFilas(data, tituloProyecto);
   return (
     <div className="q-stack">
-      <p className="q-help">Así nos llegará por WhatsApp. Revisa que todo esté bien.</p>
-      <div className="q-chat" aria-label="Vista previa del mensaje">
-        <AnimatePresence mode="wait">
-          {typing ? (
-            <motion.div key="typing" className="q-bubble q-bubble--typing" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9 }} aria-hidden="true">
-              <span /><span /><span />
-            </motion.div>
-          ) : (
-            <motion.div key="msg" className="q-bubble" initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.4, ease: [0.2, 0.7, 0, 1] }}>
-              {lines.map((l, i) => (
-                <motion.p key={i} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 + i * 0.07, duration: 0.3 }}>
-                  {l.startsWith('*') && l.endsWith('*') ? <strong>{l.slice(1, -1)}</strong> : l}
-                </motion.p>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
+      <p className="q-help">Revisa que todo esté bien. Al enviar, nos llega tu solicitud y te respondemos por WhatsApp al número que dejaste.</p>
+      <dl className="q-review">
+        {filas.map((r) => (
+          <div key={r.key}>
+            <dt>{r.label}</dt>
+            <dd>{r.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div>
+        <OptionGrid columns={1}>
+          <OptionCard type="checkbox" compact name="consentimiento" checked={consent} onChange={() => onConsent(!consent)} title="Acepto que usen mis datos para responder a esta solicitud" />
+        </OptionGrid>
+        <p className="q-help q-help--top">
+          Usamos tu nombre, WhatsApp y fotos solo para preparar tu cotización. <a href="/privacidad" target="_blank" rel="noopener">Cómo tratamos tus datos</a>.
+        </p>
+      </div>
+
+      {/* Campo trampa: invisible para las personas; los robots suelen llenarlo y entonces la solicitud se descarta */}
+      <div className="q-hp" aria-hidden="true">
+        <label htmlFor={idW}>No escribas nada aquí</label>
+        <input id={idW} type="text" name="website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => onWebsite(e.target.value)} />
       </div>
     </div>
   );

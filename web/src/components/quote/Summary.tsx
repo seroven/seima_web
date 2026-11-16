@@ -24,7 +24,7 @@ export function resumenFilas(d: QuoteData, tituloProyecto: string | null): Row[]
   if (d.servicios.includes('departamento')) rows.push({ key: 'amb', label: 'Ambientes', value: String(d.ambientes) });
   if (d.distrito.trim()) rows.push({ key: 'dist', label: 'Lugar', value: d.distrito.trim() });
   if (d.plazo) rows.push({ key: 'plazo', label: 'Plazo', value: PLAZOS.find((p) => p.id === d.plazo)?.label ?? '' });
-  if (d.fotos > 0) rows.push({ key: 'fotos', label: 'Fotos', value: `${d.fotos} por enviar` });
+  if (d.fotos > 0) rows.push({ key: 'fotos', label: 'Fotos', value: `${d.fotos} adjunta${d.fotos === 1 ? '' : 's'}` });
   if (d.nombre.trim()) rows.push({ key: 'nom', label: 'Contacto', value: `${d.nombre.trim()}${d.whatsapp ? ` · ${formatCelular(d.whatsapp)}` : ''}` });
   return rows;
 }

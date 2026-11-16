@@ -49,16 +49,21 @@
 .q-next .ui-icon { transition: translate 0.25s ease; }
 .q-next:hover .ui-icon { translate: 4px 0; }
 
-/* ---------- Vista previa de WhatsApp ---------- */
-.q-chat { background: #111b21; border-radius: 22px; padding: 1.2rem; min-height: 11rem; }
-.q-bubble { background: #202c33; color: #e9edef; border-radius: 18px 18px 18px 4px; padding: 0.9rem 1.1rem; max-width: 34rem; font-size: 0.92rem; line-height: 1.5; }
-.q-bubble p { margin: 0; overflow-wrap: anywhere; }
-.q-bubble strong { color: #fff; }
-.q-bubble--typing { display: inline-flex; gap: 5px; padding: 0.9rem 1.1rem; }
-.q-bubble--typing span { width: 8px; height: 8px; border-radius: 50%; background: #8696a0; animation: q-dot 1s ease-in-out infinite; }
-.q-bubble--typing span:nth-child(2) { animation-delay: 0.15s; }
-.q-bubble--typing span:nth-child(3) { animation-delay: 0.3s; }
-@keyframes q-dot { 0%, 100% { transform: translateY(0); opacity: 0.5; } 50% { transform: translateY(-4px); opacity: 1; } }
+/* ---------- Revisión final ---------- */
+.q-review { margin: 0; display: grid; gap: 0.55rem; background: #fff; border-radius: 20px; padding: 1.1rem 1.2rem; }
+.q-review > div { display: grid; grid-template-columns: minmax(6.5rem, 0.4fr) 1fr; gap: 0.2rem 1rem; }
+.q-review dt { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted-light); padding-top: 0.2em; }
+.q-review dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+@media (max-width: 480px) { .q-review > div { grid-template-columns: 1fr; } }
+.q-help a { color: var(--red-text); font-weight: 700; text-underline-offset: 3px; }
+.q-help a:focus-visible { outline: none; box-shadow: var(--ring); border-radius: 4px; }
+
+/* Campo trampa anti-robots: fuera de pantalla (no display:none, porque algunos robots lo detectan) */
+.q-hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+
+/* Botón de envío mientras sube las fotos */
+.q-next:disabled { opacity: 0.75; cursor: progress; }
+.q-back:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ---------- Final ---------- */
 .q-done { display: grid; gap: 0.9rem; justify-items: start; padding-block: 1rem; }
@@ -87,6 +92,4 @@
 .q-sheet__panel { position: absolute; inset: auto 0 100% 0; max-height: 60svh; overflow: auto; background: var(--ink); border-radius: 24px 24px 0 0; padding: 0.4rem 0 0; }
 .q-sheet__panel .q-summary { border-radius: 24px 24px 0 0; }
 
-@media (prefers-reduced-motion: reduce) {
-  .q-bubble--typing span { animation: none; }
-}
+.q-off { color: var(--ink); }
