@@ -16,4 +16,5 @@ export const unauthorized = (message = 'Credenciales inválidas o sesión vencid
 export const forbidden = (message = 'No tienes permiso para esta acción') => new AppError(403, 'FORBIDDEN', message);
 export const notFound = (message = 'No encontrado') => new AppError(404, 'NOT_FOUND', message);
 export const conflict = (message: string, details?: unknown) => new AppError(409, 'CONFLICT', message, details);
+export const serviceUnavailable = (message = 'Servicio no disponible por ahora') => new AppError(503, 'SERVICE_UNAVAILABLE', message);
 export const validationError = (details: unknown) => new AppError(422, 'VALIDATION_ERROR', 'Hay datos inválidos', details);

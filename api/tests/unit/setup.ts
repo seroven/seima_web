@@ -10,3 +10,6 @@ process.env.JWT_EXPIRES_IN = '1h';
 process.env.BCRYPT_ROUNDS = '10';
 process.env.CLOUDINARY_CLOUD_NAME = 'demo-cloud';
 process.env.DB_SCHEMA = 'public';
+process.env.CLOUDINARY_API_KEY = '123456789012345';
+process.env.CLOUDINARY_API_SECRET = 'secreto-falso-de-pruebas';
+process.env.CLOUDINARY_QUOTES_FOLDER = 'seima/quotes';

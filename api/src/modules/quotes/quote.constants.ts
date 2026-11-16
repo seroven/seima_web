@@ -3,6 +3,8 @@ export const CLIENTES = ['persona', 'empresa'] as const;
 export const MEDIDAS_MODO = ['lxa', 'm2', 'nose'] as const;
 export const MUEBLE_ALTO = ['si', 'no', 'nose'] as const;
 export const ESTRUCTURA = ['hay', 'cero'] as const;
+/** Máximo de fotos por cotización. */
+export const MAX_FOTOS = 6;
 export const ESTADOS_COTIZACION = ['nueva', 'contactada', 'cerrada', 'descartada'] as const;
 
 export const SERVICIOS: Record<string, string> = {

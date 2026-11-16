@@ -12,6 +12,7 @@ import { buildCategoriesModule } from './modules/categories';
 import { healthRoutes } from './modules/health/health.routes';
 import { buildProjectsModule } from './modules/projects';
 import { buildQuotesModule } from './modules/quotes';
+import { buildUploadsModule } from './modules/uploads';
 
 export function createApp(dataSource: DataSource) {
   const app = express();
@@ -35,6 +36,7 @@ export function createApp(dataSource: DataSource) {
   const categories = buildCategoriesModule(dataSource);
   const projects = buildProjectsModule(dataSource);
   const quotes = buildQuotesModule(dataSource, projects.repository);
+  const uploads = buildUploadsModule();
   const auth = buildAuthModule(dataSource);
 
   const api = express.Router();
@@ -43,6 +45,7 @@ export function createApp(dataSource: DataSource) {
   api.use('/categories', categories.router);
   api.use('/projects', projects.router);
   api.use('/quotes', quotes.router);
+  api.use('/uploads', uploads.router);
   // ---- Autenticación del panel (login libre; el resto de rutas del panel usarán `auth.authenticate`) ----
   api.use('/auth', auth.router);
 

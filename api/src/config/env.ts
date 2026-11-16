@@ -84,10 +84,16 @@ const schema = z
 
     RATE_LIMIT_QUOTES_PER_HOUR: z.coerce.number().int().min(1).default(10),
     RATE_LIMIT_LOGIN_PER_15MIN: z.coerce.number().int().min(1).default(10),
+    RATE_LIMIT_UPLOADS_PER_HOUR: z.coerce.number().int().min(1).default(20),
 
     CLOUDINARY_CLOUD_NAME: opcional(z.string()),
     CLOUDINARY_API_KEY: opcional(z.string()),
     CLOUDINARY_API_SECRET: opcional(z.string()),
+    // Carpeta de Cloudinary donde caen las fotos que suben los clientes desde el cotizador
+    CLOUDINARY_QUOTES_FOLDER: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/, 'CLOUDINARY_QUOTES_FOLDER inválida (ej. seima/quotes)')
+      .default('seima/quotes'),
 
     ADMIN_EMAIL: opcional(z.string().email()),
     ADMIN_PASSWORD: opcional(z.string().min(10, 'ADMIN_PASSWORD debe tener al menos 10 caracteres')),
