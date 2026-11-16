@@ -63,17 +63,32 @@ Restricciones:
 
 ## 1.5 Cotizador parametrizado en tablas (2026-11-16)
 
-Decisión de Sebas: lo que el cliente elige en el cotizador debe guardarse como **campos y tablas** (no solo como texto) para **filtrar en el panel**. Antes había columnas fijas en `quotes` (`servicios[]`, `acabado`, `mueble_alto`, `estructura`, `ambientes`) y el resto solo iba dentro del `mensaje`.
+Decisión de Sebas: lo que el cliente elige en el cotizador debe guardarse como **campos y tablas** (no solo como texto) para **filtrar en el panel**, y el modelo debe ser **simple y fácil de mantener**, sin tablas ni campos para casos específicos, para poder agregar servicios desde el panel. Antes había columnas fijas en `quotes` (`servicios[]`, `acabado`, `mueble_alto`, `estructura`, `ambientes`, y las medidas) y el resto solo iba dentro del `mensaje`.
 
-**Catálogo** (se edita sin tocar el código): `services` (slug, nombre, ícono, orden, activo) · `questions` (slug, texto, etiqueta corta, `tipo` = `unica` | `multiple` | `numero`, `min`/`max`, orden, activo) · `question_options` (pregunta, slug, etiqueta, descripción, orden, activo; único por pregunta+slug) · `question_services` (qué preguntas se hacen en qué servicios; una pregunta puede aplicar a varios).
+**Modelo final: todo es "pregunta → opciones → respuesta".** 8 tablas:
 
-**Cada cotización:** `quote_services` (cotización ↔ servicio) y `quote_answers` (cotización, pregunta, `option_id` **o** `valor_numero`; una fila por respuesta, y por opción en las preguntas múltiples). La base lo garantiza: un `CHECK` exige opción **o** número (nunca ambos ni ninguno), índices únicos parciales impiden repetir una respuesta, borrar una cotización borra sus servicios y respuestas (`CASCADE`), y no se puede borrar una pregunta u opción con respuestas (`RESTRICT`: se desactiva con `activo`).
+| Tabla | Columnas | Para qué |
+|---|---|---|
+| `services` | id, slug, nombre, icono, orden, activo | Servicios que se pueden pedir |
+| `questions` | id, slug, texto, etiqueta, `tipo` (`unica` \| `multiple`), orden, activo | Preguntas |
+| `question_options` | id, question_id, slug, etiqueta, descripcion, `tipo_entrada` (`ninguna` \| `texto` \| `numero`), `entrada_ayuda`, orden, activo | Opciones. Si `tipo_entrada` no es `ninguna`, al elegirla se pide un dato más (el campo aparece al tocarla y se valida) |
+| `question_services` | question_id, service_id | En qué servicios se hace cada pregunta (N:M; una pregunta puede servir a varios) |
+| `quotes` | id, cliente, distrito, plazo, notas, nombre, whatsapp, razon_social, ruc, proyecto_id, mensaje, consentimiento_en, estado, fechas | **Solo datos generales** (ni medidas ni nada de un servicio) |
+| `quote_services` | quote_id, service_id | Servicios que pidió |
+| `quote_answers` | id, quote_id, **option_id** (obligatorio), **valor** (texto) | Una fila por opción elegida; `valor` guarda el dato extra (texto o número como texto) si la opción lo pedía. La pregunta sale de la opción |
+| `quote_photos` | id, quote_id, cloudinary_id, orden | Fotos |
 
-**Preguntas actuales (1 o 2 por servicio, con "No sé" donde aplica):** acabado (compartida: cocina, baño, enchapado, departamento) · cocina: mueble alto, estructura · baño: cantidad, retirar lo anterior (compartida con enchapado) · departamento: ambientes, vacío/habitado · divisiones: cantidad, puertas o ventanas · techo: liso/diseño, luces empotradas · enchapado: dónde · electricidad: tipo de trabajo, puntos · melamina: qué muebles (múltiple), diseño propio o a proponer · pintura: zona, estado de las paredes · local: tipo, en funcionamiento. Más un campo de **notas** libres (`quotes.notas`, 500 caracteres). Pendiente: que Luis revise la lista.
+**Cómo se resuelve lo que antes eran tipos especiales:** los contadores son opciones (baños: 1, 2, 3, 4 y "Más de 4" que pide el número); las **medidas** son la pregunta `area` ("Sé el área aproximada" → m², o "Aún no lo sé"), ligada a todos los servicios menos electricidad; "Otro" pide un texto (`melamina-muebles`, `local-tipo`). Validación (web y API, misma regla): `numero` = positivo, hasta 2 decimales, máx. 100000; `texto` = máx. 200 caracteres; la opción que pide un dato lo exige.
 
-**Migración `CatalogAndQuoteAnswers`:** crea las tablas, carga el catálogo base y **mueve los datos existentes** (servicios, acabado, mueble alto, estructura, ambientes) a las tablas nuevas antes de borrar las columnas; reversible (las respuestas a preguntas nuevas no tienen columna a la que volver). `npm run migration:run` además sincroniza el catálogo completo desde `api/src/database/seeds/catalog.data.ts`.
+**La base garantiza:** un índice único `(quote_id, option_id)` impide repetir una opción en una cotización; `option_id` es obligatorio; borrar una cotización borra sus servicios, respuestas y fotos (`CASCADE`); no se puede borrar una opción con respuestas (`RESTRICT`: se desactiva con `activo`).
 
-**Filtros para el panel:** `QuotesRepository.search` (estado, servicio, respuestas por pregunta+opción o valor numérico).
+**Preguntas actuales (1 a 4 por servicio, con "No sé" donde aplica):** área (casi todos) · acabado (cocina, baño, enchapado, departamento) · cocina: mueble alto, estructura · baño: cuántos, retirar lo anterior (compartida con enchapado) · departamento: ambientes, vacío/habitado · divisiones: cuántas, puertas o ventanas · techo: liso/diseño, luces empotradas · enchapado: dónde · electricidad: tipo de trabajo, puntos · melamina: qué muebles (varias), diseño propio o a proponer · pintura: zona, estado de las paredes · local: tipo, en funcionamiento. Más el campo de **notas** libres (`quotes.notas`, 500 caracteres). Pendiente: que Luis revise la lista.
+
+**Migraciones:** `CatalogAndQuoteAnswers` creó el catálogo y las respuestas y movió lo existente; `SimpleQuestionModel` simplificó el modelo (quitó `numero`/`min`/`max`, las medidas de `quotes` y `question_id` de las respuestas; agregó `tipo_entrada`, `entrada_ayuda` y `valor`) y **descartó datos de prueba que ya no caben** (respuestas numéricas y medidas). `npm run migration:run` además sincroniza el catálogo desde `api/src/database/seeds/catalog.data.ts`.
+
+**Filtros para el panel:** `QuotesRepository.search` (estado, servicio, respuestas por pregunta + opción y/o dato extra).
+
+**Pendiente al llegar el panel:** el seed del catálogo hoy actualiza lo existente; con panel debe limitarse a insertar lo que falta (si no, pisaría lo editado).
 
 ## 2. Resto del modelo (resumen, sin cambios)
 
