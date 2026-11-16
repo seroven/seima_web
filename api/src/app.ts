@@ -8,6 +8,7 @@ import { logger } from './common/logger';
 import { errorHandler, notFoundHandler } from './common/middleware/error-handler';
 import { env } from './config/env';
 import { buildAuthModule } from './modules/auth';
+import { buildCatalogModule } from './modules/catalog';
 import { buildCategoriesModule } from './modules/categories';
 import { healthRoutes } from './modules/health/health.routes';
 import { buildProjectsModule } from './modules/projects';
@@ -35,7 +36,8 @@ export function createApp(dataSource: DataSource) {
   // Módulos (cada uno: repositorio → servicio → controlador → rutas)
   const categories = buildCategoriesModule(dataSource);
   const projects = buildProjectsModule(dataSource);
-  const quotes = buildQuotesModule(dataSource, projects.repository);
+  const catalog = buildCatalogModule(dataSource);
+  const quotes = buildQuotesModule(dataSource, projects.repository, catalog.repository);
   const uploads = buildUploadsModule();
   const auth = buildAuthModule(dataSource);
 
@@ -44,6 +46,7 @@ export function createApp(dataSource: DataSource) {
   // ---- Rutas PÚBLICAS (las usa la web; sin JWT) ----
   api.use('/categories', categories.router);
   api.use('/projects', projects.router);
+  api.use('/quote-form', catalog.router); // servicios y preguntas del cotizador (el formulario se arma con esto)
   api.use('/quotes', quotes.router);
   api.use('/uploads', uploads.router);
   // ---- Autenticación del panel (login libre; el resto de rutas del panel usarán `auth.authenticate`) ----

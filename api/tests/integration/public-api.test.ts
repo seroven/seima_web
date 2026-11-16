@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AppDataSource } from '../../src/database/data-source';
 import { QuotePhoto } from '../../src/modules/quotes/quote-photo.entity';
+import { RespuestaCotizacion } from '../../src/modules/quotes/respuesta-cotizacion.entity';
 import { Quote } from '../../src/modules/quotes/quote.entity';
 import { API, agent, cotizacionValida, useDatabase } from './helpers';
 
@@ -97,13 +98,17 @@ describe('POST /quotes (público)', () => {
   it('guarda la solicitud, calcula el área y devuelve el resumen', async () => {
     const res = await agent()
       .post(`${API}/quotes`)
-      .send({ ...cotizacionValida, servicios: ['cocina', 'departamento', 'cocina'], acabado: 'corte45', muebleAlto: 'si', estructura: 'cero', ambientes: 3, fotos: ['seima/quotes/uno', 'seima/quotes/dos'], proyecto: 'cocina-drywall-porcelanato' });
+      .send({ ...cotizacionValida, servicios: ['cocina', 'departamento', 'cocina'], respuestas: { acabado: 'corte45', 'mueble-alto': 'si', estructura: 'cero', ambientes: 3 }, notas: 'Hay un perro en casa', fotos: ['seima/quotes/uno', 'seima/quotes/dos'], proyecto: 'cocina-drywall-porcelanato' });
     expect(res.status).toBe(201);
     const { id, mensaje } = res.body.data;
     expect(id).toMatch(/^[0-9a-f-]{36}$/);
     expect(mensaje).toContain('*Nueva solicitud · SEIMA web*');
     expect(mensaje).toContain('Servicios: Cocina, Departamento completo'); // sin duplicados
     expect(mensaje).toContain('Medidas: 4 × 3 m (≈ 12 m²)');
+    expect(mensaje).toContain('Acabado: Corte 45° + resina');
+    expect(mensaje).toContain('Mueble alto: Sí');
+    expect(mensaje).toContain('Ambientes: 3');
+    expect(mensaje).toContain('Notas: Hay un perro en casa');
     expect(mensaje).toContain('Referencia: proyecto «Cocina en drywall y porcelanato»');
     expect(mensaje).toContain('Contacto: Ana Prueba · 987 654 321');
   });
@@ -111,13 +116,14 @@ describe('POST /quotes (público)', () => {
   it('acepta EXACTAMENTE el cuerpo que arma el cotizador de la web (cadenas vacías y null incluidos)', async () => {
     // Forma real del cuerpo que arma web/src/lib/quote.ts → submitQuote (whatsapp y ruc ya vienen solo con dígitos)
     const deLaWeb = {
-      cliente: 'persona', servicios: ['pintura'], medidasModo: 'nose', largo: '', ancho: '', m2: '', acabado: null, muebleAlto: null,
-      estructura: null, ambientes: 2, distrito: 'Los Olivos', plazo: 'asap', fotos: [], nombre: 'Ana Test', whatsapp: '987654321', consentimiento: true, website: '',
+      cliente: 'persona', servicios: ['pintura'], medidasModo: 'nose', largo: '', ancho: '', m2: '', respuestas: { 'pintura-zona': 'interior' }, notas: '',
+      distrito: 'Los Olivos', plazo: 'asap', fotos: [], nombre: 'Ana Test', whatsapp: '987654321', consentimiento: true, website: '',
       razonSocial: '', ruc: '', proyecto: null,
     };
     const res = await agent().post(`${API}/quotes`).send(deLaWeb);
     expect(res.status).toBe(201);
     expect(res.body.data.mensaje).toContain('Medidas: por definir');
+    expect(res.body.data.mensaje).toContain('Zona: Interior');
     expect(res.body.data.mensaje).toContain('Contacto: Ana Test · 987 654 321');
   });
 
@@ -170,12 +176,13 @@ describe('POST /quotes (público)', () => {
     expect(await AppDataSource.getRepository(Quote).count()).toBe(antes);
   });
 
-  it('ignora lo que no aplica al pedido (acabado sin enchape, extras de cocina sin cocina)', async () => {
-    const res = await agent().post(`${API}/quotes`).send({ ...cotizacionValida, servicios: ['pintura'], acabado: 'granito', muebleAlto: 'si', ambientes: 5 });
+  it('ignora las respuestas de preguntas que no aplican a los servicios elegidos', async () => {
+    const res = await agent().post(`${API}/quotes`).send({ ...cotizacionValida, servicios: ['pintura'], respuestas: { acabado: 'granito', 'mueble-alto': 'si', ambientes: 5 } });
     expect(res.status).toBe(201);
     expect(res.body.data.mensaje).not.toContain('Acabado');
-    expect(res.body.data.mensaje).not.toContain('Cocina:');
-    expect(res.body.data.mensaje).not.toContain('Departamento:');
+    expect(res.body.data.mensaje).not.toContain('Mueble alto');
+    expect(res.body.data.mensaje).not.toContain('Ambientes');
+    expect(await AppDataSource.getRepository(RespuestaCotizacion).countBy({ quoteId: res.body.data.id })).toBe(0);
   });
 
   it('empresa exige razón social; el RUC debe tener 11 dígitos', async () => {

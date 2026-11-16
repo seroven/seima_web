@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildQuoteMessage, medidasTexto, type MessageInput } from '../../src/modules/quotes/quote-message';
+import type { AppError } from '../../src/common/errors/app-error';
+import type { CatalogRepository } from '../../src/modules/catalog/catalog.repository';
 import type { ProjectsRepository } from '../../src/modules/projects/projects.repository';
+import { buildQuoteMessage, medidasTexto, type MessageInput } from '../../src/modules/quotes/quote-message';
 import type { QuotesRepository } from '../../src/modules/quotes/quotes.repository';
 import { createQuoteSchema, type CreateQuoteInput } from '../../src/modules/quotes/quotes.schemas';
 import { QuotesService } from '../../src/modules/quotes/quotes.service';
+import { rejected } from './fakes';
 
 const valida = {
   cliente: 'persona', servicios: ['cocina'], medidasModo: 'lxa', largo: '4', ancho: '3',
@@ -20,7 +23,7 @@ const ok = (extra: Record<string, unknown> = {}) => {
 describe('createQuoteSchema', () => {
   it('acepta un pedido válido y normaliza (whatsapp solo dígitos, números, defaults)', () => {
     const d = ok();
-    expect(d).toMatchObject({ whatsapp: '987654321', largo: 4, ancho: 3, fotos: [], medidasModo: 'lxa' });
+    expect(d).toMatchObject({ whatsapp: '987654321', largo: 4, ancho: 3, fotos: [], respuestas: {}, medidasModo: 'lxa' });
   });
 
   it.each([
@@ -54,13 +57,26 @@ describe('createQuoteSchema', () => {
     expect(ok({ website: 'spam' }).website).toBe('spam');
   });
 
-  it('quita servicios repetidos', () => {
+  it('servicios: son slugs; se quitan repetidos; mínimo 1 y máximo 10', () => {
     expect(ok({ servicios: ['cocina', 'bano', 'cocina'] }).servicios).toEqual(['cocina', 'bano']);
-  });
-  it('rechaza servicios vacíos, desconocidos o más de 10', () => {
     expect(parse({ servicios: [] }).success).toBe(false);
-    expect(parse({ servicios: ['volar'] }).success).toBe(false);
-    expect(parse({ servicios: Array(11).fill('cocina') }).success).toBe(false);
+    expect(parse({ servicios: ['Con Mayúsculas'] }).success).toBe(false);
+    expect(parse({ servicios: Array.from({ length: 11 }, (_, i) => `s${i}`) }).success).toBe(false);
+  });
+
+  it('respuestas: un objeto { pregunta: opción | número | lista de opciones }', () => {
+    const d = ok({ respuestas: { 'mueble-alto': 'si', ambientes: 3, muebles: ['closet', 'tv'] } });
+    expect(d.respuestas).toEqual({ 'mueble-alto': 'si', ambientes: 3, muebles: ['closet', 'tv'] });
+    expect(parse({ respuestas: { 'Mala Clave': 'x' } }).success).toBe(false);
+    expect(parse({ respuestas: { ok: { anidado: true } } }).success).toBe(false);
+    expect(parse({ respuestas: 'texto' }).success).toBe(false);
+  });
+
+  it('notas: opcional, se recorta, vacío = no enviado y máximo 500 caracteres', () => {
+    expect(ok({ notas: '  Hay un perro en casa  ' }).notas).toBe('Hay un perro en casa');
+    expect(ok({ notas: '' }).notas).toBeUndefined();
+    expect(ok({ notas: 'x'.repeat(500) }).notas).toHaveLength(500);
+    expect(parse({ notas: 'x'.repeat(501) }).success).toBe(false);
   });
 
   it.each([['987654321', true], ['987 654 321', true], ['987-654-321', true], ['887654321', false], ['98765432', false], ['9876543210', false], ['', false]])('whatsapp %j → válido: %s', (w, esperado) =>
@@ -82,11 +98,11 @@ describe('createQuoteSchema', () => {
   });
 
   it('acepta null en los campos opcionales que manda la web', () => {
-    expect(parse({ acabado: null, muebleAlto: null, estructura: null, ambientes: null, proyecto: null }).success).toBe(true);
+    expect(parse({ proyecto: null, notas: null }).success).toBe(true);
   });
 
-  it('rechaza valores fuera de catálogo', () => {
-    for (const mal of [{ plazo: 'ayer' }, { cliente: 'robot' }, { acabado: 'oro' }, { muebleAlto: 'tal vez' }, { ambientes: 11 }, { fotos: Array.from({ length: 7 }, (_, i) => foto(i)) }, { nombre: 'A' }, { distrito: 'x' }, { proyecto: 'Con Mayúsculas' }]) {
+  it('rechaza valores fuera de catálogo fijo', () => {
+    for (const mal of [{ plazo: 'ayer' }, { cliente: 'robot' }, { fotos: Array.from({ length: 7 }, (_, i) => foto(i)) }, { nombre: 'A' }, { distrito: 'x' }, { proyecto: 'Con Mayúsculas' }]) {
       expect(parse(mal).success, JSON.stringify(mal)).toBe(false);
     }
   });
@@ -110,9 +126,8 @@ describe('medidasTexto', () => {
 
 describe('buildQuoteMessage', () => {
   const base: MessageInput = {
-    cliente: 'persona', servicios: ['pintura'], medidasModo: 'nose', largo: null, ancho: null, areaM2: null,
-    acabado: null, muebleAlto: null, estructura: null, ambientes: null, distrito: 'Comas', plazo: 'asap',
-    fotos: 0, nombre: 'Ana', whatsapp: '987654321', razonSocial: null, ruc: null,
+    cliente: 'persona', servicios: ['Pintura'], respuestas: [], medidasModo: 'nose', largo: null, ancho: null, areaM2: null,
+    distrito: 'Comas', plazo: 'asap', notas: null, fotos: 0, nombre: 'Ana', whatsapp: '987654321', razonSocial: null, ruc: null,
   };
   const msg = (o: Partial<MessageInput> = {}, t?: string | null) => buildQuoteMessage({ ...base, ...o }, t);
 
@@ -126,37 +141,47 @@ describe('buildQuoteMessage', () => {
     expect(msg({ cliente: 'empresa', razonSocial: 'Demo SAC', ruc: '20123456789' })).toContain('Cliente: Empresa — Demo SAC (RUC 20123456789)');
     expect(msg({ cliente: 'empresa', razonSocial: 'Demo SAC' })).toContain('Cliente: Empresa — Demo SAC\n');
   });
-  it('cocina: las combinaciones de mueble alto y estructura', () => {
-    expect(msg({ servicios: ['cocina'], muebleAlto: 'si', estructura: 'cero' })).toContain('Cocina: con mueble alto, desde cero');
-    expect(msg({ servicios: ['cocina'], muebleAlto: 'no', estructura: 'hay' })).toContain('Cocina: sin mueble alto, ya hay estructura');
-    expect(msg({ servicios: ['cocina'] })).toContain('Cocina: mueble alto por definir, estructura por definir');
-    expect(msg({ servicios: ['pintura'], muebleAlto: 'si' })).not.toContain('Cocina:');
+  it('cada respuesta es una línea "etiqueta: valor", después de las medidas y antes del lugar', () => {
+    const lineas = msg({ respuestas: [{ etiqueta: 'Acabado', valor: 'Granito' }, { etiqueta: 'Baños', valor: '2' }] }).split('\n');
+    expect(lineas.indexOf('Acabado: Granito')).toBe(lineas.findIndex((l) => l.startsWith('Medidas:')) + 1);
+    expect(lineas).toContain('Acabado: Granito');
+    expect(lineas).toContain('Baños: 2');
+    expect(lineas.indexOf('Baños: 2')).toBeLessThan(lineas.findIndex((l) => l.startsWith('Distrito:')));
   });
-  it('departamento: singular y plural de ambientes', () => {
-    expect(msg({ servicios: ['departamento'], ambientes: 1 })).toContain('Departamento: 1 ambiente\n');
-    expect(msg({ servicios: ['departamento'], ambientes: 3 })).toContain('Departamento: 3 ambientes\n');
-    expect(msg({ servicios: ['departamento'], ambientes: null })).not.toContain('Departamento:');
-  });
-  it('acabado, fotos y proyecto de referencia', () => {
-    const m = msg({ acabado: 'corte45', fotos: 2 }, 'Cocina en drywall');
-    expect(m).toContain('Acabado: Corte 45° + resina');
+  it('notas, fotos y proyecto de referencia', () => {
+    const m = msg({ fotos: 2, notas: 'Hay un perro en casa' }, 'Cocina en drywall');
+    expect(m).toContain('Notas: Hay un perro en casa');
     expect(m).toContain('Fotos: 2 adjuntas');
     expect(msg({ fotos: 1 })).toContain('Fotos: 1 adjunta\n');
     expect(m).toContain('Referencia: proyecto «Cocina en drywall»');
     expect(msg()).not.toContain('Referencia');
+    expect(msg()).not.toContain('Notas:');
   });
-  it('varios servicios en orden, con su nombre legible', () => {
-    expect(msg({ servicios: ['cocina', 'bano'] })).toContain('Servicios: Cocina, Baño');
+  it('varios servicios en orden', () => {
+    expect(msg({ servicios: ['Cocina', 'Baño'] })).toContain('Servicios: Cocina, Baño');
   });
 });
+
+/* ---------- Servicio, con un catálogo falso (sin base de datos) ---------- */
+const SERVICIOS = ['cocina', 'bano', 'pintura'].map((slug) => ({ id: `s-${slug}`, slug, nombre: slug === 'bano' ? 'Baño' : slug[0].toUpperCase() + slug.slice(1) }));
+const op = (slug: string, etiqueta: string) => ({ id: `o-${slug}`, slug, etiqueta, activo: true });
+const PREGUNTAS = [
+  { id: 'p-acabado', slug: 'acabado', etiqueta: 'Acabado', tipo: 'unica', min: null, max: null, opciones: [op('estandar', 'Estándar'), op('granito', 'Granito')], servicios: [{ slug: 'cocina' }, { slug: 'bano' }] },
+  { id: 'p-alto', slug: 'mueble-alto', etiqueta: 'Mueble alto', tipo: 'unica', min: null, max: null, opciones: [op('si', 'Sí'), op('no', 'No')], servicios: [{ slug: 'cocina' }] },
+  { id: 'p-banos', slug: 'cantidad-banos', etiqueta: 'Baños', tipo: 'numero', min: 1, max: 5, opciones: [], servicios: [{ slug: 'bano' }] },
+];
 
 describe('QuotesService', () => {
   function armar(proyecto: { id: string; titulo: string } | null = null) {
     const quotes = { create: vi.fn(async (d: Record<string, unknown>) => ({ id: 'q-1', createdAt: new Date('2026-03-04T05:06:07Z'), ...d })) };
     const projects = { findPublishedBySlug: vi.fn().mockResolvedValue(proyecto) };
-    const svc = new QuotesService(quotes as unknown as QuotesRepository, projects as unknown as ProjectsRepository);
+    const catalog = {
+      findActiveServicesBySlugs: vi.fn(async (slugs: string[]) => SERVICIOS.filter((s) => slugs.includes(s.slug))),
+      findActiveQuestions: vi.fn(async () => PREGUNTAS),
+    };
+    const svc = new QuotesService(quotes as unknown as QuotesRepository, projects as unknown as ProjectsRepository, catalog as unknown as CatalogRepository);
     const crear = (extra: Record<string, unknown> = {}) => svc.create(ok(extra) as CreateQuoteInput);
-    return { quotes, projects, crear, guardado: () => quotes.create.mock.calls[0][0] as Record<string, unknown> };
+    return { quotes, projects, catalog, crear, guardado: () => quotes.create.mock.calls[0][0] as Record<string, unknown> };
   }
 
   it('devuelve id, mensaje y fecha; guarda el mismo mensaje', async () => {
@@ -164,6 +189,57 @@ describe('QuotesService', () => {
     const r = await t.crear();
     expect(r).toEqual({ id: 'q-1', mensaje: expect.stringContaining('*Nueva solicitud · SEIMA web*'), creadaEn: '2026-03-04T05:06:07.000Z' });
     expect(t.guardado().mensaje).toBe(r.mensaje);
+  });
+
+  it('guarda cada servicio como fila (por id) y el resumen con sus nombres', async () => {
+    const t = armar();
+    const r = await t.crear({ servicios: ['cocina', 'bano'] });
+    expect(t.guardado().servicios).toEqual([{ id: 's-cocina' }, { id: 's-bano' }]);
+    expect(r.mensaje).toContain('Servicios: Cocina, Baño');
+  });
+
+  it('guarda cada respuesta como fila (pregunta + opción o número) y la pone en el resumen', async () => {
+    const t = armar();
+    const r = await t.crear({ servicios: ['cocina', 'bano'], respuestas: { acabado: 'granito', 'mueble-alto': 'si', 'cantidad-banos': 2 } });
+    expect(t.guardado().respuestas).toEqual([
+      { questionId: 'p-acabado', optionId: 'o-granito', valorNumero: null },
+      { questionId: 'p-alto', optionId: 'o-si', valorNumero: null },
+      { questionId: 'p-banos', optionId: null, valorNumero: 2 },
+    ]);
+    expect(r.mensaje).toContain('Acabado: Granito');
+    expect(r.mensaje).toContain('Mueble alto: Sí');
+    expect(r.mensaje).toContain('Baños: 2');
+  });
+
+  it('descarta las respuestas de preguntas que no aplican a los servicios elegidos', async () => {
+    const t = armar();
+    await t.crear({ servicios: ['pintura'], respuestas: { acabado: 'granito', 'mueble-alto': 'si' } });
+    expect(t.guardado().respuestas).toEqual([]);
+  });
+
+  it('servicio que no existe o no está activo → 422 y no se guarda nada', async () => {
+    const t = armar();
+    const e = (await rejected(t.crear({ servicios: ['cocina', 'volar'] }))) as AppError;
+    expect(e.status).toBe(422);
+    expect((e.details as { mensaje: string }[])[0].mensaje).toContain('volar');
+    expect(t.quotes.create).not.toHaveBeenCalled();
+  });
+
+  it('opción o pregunta inventada → 422 y no se guarda nada', async () => {
+    const t = armar();
+    expect(((await rejected(t.crear({ respuestas: { acabado: 'dorado' } }))) as AppError).status).toBe(422);
+    expect(((await rejected(t.crear({ respuestas: { fantasma: 'x' } }))) as AppError).status).toBe(422);
+    expect(t.quotes.create).not.toHaveBeenCalled();
+  });
+
+  it('las notas se guardan (recortadas) y salen en el resumen; sin notas, null', async () => {
+    const t = armar();
+    const r = await t.crear({ notas: '  Hay un perro en casa  ' });
+    expect(t.guardado().notas).toBe('Hay un perro en casa');
+    expect(r.mensaje).toContain('Notas: Hay un perro en casa');
+    const u = armar();
+    await u.crear();
+    expect(u.guardado().notas).toBeNull();
   });
 
   it('calcula el área largo × ancho con un decimal', async () => {
@@ -188,18 +264,6 @@ describe('QuotesService', () => {
     const t = armar();
     await t.crear({ ancho: '' });
     expect(t.guardado().areaM2).toBeNull();
-  });
-
-  it('descarta lo que no aplica a los servicios elegidos', async () => {
-    const t = armar();
-    await t.crear({ servicios: ['pintura'], acabado: 'granito', muebleAlto: 'si', estructura: 'cero', ambientes: 5 });
-    expect(t.guardado()).toMatchObject({ acabado: null, muebleAlto: null, estructura: null, ambientes: null });
-  });
-
-  it('conserva lo que sí aplica', async () => {
-    const t = armar();
-    await t.crear({ servicios: ['cocina', 'departamento'], acabado: 'granito', muebleAlto: 'si', estructura: 'cero', ambientes: 3 });
-    expect(t.guardado()).toMatchObject({ acabado: 'granito', muebleAlto: 'si', estructura: 'cero', ambientes: 3 });
   });
 
   it('razón social y RUC solo se guardan para empresas', async () => {
@@ -254,5 +318,6 @@ describe('QuotesService', () => {
     expect(r.id).toMatch(/^[0-9a-f-]{36}$/);
     expect(t.quotes.create).not.toHaveBeenCalled();
     expect(t.projects.findPublishedBySlug).not.toHaveBeenCalled();
+    expect(t.catalog.findActiveServicesBySlugs).not.toHaveBeenCalled();
   });
 });

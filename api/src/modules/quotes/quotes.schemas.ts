@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { env } from '../../config/env';
-import { ACABADO_IDS, CLIENTES, ESTRUCTURA, MAX_FOTOS, MEDIDAS_MODO, MUEBLE_ALTO, PLAZO_IDS, SERVICIO_IDS } from './quote.constants';
+import { CLIENTES, MAX_FOTOS, MAX_NOTAS, MEDIDAS_MODO, PLAZO_IDS } from './quote.constants';
 
 const digitos = (s: string) => s.replace(/\D/g, '');
 const vacioAUndefined = (v: unknown) => (v === '' || v === null ? undefined : v);
+const slug = z.string().min(1).max(60).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Identificador inválido');
 
 /** Acepta 4, "4", "4,5"; vacío = no enviado. */
 const numero = z.preprocess(
@@ -12,23 +13,27 @@ const numero = z.preprocess(
 );
 
 /**
- * Cuerpo de POST /quotes. Mismos campos que arma el cotizador de la web (web/src/lib/quote.ts → QuoteData).
+ * Cuerpo de POST /quotes. Mismos campos que arma el cotizador de la web (web/src/lib/quote.ts → submitQuote).
  * Todo lo que llega de la web se trata como no confiable: se valida, se limpia y se acota.
+ * Los servicios y las respuestas se comprueban contra el catálogo de la base en el servicio (QuotesService).
  */
 export const createQuoteSchema = z
   .object({
     cliente: z.enum(CLIENTES),
-    servicios: z.array(z.enum(SERVICIO_IDS)).min(1, 'Elige al menos un servicio').max(10).transform((a) => [...new Set(a)]),
+    /** slugs de los servicios elegidos (catálogo `services`) */
+    servicios: z.array(slug).min(1, 'Elige al menos un servicio').max(10).transform((a) => [...new Set(a)]),
+    /** Respuestas por pregunta: { "mueble-alto": "si", "ambientes": 3, "melamina-muebles": ["closet", "tv"] } */
+    respuestas: z
+      .record(slug, z.union([z.string().max(60), z.number(), z.array(z.string().max(60)).max(20)]))
+      .default({}),
     medidasModo: z.enum(MEDIDAS_MODO).default('nose'),
     largo: numero,
     ancho: numero,
     m2: numero,
-    acabado: z.enum(ACABADO_IDS).nullish(),
-    muebleAlto: z.enum(MUEBLE_ALTO).nullish(),
-    estructura: z.enum(ESTRUCTURA).nullish(),
-    ambientes: z.number().int().min(1).max(10).nullish(),
     distrito: z.string().trim().min(2).max(120),
     plazo: z.enum(PLAZO_IDS),
+    /** Datos extra en texto libre (opcional). */
+    notas: z.preprocess(vacioAUndefined, z.string().trim().max(MAX_NOTAS, `Máximo ${MAX_NOTAS} caracteres`).optional()),
     /**
      * Fotos ya subidas por el cliente a Cloudinary (public_id). Solo se aceptan ids de la carpeta de cotizaciones:
      * así nadie puede colar en la base una imagen de otra carpeta o de otra cuenta.

@@ -14,7 +14,7 @@ cp .env.dev.example .env.dev  # y completar: credenciales de la base, JWT_SECRET
 createdb seima_dev            # o desde pgAdmin: una base vacía con el nombre de DB_NAME
 
 npm run migration:run         # crea TODA la estructura de la base a partir de las migraciones
-npm run seed:categories       # categorías del catálogo
+npm run seed:categories       # categorías del catálogo de proyectos
 npm run seed:admin            # usuario del panel (ADMIN_EMAIL / ADMIN_PASSWORD del .env)
 npm run seed:demo             # (opcional) 7 proyectos de PRUEBA con fotos ficticias
 
@@ -53,7 +53,7 @@ npm run env:check -- --env=qa                # ¿qué entorno/base es? ¿conecta
 | Tipo | Comandos | dev | qa | pd |
 |---|---|---|---|---|
 | consulta | `dev`, `start`, `migration:generate`, `migration:show`, `env:check` | libre | libre | libre |
-| escritura | `migration:run`, `migration:revert`, `seed`, `seed:categories`, `seed:admin` | libre | libre | **exige `--yes`** |
+| escritura | `migration:run`, `migration:revert`, `seed`, `seed:categories`, `seed:catalog`, `seed:admin` | libre | libre | **exige `--yes`** |
 | destructivo | `db:reset`, `seed:demo` | libre | **exige `--yes`** | **bloqueado** |
 
 - Si falta o está mal una variable, la app no arranca y dice cuál (y qué archivo se leyó).
@@ -71,7 +71,7 @@ npm run env:check -- --env=qa                # ¿qué entorno/base es? ¿conecta
 | `npm run test:integration` | Solo integración (API real contra la base de pruebas) |
 | `npm run test:watch` | Unitarias en modo observador (se repiten al guardar) |
 | `npm run migration:generate -- src/database/migrations/Nombre` | **Genera una migración comparando las entidades con la base** |
-| `npm run migration:run` | Crea el schema (`DB_SCHEMA`) si falta y aplica las migraciones pendientes |
+| `npm run migration:run` | Crea el schema (`DB_SCHEMA`) si falta, aplica las migraciones pendientes y **sincroniza el catálogo del cotizador** (servicios y preguntas) |
 | `npm run db:schema` | Solo crea el schema si no existe |
 | `npm run migration:revert` | Revierte la última migración |
 | `npm run migration:show` | Muestra cuáles están aplicadas |
@@ -79,7 +79,7 @@ npm run env:check -- --env=qa                # ¿qué entorno/base es? ¿conecta
 | `npm run migration:run:prod -- --yes` | Igual que `migration:run` pero sobre `dist/` (despliegue; con `APP_ENV=pd` pide `--yes`) |
 | `npm run env:check` | Muestra entorno/base activos y prueba la conexión |
 | `npm run db:reset` | **Borra todo** y vuelve a crear la estructura (solo desarrollo) |
-| `npm run seed` · `seed:categories` · `seed:admin` · `seed:demo` | Cargas de datos (se pueden repetir sin duplicar) |
+| `npm run seed` · `seed:categories` · `seed:catalog` · `seed:admin` · `seed:demo` | Cargas de datos (se pueden repetir sin duplicar) |
 
 ## Cómo cambiar la base de datos (flujo de trabajo)
 
@@ -131,10 +131,30 @@ Módulos: `categories`, `projects` (incluye `project_photos`), `quotes`, `auth` 
 | `GET /categories` | Categorías activas, en orden |
 | `GET /projects?categoria=&destacado=&page=&limit=` | Proyectos publicados, destacados primero. `category` también vale como alias. Cada uno trae su **portada** (`antes` y `despues`: la foto principal de la etapa). `limit` máx. 100 (por defecto 50) |
 | `GET /projects/:slug` | Ficha completa: `fotos` agrupadas por etapa (`antes`, `durante`, `despues`), cada etapa ordenada, más la `portada` |
-| `POST /quotes` | Guarda la cotización y devuelve `{ id, mensaje, creadaEn }` (`mensaje` = resumen en texto). Exige `consentimiento: true`; `fotos` es la lista de public_id ya subidos a Cloudinary (máx. 6, de la carpeta de cotizaciones); `website` es un campo trampa (si viene lleno se descarta en silencio). Límite por IP (10/hora por defecto) |
+| `GET /quote-form` | **El formulario del cotizador:** los servicios activos y las preguntas de cada uno (con sus opciones). La web lo pide al cargar y arma el formulario con esto; ver "Cotizador parametrizado" |
+| `POST /quotes` | Guarda la cotización **como filas** (ver abajo) y devuelve `{ id, mensaje, creadaEn }` (`mensaje` = resumen en texto). Cuerpo: `servicios` (slugs), `respuestas` (`{ pregunta: opción \| número \| [opciones] }`), `notas` (hasta 500 caracteres), `fotos` (public_id ya subidos, máx. 6), `consentimiento: true` obligatorio, `website` (campo trampa: si viene lleno se descarta en silencio). Servicios o respuestas que no existen en el catálogo → 422. Límite por IP (10/hora por defecto) |
 | `POST /uploads/quote-photos/signature` | Devuelve la firma para subir las fotos **directo a Cloudinary** (`uploadUrl`, `apiKey`, `timestamp`, `folder`, `allowedFormats`, `signature`…). El API secret nunca sale del servidor. 503 si faltan las credenciales de Cloudinary. Límite por IP (20/hora) |
 
 Cada foto: `{ id, etapa, orden, esPrincipal, pie, ancho, alto, cloudinaryId, url }`. `url` es la URL pública de Cloudinary (`f_auto,q_auto`) o `null` en los datos de prueba (ids `demo/…`).
+
+### Cotizador parametrizado (servicios y preguntas en tablas)
+
+Nada de lo que pregunta el cotizador está escrito en el código de la web: vive en la base, para poder filtrar cotizaciones en el panel.
+
+| Tabla | Qué guarda |
+|---|---|
+| `services` | Servicios que se pueden pedir (cocina, baño…) |
+| `questions` | Preguntas (`tipo`: `unica`, `multiple` o `numero`; `etiqueta` corta para resúmenes; `min`/`max` si es número) |
+| `question_options` | Opciones de cada pregunta |
+| `question_services` | En qué servicios se hace cada pregunta (una pregunta puede servir a varios: el acabado se pregunta una sola vez) |
+| `quote_services` | Servicios que pidió cada cotización |
+| `quote_answers` | **Una fila por respuesta**: cotización + pregunta + opción (o `valor_numero`). Una pregunta múltiple genera una fila por opción |
+| `quote_photos` | Fotos de cada cotización |
+| `quotes` | Datos generales: cliente, medidas, distrito, plazo, `notas`, contacto, estado, resumen en texto |
+
+**Cambiar una pregunta, opción o servicio:** edita `src/database/seeds/catalog.data.ts` y corre `npm run migration:run` (o `seed:catalog`). Es idempotente: actualiza lo que existe y agrega lo nuevo por `slug`; **no borra** (hay respuestas guardadas que apuntan a esas filas; para retirar algo, `activo = false`). El formulario de la web lo toma solo, sin tocar su código. Una prueba (`tests/unit/catalog.test.ts`) revisa que el catálogo sea coherente.
+
+**Filtrar para el panel:** `QuotesRepository.search({ estado, servicio, respuestas: [{ pregunta, opcion | valor }], page, limit })`. Ejemplos: cocinas con mueble alto → `{ servicio: 'cocina', respuestas: [{ pregunta: 'mueble-alto', opcion: 'si' }] }`; baños de 2 → `{ respuestas: [{ pregunta: 'cantidad-banos', valor: 2 }] }`. `findByIdFull(id)` trae una cotización con servicios, respuestas (pregunta y opción), y fotos.
 
 **Fotos del cotizador:** la web pide la firma, sube cada foto a Cloudinary (`multipart` a `uploadUrl` con `file`, `api_key`, `timestamp`, `folder`, `allowed_formats`, `signature`) y luego manda los `public_id` que devuelve Cloudinary en `POST /quotes`. Requiere `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` en el `.env` del entorno.
 

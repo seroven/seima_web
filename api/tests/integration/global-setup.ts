@@ -5,6 +5,7 @@ import 'reflect-metadata';
 import { execSync } from 'node:child_process';
 import { AppDataSource } from '../../src/database/data-source';
 import { seedAdmin } from '../../src/database/seeds/admin.seed';
+import { seedCatalog } from '../../src/database/seeds/catalog.seed';
 import { seedCategories } from '../../src/database/seeds/categories.seed';
 import { seedDemo } from '../../src/database/seeds/demo.seed';
 
@@ -30,6 +31,7 @@ export default async function setup() {
 
   await AppDataSource.initialize();
   await seedCategories(AppDataSource);
+  await seedCatalog(AppDataSource);
   await seedDemo(AppDataSource);
   await seedAdmin(AppDataSource);
   await AppDataSource.destroy();

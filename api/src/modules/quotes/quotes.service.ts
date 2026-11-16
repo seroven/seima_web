@@ -1,63 +1,107 @@
 import { randomUUID } from 'node:crypto';
+import { validationError } from '../../common/errors/app-error';
+import type { CatalogRepository } from '../catalog/catalog.repository';
+import type { Pregunta } from '../catalog/pregunta.entity';
 import type { ProjectsRepository } from '../projects/projects.repository';
+import { resolverRespuestas, type PreguntaCatalogo } from './quote-answers';
 import { buildQuoteMessage } from './quote-message';
-import { SERVICIOS_CON_ACABADO } from './quote.constants';
 import type { CreateQuoteInput } from './quotes.schemas';
 import type { QuotesRepository } from './quotes.repository';
 
 export interface CreatedQuoteDto {
   id: string;
-  /** Texto listo para abrir WhatsApp (la web lo manda por wa.me). */
+  /** Resumen de la solicitud en texto. */
   mensaje: string;
   creadaEn: string;
 }
 
-/** Lógica de negocio de cotizaciones: limpia lo recibido, arma el mensaje y lo guarda. */
+const aCatalogo = (p: Pregunta): PreguntaCatalogo => ({
+  id: p.id,
+  slug: p.slug,
+  etiqueta: p.etiqueta,
+  tipo: p.tipo,
+  min: p.min,
+  max: p.max,
+  opciones: p.opciones.map((o) => ({ id: o.id, slug: o.slug, etiqueta: o.etiqueta })),
+  servicios: p.servicios.map((s) => s.slug),
+});
+
+/** Lógica de negocio de cotizaciones: valida contra el catálogo, limpia lo recibido, arma el resumen y lo guarda en tablas. */
 export class QuotesService {
   constructor(
     private readonly repository: QuotesRepository,
     private readonly projects: ProjectsRepository,
+    private readonly catalog: CatalogRepository,
   ) {}
 
   async create(input: CreateQuoteInput): Promise<CreatedQuoteDto> {
     // Campo trampa lleno = robot. Se responde como si todo hubiera ido bien, pero no se guarda nada.
     if (input.website) return { id: randomUUID(), mensaje: '', creadaEn: new Date().toISOString() };
 
+    // Los servicios deben existir y estar activos en el catálogo
+    const servicios = await this.catalog.findActiveServicesBySlugs(input.servicios);
+    const porSlug = new Map(servicios.map((s) => [s.slug, s]));
+    const faltantes = input.servicios.filter((s) => !porSlug.has(s));
+    if (faltantes.length) {
+      throw validationError(faltantes.map((s) => ({ campo: 'servicios', mensaje: `Servicio no disponible: ${s}` })));
+    }
+
+    // Las respuestas se validan contra las preguntas del catálogo; las que no aplican a estos servicios se descartan
+    const preguntas = (await this.catalog.findActiveQuestions()).map(aCatalogo);
+    const { filas, resumen } = resolverRespuestas(preguntas, input.servicios, input.respuestas);
+
     // Si el proyecto de referencia no existe o no está publicado, simplemente no se enlaza (no es un error del cliente)
     const proyecto = input.proyecto ? await this.projects.findPublishedBySlug(input.proyecto) : null;
 
-    // Solo se guarda lo que aplica al pedido (la web puede mandar valores de preguntas que ya no se muestran)
-    const conAcabado = input.servicios.some((s) => SERVICIOS_CON_ACABADO.includes(s));
+    // Solo se guarda lo que aplica al pedido
     const largo = input.medidasModo === 'lxa' ? (input.largo ?? null) : null;
     const ancho = input.medidasModo === 'lxa' ? (input.ancho ?? null) : null;
     const areaM2 =
       input.medidasModo === 'm2' ? (input.m2 ?? null) : input.medidasModo === 'lxa' && largo && ancho ? Math.round(largo * ancho * 10) / 10 : null;
+    const notas = input.notas ?? null;
 
-    const datos = {
+    const mensaje = buildQuoteMessage(
+      {
+        cliente: input.cliente,
+        servicios: input.servicios.map((s) => porSlug.get(s)!.nombre),
+        respuestas: resumen,
+        medidasModo: input.medidasModo,
+        largo,
+        ancho,
+        areaM2,
+        distrito: input.distrito,
+        plazo: input.plazo,
+        notas,
+        fotos: input.fotos.length,
+        nombre: input.nombre,
+        whatsapp: input.whatsapp,
+        razonSocial: input.cliente === 'empresa' ? (input.razonSocial ?? null) : null,
+        ruc: input.cliente === 'empresa' ? (input.ruc ?? null) : null,
+      },
+      proyecto?.titulo,
+    );
+
+    const guardada = await this.repository.create({
       cliente: input.cliente,
-      servicios: input.servicios,
+      // Cada servicio, respuesta y foto es una fila en su tabla (quote_services, quote_answers, quote_photos), en una sola transacción
+      servicios: input.servicios.map((s) => ({ id: porSlug.get(s)!.id })),
+      respuestas: filas,
+      fotos: input.fotos.map((cloudinaryId, orden) => ({ cloudinaryId, orden })),
       medidasModo: input.medidasModo,
       largo,
       ancho,
       areaM2,
-      acabado: conAcabado ? (input.acabado ?? null) : null,
-      muebleAlto: input.servicios.includes('cocina') ? (input.muebleAlto ?? null) : null,
-      estructura: input.servicios.includes('cocina') ? (input.estructura ?? null) : null,
-      ambientes: input.servicios.includes('departamento') ? (input.ambientes ?? null) : null,
       distrito: input.distrito,
       plazo: input.plazo,
-      // Cada foto se guarda en quote_photos (con su orden) en la misma transacción que la cotización
-      fotos: input.fotos.map((cloudinaryId, orden) => ({ cloudinaryId, orden })),
+      notas,
       consentimientoEn: new Date(),
       nombre: input.nombre,
       whatsapp: input.whatsapp,
       razonSocial: input.cliente === 'empresa' ? (input.razonSocial ?? null) : null,
       ruc: input.cliente === 'empresa' ? (input.ruc ?? null) : null,
       proyectoId: proyecto?.id ?? null,
-    };
-
-    const mensaje = buildQuoteMessage({ ...datos, fotos: input.fotos.length }, proyecto?.titulo);
-    const guardada = await this.repository.create({ ...datos, mensaje });
+      mensaje,
+    });
     return { id: guardada.id, mensaje, creadaEn: guardada.createdAt.toISOString() };
   }
 }

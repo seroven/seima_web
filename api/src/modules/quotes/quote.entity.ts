@@ -1,11 +1,17 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, type Relation, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, PrimaryGeneratedColumn, type Relation, UpdateDateColumn } from 'typeorm';
+import { Servicio } from '../catalog/servicio.entity';
 import { Project } from '../projects/project.entity';
 import { QuotePhoto } from './quote-photo.entity';
 import { CLIENTES, ESTADOS_COTIZACION, MEDIDAS_MODO, type Cliente, type EstadoCotizacion, type MedidasModo } from './quote.constants';
+import { RespuestaCotizacion } from './respuesta-cotizacion.entity';
 
 const aNumero = { to: (v?: number | null) => v ?? null, from: (v: string | null) => (v === null ? null : Number(v)) };
 
-/** Solicitud enviada desde el cotizador. Luis la revisa desde el panel (cambiando su `estado`). */
+/**
+ * Solicitud enviada desde el cotizador. Luis la revisa desde el panel (cambiando su `estado`).
+ * Todo se guarda como campos y tablas para poder filtrar: servicios (quote_services), respuestas a las preguntas
+ * de cada servicio (quote_answers), fotos (quote_photos) y los datos generales de abajo.
+ */
 @Entity('quotes')
 @Index('idx_quotes_estado_creada', ['estado', 'createdAt'])
 export class Quote {
@@ -15,8 +21,14 @@ export class Quote {
   @Column({ type: 'enum', enum: CLIENTES, enumName: 'quote_cliente' })
   cliente!: Cliente;
 
-  @Column({ type: 'text', array: true })
-  servicios!: string[];
+  /** Servicios que pidió (tabla quote_services). */
+  @ManyToMany(() => Servicio)
+  @JoinTable({ name: 'quote_services', joinColumn: { name: 'quote_id' }, inverseJoinColumn: { name: 'service_id' } })
+  servicios!: Relation<Servicio[]>;
+
+  /** Respuestas a las preguntas de esos servicios (tabla quote_answers; se guardan junto con la cotización). */
+  @OneToMany(() => RespuestaCotizacion, (r) => r.quote, { cascade: ['insert'] })
+  respuestas!: Relation<RespuestaCotizacion[]>;
 
   @Column({ type: 'enum', enum: MEDIDAS_MODO, enumName: 'quote_medidas_modo', default: 'nose' })
   medidasModo!: MedidasModo;
@@ -31,23 +43,15 @@ export class Quote {
   @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true, transformer: aNumero })
   areaM2!: number | null;
 
-  @Column({ type: 'varchar', length: 40, nullable: true })
-  acabado!: string | null;
-
-  @Column({ type: 'varchar', length: 10, nullable: true })
-  muebleAlto!: string | null;
-
-  @Column({ type: 'varchar', length: 10, nullable: true })
-  estructura!: string | null;
-
-  @Column({ type: 'int', nullable: true })
-  ambientes!: number | null;
-
   @Column({ type: 'varchar', length: 120 })
   distrito!: string;
 
   @Column({ type: 'varchar', length: 20 })
   plazo!: string;
+
+  /** Datos extra que el cliente quiso contar (texto libre, hasta 500 caracteres). */
+  @Column({ type: 'text', nullable: true })
+  notas!: string | null;
 
   /** Fotos que adjuntó el cliente (tabla quote_photos; se guardan junto con la cotización). */
   @OneToMany(() => QuotePhoto, (f) => f.quote, { cascade: ['insert'] })
