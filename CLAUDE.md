@@ -24,30 +24,54 @@ seima_web/
 ├── STATE.md         # estado e historial vivo (se actualiza siempre)
 ├── docs/            # brief.md (fuente de verdad), modelo-datos.md + fuentes/
 ├── web/             # Astro (web pública)
-└── api/             # Express (backend)
+└── api/             # Express + TypeScript + TypeORM (backend; ver api/README.md)
 ```
 
 ## Versionamiento
 
-Repo en GitHub (`origin` = seroven/seima_web). Ramas: `main` (estable) y **`staging` (aquí se trabaja)**. Se pasa a `main` solo por merge/PR desde `staging`. No hagas commit ni push sin que Sebas lo pida. Commits en español, con el trailer de atribución indicado por el entorno.
+Repo en GitHub (`origin` = seroven/seima_web). Ramas: `main` (estable) y **`staging` (aquí se trabaja)**. Se pasa a `main` solo por merge/PR desde `staging`. No hagas commit ni push sin que Sebas lo pida.
+
+### Formato de los commits (obligatorio)
+
+**En inglés** y con esta estructura: `[proyecto] tipo: explicación`
+
+- **`[proyecto]`** — qué parte toca: `[web]`, `[api]`, `[docs]` (documentación, `STATE.md`, `CLAUDE.md`) o `[repo]` (cambios transversales: `.gitignore`, configuración raíz). Un commit toca **un solo proyecto**; si un cambio afecta a dos, son dos commits.
+- **`tipo`** — `feat` (funcionalidad nueva), `fix` (corrección de un error), `refactor` (reestructura sin cambiar el comportamiento), `perf`, `style` (solo formato o estilos visuales sin lógica), `test`, `docs`, `chore` (configuración, dependencias, mantenimiento), `build`, `ci`.
+- **`explicación`** — resumen en imperativo y en minúscula ("add", "fix", "remove"…), sin punto final, idealmente ≤ 72 caracteres en total. Qué se hizo, no cómo. Si hace falta el porqué, va en el cuerpo del commit (línea en blanco y párrafo).
+- Commits **pequeños y lógicos**: una idea por commit. Incluir el trailer de atribución indicado por el entorno.
+- Ejemplos: `[api] feat: add JWT login endpoint for the admin panel` · `[web] fix: keep focus ring from being clipped in quote steps` · `[docs] docs: record environment flags in STATE.md`.
+- Los commits anteriores a esta regla (en español) no se reescriben.
 
 El **panel administrativo es un proyecto aparte y está fuera de alcance** en esta etapa. No crear login ni rutas de administración.
 
 ## Stack
 
 - **web/** — Astro + islas de React solo donde hay interactividad real (cotizador, filtros del catálogo). Todo lo demás, componentes `.astro`.
-- **api/** — Express (Node) + PostgreSQL. Fotos en **Cloudinary**; la base de datos guarda solo URLs/public_ids.
+- **api/** — Express (Node) + **TypeScript** + **TypeORM** + PostgreSQL. Fotos en **Cloudinary**; la base de datos guarda solo public_ids. Arquitectura por módulos, migraciones automáticas y JWT para el panel (ver "API" más abajo y `api/README.md`).
 - Hosting de pruebas: Render.
 - Sin autenticación.
+
+## API (reglas de arquitectura, obligatorias en `api/`)
+
+- **Un módulo por entidad/área** en `api/src/modules/<nombre>/`, con capas: `entity` → `repository` → `service` → `controller` → `routes` (+ `schemas` Zod e `index.ts` que los arma). **Solo el repository usa TypeORM**; el service tiene la lógica de negocio y no conoce Express; el controller no tiene lógica.
+- **TypeScript + TypeORM, sin SQL crudo** (QueryBuilder o repositorios). Cada `@Column` lleva su `type` explícito (`tsx` no emite metadatos de decoradores). Entidad nueva → añadirla a `database/entities.ts`.
+- **La estructura de la base solo cambia por migraciones** generadas con `npm run migration:generate`. `synchronize` queda apagado siempre. Nunca se edita una migración ya aplicada: se crea otra.
+- **Credenciales y secretos solo en archivos de entorno** (validados con Zod al arrancar), uno por entorno: `.env.dev`, `.env.qa`, `.env.pd`, `.env.test`; mantener sus `.example` al día. Nunca en el código ni en git.
+- **Entornos con flag:** todos los comandos de `api/` aceptan `--env=dev|qa|pd` (`npm run migration:run -- --env=qa`); por defecto `dev`, o `APP_ENV` en Render. Los scripts pasan por `api/scripts/run.js`, que aplica guardas (en pd las escrituras piden `--yes` y los comandos destructivos están bloqueados). Un script nuevo debe usar ese ejecutor.
+- **Rutas públicas de la web: sin JWT** (con validación Zod y límites de peticiones donde haya escritura). **Rutas del panel: `authenticate` + `requireRole`.**
+- Validar TODO lo que entra con Zod; errores con `AppError` y el formato `{ error: { code, message, details } }`.
+- Toda función o endpoint nuevo lleva su prueba en `api/tests`: **unitaria** (`tests/unit`, sin base de datos, repositorio simulado; `npm run test:unit`) para la lógica y de **integración** (`tests/integration`, con `.env.test` apuntando a una base de pruebas) para los endpoints. `npm test` corre ambas.
 
 ## Alcance de la etapa 1
 
 1. Web pública: Inicio, Proyectos (catálogo con filtros), Ficha de proyecto, Empresas, Cotizador.
 2. API mínima:
+   - Todas bajo el prefijo `/api/v1`. Públicas (sin JWT):
    - `GET /categories`
-   - `GET /projects?category=` (lista)
+   - `GET /projects?categoria=` (lista; `category` también vale)
    - `GET /projects/:slug` (ficha con fotos antes/durante/después)
    - `POST /quotes` (guarda la solicitud y devuelve el texto para WhatsApp)
+   - Autenticación del panel: `POST /auth/login`, `GET /auth/me` (JWT). El resto de rutas del panel irán protegidas con `authenticate`.
 3. Script de **seed** para cargar proyectos (no hay panel todavía).
 
 Modelo de datos orientativo (ajustable; **las decisiones sobre fotos están en `docs/modelo-datos.md`**: etapa, foto principal por etapa, galería): `categories`, `projects` (slug, título, categoría, distrito, área m², días, servicios, descripción, destacado, tipo de cliente), `project_photos` (project_id, etapa: antes|durante|después, cloudinary_id, orden), `quotes` (tipo cliente, servicios, medidas, acabado, distrito, plazo, nombre, whatsapp, razón social/RUC opcionales, fotos, fecha).
