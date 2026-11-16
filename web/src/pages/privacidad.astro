@@ -1,0 +1,50 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base
+  title="Cómo tratamos tus datos · SEIMA Servicios Generales"
+  description="Qué datos pedimos en el cotizador, para qué los usamos y cómo puedes pedir que los corrijamos o eliminemos."
+>
+  <section class="priv light">
+    <div class="wrap">
+      <header class="priv__head">
+        <p class="eyebrow">Privacidad</p>
+        <h1>Cómo tratamos tus datos</h1>
+        <p class="priv__draft">[BORRADOR · pendiente de revisión por el dueño del negocio antes de publicar]</p>
+      </header>
+
+      <div class="priv__body">
+        <h2>Quién es responsable</h2>
+        <p>SEIMA Servicios Generales (Luis Rodríguez). Contacto: [DATO REAL].</p>
+
+        <h2>Qué datos pedimos</h2>
+        <p>En el cotizador: tu nombre, tu número de WhatsApp, el distrito o ciudad de la obra, lo que necesitas y, si quieres, fotos del espacio. Si eres empresa, también la razón social y, opcionalmente, el RUC.</p>
+
+        <h2>Para qué los usamos</h2>
+        <p>Solo para preparar tu cotización y escribirte por WhatsApp para responderla. No los vendemos ni los usamos para otra cosa.</p>
+
+        <h2>Dónde se guardan</h2>
+        <p>Tu solicitud se guarda en nuestra base de datos. Las fotos se almacenan en Cloudinary, un servicio de almacenamiento de imágenes.</p>
+
+        <h2>Cuánto tiempo los conservamos</h2>
+        <p>Mientras sea necesario para atender tu solicitud y el servicio que se derive de ella. [DATO REAL: plazo de conservación]</p>
+
+        <h2>Tus derechos</h2>
+        <p>Puedes pedirnos acceder a tus datos, corregirlos, eliminarlos u oponerte a su uso, conforme a la Ley N.º 29733 de Protección de Datos Personales. Escríbenos por los medios de contacto indicados arriba y lo atendemos.</p>
+
+        <p class="priv__back"><a class="btn btn--ink" href="/cotizador">← Volver al cotizador</a></p>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .priv { padding-block: clamp(2.2rem, 6vw, 4.5rem) clamp(4rem, 8vw, 6rem); min-height: 70svh; }
+  .priv__head { display: grid; gap: 0.9rem; margin-bottom: clamp(1.4rem, 4vw, 2.2rem); }
+  .priv__head h1 { font-size: clamp(2.2rem, 7vw, 3.8rem); line-height: 1; letter-spacing: -0.02em; }
+  .priv__draft { font-weight: 800; font-size: 0.85rem; color: var(--red-text); }
+  .priv__body { max-width: 44rem; display: grid; gap: 0.7rem; }
+  .priv__body h2 { font-size: 1.15rem; margin-top: 1.1rem; }
+  .priv__body p { color: var(--muted-light); line-height: 1.65; }
+  .priv__back { margin-top: 1.6rem; }
+</style>
