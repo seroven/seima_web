@@ -1,7 +1,7 @@
 # Modelo de datos — puntos decididos para cuando armemos la API
 
 > Complementa `CLAUDE.md` (modelo orientativo) y `docs/brief.md`. Aquí van las decisiones que afectan la base de datos y que salieron del diseño de la web.
-> Estado: **decidido en conversación (2026-11-15), todavía sin implementar** (la API aún no existe).
+> Estado: **implementado en `api/`** (migración `Inicial`, 2026-11-16). Las entidades están en `api/src/modules/**/*.entity.ts`; el detalle de endpoints y arquitectura, en `api/README.md`.
 
 ## 1. Fotos de proyecto
 
@@ -51,6 +51,15 @@ Restricciones:
   { "fotos": { "antes": [ ... ], "durante": [ ... ], "despues": [ ... ] } }
   ```
 - El **panel** (fuera de alcance por ahora) necesitará: subir varias fotos a una etapa, reordenar, marcar la principal y borrar.
+
+## 1.4 Cómo quedó implementado (api/)
+
+- Tablas: `categories`, `projects`, `project_photos`, `quotes`, `admin_users` (+ `migrations`). IDs `uuid` (`gen_random_uuid()`, extensión pgcrypto). Columnas en `snake_case` (la API/entidades usan camelCase en español: `esPrincipal` → `es_principal`).
+- `project_photos`: índice único parcial `uq_project_photos_principal` (una principal por proyecto y etapa) y único `(project_id, etapa, orden)`. Borrar un proyecto borra sus fotos (`ON DELETE CASCADE`).
+- `projects.publicado`: el panel podrá despublicar sin borrar. `projects.categoria_id` es `RESTRICT` (no se borra una categoría con proyectos).
+- `GET /projects` entrega la **portada** por proyecto (`antes` y `despues`: la foto principal; si falta, la primera por orden) con una sola consulta extra (`DISTINCT ON`), sin mandar toda la galería. `GET /projects/:slug` entrega `fotos` agrupadas por etapa. Cada foto trae `cloudinaryId` y `url` (null si es de prueba: ids `demo/…`).
+- `quotes`: guarda lo que aplica al pedido (el acabado solo si hay enchape; mueble alto/estructura solo con cocina; ambientes solo con departamento), el `mensaje` exacto de WhatsApp, `estado` (`nueva` · `contactada` · `cerrada` · `descartada`) para que Luis las gestione desde el panel, y `proyecto_id` (`SET NULL` si borran el proyecto). Las fotos del cliente por ahora solo se cuentan (`fotos_count`); `fotos_urls` está listo para cuando exista la subida.
+- `admin_users`: correo en minúsculas, hash bcrypt, rol, `activo` y `ultimo_acceso`.
 
 ## 2. Resto del modelo (resumen, sin cambios)
 
