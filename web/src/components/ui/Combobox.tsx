@@ -1,5 +1,6 @@
 // Dropdown reutilizable (combobox con búsqueda), con el estilo de la web.
 // - Lista con alto máximo (por defecto 15rem) y scroll interno estilizado.
+//   `data-lenis-prevent` en la lista: sin él, Lenis (scroll suave de la página) se queda con la rueda del mouse y la lista no se desplaza.
 // - Teclado: ↑ ↓ Inicio Fin, Enter elige, Esc cierra, Tab cierra. Con Enter sin opción activa deja enviar el formulario.
 // - `allowCustom`: permite escribir un valor que no está en la lista (p. ej. un distrito poco común).
 // - Se abre hacia arriba si abajo no hay espacio.
@@ -145,6 +146,7 @@ export default function Combobox({ id, value, onChange, options, placeholder, al
             ref={list}
             id={listId}
             role="listbox"
+            data-lenis-prevent
             className={`ui-combo__panel ui-combo__panel--${up ? 'up' : 'down'}`}
             initial={reduce ? false : { opacity: 0, y: up ? 8 : -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}

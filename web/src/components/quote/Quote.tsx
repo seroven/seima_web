@@ -245,7 +245,7 @@ export default function Quote() {
       <div className="q-sheet">
         <AnimatePresence>
           {sheet && (
-            <motion.div className="q-sheet__panel" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ duration: reduce ? 0 : 0.35, ease: [0.2, 0.7, 0, 1] }}>
+            <motion.div className="q-sheet__panel" data-lenis-prevent initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ duration: reduce ? 0 : 0.35, ease: [0.2, 0.7, 0, 1] }}>
               <Summary data={data} tituloProyecto={tituloProyecto} />
             </motion.div>
           )}
