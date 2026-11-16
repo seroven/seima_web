@@ -151,7 +151,9 @@ export default function Quote() {
   };
 
   const filas = resumenFilas(data, tituloProyecto);
-  const nombre = data.nombre.trim().split(' ')[0];
+  // Primer nombre con mayúscula inicial (si lo escribieron TODO EN MAYÚSCULAS, el saludo no grita)
+  const primero = data.nombre.trim().split(/\s+/)[0] ?? '';
+  const nombre = primero.charAt(0).toUpperCase() + primero.slice(1).toLowerCase();
   const wa = waLink(`Hola, soy ${data.nombre.trim()}. Acabo de enviar una solicitud desde la web de SEIMA.`);
 
   return (
@@ -172,7 +174,7 @@ export default function Quote() {
             </p>
             <div className="q-nav">
               {wa ? (
-                <a className="btn btn--ghost" href={wa} target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
+                <a className="btn" href={wa} target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
               ) : (
                 <span className="btn btn--off q-off" aria-disabled="true">Escríbenos por WhatsApp · [NÚMERO PENDIENTE]</span>
               )}
