@@ -9,7 +9,7 @@ import Sending from './Sending';
 import Summary, { resumenFilas } from './Summary';
 import { StepCliente, StepDatos, StepEspacio, StepLugar, StepResumen, StepServicios } from './Steps';
 import { projects } from '../../data/projects';
-import { CATEGORIA_A_SERVICIO, SendError, emptyQuote, formatCelular, submitQuote, validarPaso, type QuoteData } from '../../lib/quote';
+import { CATEGORIA_A_SERVICIO, SendError, emptyQuote, fetchCatalogo, formatCelular, normalizarRespuestas, submitQuote, validarPaso, type Catalogo, type QuoteData } from '../../lib/quote';
 import { waLink } from '../../lib/whatsapp';
 import './quote.css';
 
@@ -40,6 +40,8 @@ export default function Quote() {
   const [consent, setConsent] = useState(false); // se pide en cada envío: no se recuerda
   const [website, setWebsite] = useState(''); // campo trampa anti-robots (siempre vacío para una persona)
   const [ready, setReady] = useState(false);
+  const [catalogo, setCatalogo] = useState<Catalogo | null>(null); // servicios y preguntas (vienen de la API)
+  const [catalogoError, setCatalogoError] = useState<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const doneHeading = useRef<HTMLHeadingElement>(null);
   const top = useRef<HTMLDivElement>(null);
@@ -87,6 +89,23 @@ export default function Quote() {
 
   useEffect(() => setData((d) => (d.fotos === files.length ? d : { ...d, fotos: files.length })), [files]);
 
+  // Carga del catálogo: qué servicios hay y qué se pregunta en cada uno
+  const cargarCatalogo = () => {
+    setCatalogoError(null);
+    fetchCatalogo().then(setCatalogo, (e) => setCatalogoError(e instanceof SendError ? e.message : 'No pudimos cargar las opciones. Inténtalo otra vez.'));
+  };
+  useEffect(cargarCatalogo, []);
+
+  // Las respuestas siguen a los servicios elegidos: se descartan las de servicios que se quitaron (o que ya no existen en el
+  // catálogo) y a las preguntas numéricas se les pone su mínimo. Solo se actualiza si algo cambió.
+  useEffect(() => {
+    if (!catalogo) return;
+    setData((d) => {
+      const nuevas = normalizarRespuestas(catalogo, d.servicios, d.respuestas);
+      return JSON.stringify(nuevas) === JSON.stringify(d.respuestas) ? d : { ...d, respuestas: nuevas };
+    });
+  }, [catalogo, data.servicios]);
+
   // Al cambiar de paso: foco en el título y la tarjeta a la vista (no en la primera carga)
   useEffect(() => {
     if (first.current) {
@@ -130,7 +149,7 @@ export default function Quote() {
   const verTarjeta = () => top.current?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
 
   const send = async () => {
-    if (fase !== 'form') return;
+    if (fase !== 'form' || !catalogo) return;
     if (!consent) return setError('Marca la casilla para poder enviar tu solicitud.');
     setError(null);
     setFinishing(false);
@@ -140,7 +159,7 @@ export default function Quote() {
     verTarjeta();
     const inicio = Date.now();
     try {
-      await submitQuote(data, {
+      await submitQuote(data, catalogo, {
         files,
         website,
         onProgress: (hechas, total) => {
@@ -193,7 +212,7 @@ export default function Quote() {
     show: { clipPath: 'inset(-10% -2% -10% -2%)', y: 0, transition: { duration: reduce ? 0 : 0.6, ease: EASE } },
   };
 
-  const filas = resumenFilas(data, tituloProyecto);
+  const filas = resumenFilas(data, tituloProyecto, catalogo);
   const primero = data.nombre.trim().split(/\s+/)[0] ?? '';
   // Primer nombre con mayúscula inicial (si lo escribieron TODO EN MAYÚSCULAS, el saludo no grita)
   const nombre = primero.charAt(0).toUpperCase() + primero.slice(1).toLowerCase();
@@ -279,13 +298,14 @@ export default function Quote() {
                 <motion.div key={step} custom={dir} variants={variants} initial="enter" animate="center" exit="exit" transition={{ duration: reduce ? 0 : 0.32, ease: EASE }}>
                   <h2 className="q-title" ref={heading} tabIndex={-1}>{TITLES[step]}</h2>
                   {step === 0 && <StepCliente data={data} set={set} />}
-                  {step === 1 && <StepServicios data={data} set={set} />}
-                  {step === 2 && <StepEspacio data={data} set={set} />}
+                  {step === 1 && <StepServicios data={data} set={set} catalogo={catalogo} catalogoError={catalogoError} onReintentar={cargarCatalogo} />}
+                  {step === 2 && <StepEspacio data={data} set={set} catalogo={catalogo} />}
                   {step === 3 && <StepLugar data={data} set={set} files={files} onFiles={setFiles} />}
                   {step === 4 && <StepDatos data={data} set={set} />}
                   {step === 5 && (
                     <StepResumen
                       data={data}
+                      catalogo={catalogo}
                       tituloProyecto={tituloProyecto}
                       consent={consent}
                       onConsent={(v) => {
@@ -318,7 +338,7 @@ export default function Quote() {
 
       {/* Resumen en vivo: columna fija en escritorio */}
       <aside className="q-side" aria-label="Resumen de tu solicitud">
-        <Summary data={data} tituloProyecto={tituloProyecto} />
+        <Summary data={data} tituloProyecto={tituloProyecto} catalogo={catalogo} />
       </aside>
 
       {/* En celular: barra inferior que despliega el resumen */}
@@ -326,7 +346,7 @@ export default function Quote() {
         <AnimatePresence>
           {sheet && (
             <motion.div className="q-sheet__panel" data-lenis-prevent initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ duration: reduce ? 0 : 0.35, ease: EASE }}>
-              <Summary data={data} tituloProyecto={tituloProyecto} />
+              <Summary data={data} tituloProyecto={tituloProyecto} catalogo={catalogo} />
             </motion.div>
           )}
         </AnimatePresence>

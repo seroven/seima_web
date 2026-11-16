@@ -6,4 +6,5 @@ export { default as Field } from './Field';
 export { default as Icon } from './Icon';
 export { default as OptionCard, OptionGrid } from './OptionCard';
 export { default as Stepper } from './Stepper';
+export { default as TextArea } from './TextArea';
 export { default as TextInput } from './TextInput';

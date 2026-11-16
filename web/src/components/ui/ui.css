@@ -21,6 +21,7 @@
 }
 .ui-input::placeholder { color: #9a9a9a; }
 .ui-input:focus { outline: none; box-shadow: var(--ring); }
+.ui-textarea { min-height: 7.5rem; padding-block: 0.9rem; line-height: 1.5; resize: vertical; }
 
 /* Con prefijo (p. ej. +51) */
 .ui-prefix { display: flex; align-items: center; gap: 0.7rem; min-height: 52px; padding: 0 1rem 0 0.9rem; border-radius: 14px; background: #fff; transition: box-shadow 0.2s ease; }

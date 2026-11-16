@@ -1,9 +1,37 @@
-// Lógica del cotizador: tipos, opciones, validación y envío.
+// Lógica del cotizador: tipos, catálogo (servicios y preguntas que vienen de la API), validación y envío.
 // El envío es directo a la API (POST /quotes): las fotos del cliente se suben antes a Cloudinary y la solicitud queda
 // registrada en la base de datos. WhatsApp ya no es el canal de envío, solo el de respuesta.
 
 export type Cliente = 'persona' | 'empresa';
 export type MedidasModo = 'lxa' | 'm2' | 'nose';
+
+/** Respuesta a una pregunta: un slug de opción, varios (pregunta múltiple) o un número. */
+export type Respuesta = string | string[] | number;
+export type Respuestas = Record<string, Respuesta>;
+
+/* ---------- Catálogo (GET /quote-form): qué servicios hay y qué se pregunta en cada uno ---------- */
+export interface ServicioCatalogo {
+  slug: string;
+  nombre: string;
+  /** Nombre del ícono (components/ui/Icon). */
+  icono: string;
+}
+export interface PreguntaCatalogo {
+  slug: string;
+  texto: string;
+  /** Nombre corto para resúmenes. */
+  etiqueta: string;
+  tipo: 'unica' | 'multiple' | 'numero';
+  min: number | null;
+  max: number | null;
+  opciones: { slug: string; etiqueta: string; descripcion: string | null }[];
+  /** slugs de los servicios en los que se hace. */
+  servicios: string[];
+}
+export interface Catalogo {
+  servicios: ServicioCatalogo[];
+  preguntas: PreguntaCatalogo[];
+}
 
 export interface QuoteData {
   cliente: Cliente | null;
@@ -12,13 +40,13 @@ export interface QuoteData {
   largo: string;
   ancho: string;
   m2: string;
-  acabado: string | null;
-  muebleAlto: 'si' | 'no' | 'nose' | null;
-  estructura: 'hay' | 'cero' | null;
-  ambientes: number;
+  /** Respuestas a las preguntas de los servicios elegidos, por slug de pregunta. */
+  respuestas: Respuestas;
   distrito: string;
   plazo: string | null;
   fotos: number;
+  /** Datos extra en texto libre (opcional). */
+  notas: string;
   nombre: string;
   whatsapp: string;
   razonSocial: string;
@@ -34,13 +62,11 @@ export const emptyQuote: QuoteData = {
   largo: '',
   ancho: '',
   m2: '',
-  acabado: null,
-  muebleAlto: null,
-  estructura: null,
-  ambientes: 2,
+  respuestas: {},
   distrito: '',
   plazo: null,
   fotos: 0,
+  notas: '',
   nombre: '',
   whatsapp: '',
   razonSocial: '',
@@ -48,20 +74,75 @@ export const emptyQuote: QuoteData = {
   proyecto: null,
 };
 
-export const SERVICIOS = [
-  { id: 'cocina', label: 'Cocina', icon: 'cocinas' },
-  { id: 'bano', label: 'Baño', icon: 'banos' },
-  { id: 'departamento', label: 'Departamento completo', icon: 'departamentos' },
-  { id: 'divisiones', label: 'Divisiones y cuartos', icon: 'divisiones' },
-  { id: 'techo', label: 'Techo en drywall', icon: 'techos' },
-  { id: 'enchapado', label: 'Enchapado', icon: 'enchapado' },
-  { id: 'electricidad', label: 'Electricidad', icon: 'electricidad' },
-  { id: 'melamina', label: 'Muebles de melamina', icon: 'melamina' },
-  { id: 'pintura', label: 'Pintura', icon: 'remodelaciones' },
-  { id: 'local', label: 'Local comercial', icon: 'locales' },
-] as const;
+export const MAX_NOTAS = 500;
 
-export const servicioLabel = (id: string) => SERVICIOS.find((s) => s.id === id)?.label ?? id;
+/** Nombre legible de un servicio (si aún no cargó el catálogo, el slug). */
+export const servicioNombre = (c: Catalogo | null, slug: string) => c?.servicios.find((x) => x.slug === slug)?.nombre ?? slug;
+
+/** Preguntas que aplican a los servicios elegidos, en el orden del catálogo (cada una una sola vez). */
+export const preguntasAplicables = (c: Catalogo, elegidos: string[]): PreguntaCatalogo[] =>
+  c.preguntas.filter((p) => p.servicios.some((s) => elegidos.includes(s)));
+
+export interface GrupoPreguntas {
+  /** Identificador estable del grupo. */
+  clave: string;
+  titulo: string;
+  preguntas: PreguntaCatalogo[];
+}
+
+/**
+ * Agrupa las preguntas para mostrarlas. Las que sirven a VARIOS servicios del pedido (p. ej. el acabado en cocina + baño)
+ * van juntas en "Para todo tu pedido"; el resto, bajo el servicio al que pertenecen. Cada pregunta sale una sola vez.
+ */
+export function gruposDePreguntas(c: Catalogo, elegidos: string[]): GrupoPreguntas[] {
+  const aplicables = preguntasAplicables(c, elegidos);
+  const enPedido = (p: PreguntaCatalogo) => p.servicios.filter((s) => elegidos.includes(s));
+  const grupos: GrupoPreguntas[] = [];
+
+  const compartidas = aplicables.filter((p) => enPedido(p).length > 1);
+  if (compartidas.length) grupos.push({ clave: 'compartidas', titulo: 'Para todo tu pedido', preguntas: compartidas });
+
+  for (const servicio of c.servicios) {
+    if (!elegidos.includes(servicio.slug)) continue;
+    const propias = aplicables.filter((p) => enPedido(p).length === 1 && enPedido(p)[0] === servicio.slug);
+    if (propias.length) grupos.push({ clave: servicio.slug, titulo: servicio.nombre, preguntas: propias });
+  }
+  return grupos;
+}
+
+/**
+ * Deja solo las respuestas que valen: de preguntas que aplican a los servicios elegidos y con opciones que existen.
+ * A las preguntas numéricas sin contestar les pone el mínimo (el contador siempre muestra un valor).
+ */
+export function normalizarRespuestas(c: Catalogo, elegidos: string[], r: Respuestas): Respuestas {
+  const salida: Respuestas = {};
+  for (const p of preguntasAplicables(c, elegidos)) {
+    const v = r[p.slug];
+    if (p.tipo === 'numero') {
+      const min = p.min ?? 0;
+      const max = p.max ?? Number.MAX_SAFE_INTEGER;
+      salida[p.slug] = typeof v === 'number' && v >= min && v <= max ? v : min;
+    } else if (p.tipo === 'unica') {
+      if (typeof v === 'string' && p.opciones.some((o) => o.slug === v)) salida[p.slug] = v;
+    } else {
+      const lista = Array.isArray(v) ? v.filter((x) => p.opciones.some((o) => o.slug === x)) : [];
+      if (lista.length) salida[p.slug] = lista;
+    }
+  }
+  return salida;
+}
+
+/** Las respuestas ya contestadas, como etiqueta + texto, en el orden del catálogo (para el resumen). */
+export function filasRespuestas(c: Catalogo, elegidos: string[], r: Respuestas): { slug: string; etiqueta: string; valor: string }[] {
+  const filas: { slug: string; etiqueta: string; valor: string }[] = [];
+  for (const p of preguntasAplicables(c, elegidos)) {
+    const v = r[p.slug];
+    if (v === undefined) continue;
+    const nombres = (Array.isArray(v) ? v : [v]).map((x) => (p.tipo === 'numero' ? String(x) : (p.opciones.find((o) => o.slug === x)?.etiqueta ?? String(x))));
+    filas.push({ slug: p.slug, etiqueta: p.etiqueta, valor: nombres.join(', ') });
+  }
+  return filas;
+}
 
 /** De la categoría del catálogo al servicio del cotizador (para preseleccionar). */
 export const CATEGORIA_A_SERVICIO: Record<string, string> = {
@@ -75,13 +156,6 @@ export const CATEGORIA_A_SERVICIO: Record<string, string> = {
   locales: 'local',
 };
 
-export const ACABADOS = [
-  { id: 'estandar', label: 'Estándar', desc: 'Buen acabado, el más usado' },
-  { id: 'corte45', label: 'Corte 45° + resina', desc: 'Bordes a inglete y resina' },
-  { id: 'granito', label: 'Granito o formato grande', desc: 'Piezas grandes, más premium' },
-  { id: 'recomiendame', label: 'Recomiéndame', desc: 'Que ustedes me aconsejen' },
-] as const;
-
 export const PLAZOS = [
   { id: 'asap', label: 'Lo antes posible' },
   { id: '1mes', label: 'En 1 mes' },
@@ -93,9 +167,6 @@ export const DISTRITOS = [
   'Lima Cercado', 'San Juan de Lurigancho', 'Ate', 'Santa Anita', 'La Molina', 'Surco', 'San Borja', 'San Isidro',
   'Miraflores', 'Jesús María', 'Magdalena', 'Villa El Salvador', 'Chorrillos', 'Otra ciudad o provincia',
 ];
-
-/** ¿Este pedido incluye algo que lleva acabado de enchape? */
-export const pideAcabado = (d: QuoteData) => d.servicios.some((s) => ['cocina', 'bano', 'enchapado', 'departamento'].includes(s));
 
 const num = (s: string) => {
   const n = parseFloat(s.replace(',', '.'));
@@ -261,6 +332,20 @@ async function subirFotos(base: string, files: File[], onProgress: (hechas: numb
   return ids;
 }
 
+/** Carga los servicios y preguntas del cotizador desde la API (GET /quote-form). */
+export async function fetchCatalogo(): Promise<Catalogo> {
+  const base = apiBase();
+  if (!base) throw new SendError('config', 'El cotizador todavía no está configurado [API PENDIENTE].');
+  let res: Response;
+  try {
+    res = await fetch(`${base}/quote-form`, { signal: AbortSignal.timeout(20_000) });
+  } catch {
+    throw new SendError('network', 'No pudimos cargar las opciones. Revisa tu conexión e inténtalo otra vez.');
+  }
+  if (!res.ok) throw new SendError('server', 'No pudimos cargar las opciones. Inténtalo otra vez.');
+  return ((await res.json()) as { data: Catalogo }).data;
+}
+
 export interface SubmitOptions {
   files: File[];
   /** Campo trampa (debe ir vacío; los robots lo llenan). */
@@ -269,7 +354,7 @@ export interface SubmitOptions {
 }
 
 /** Sube las fotos a Cloudinary y registra la solicitud en la base (POST /quotes). Lanza SendError con un mensaje listo para mostrar. */
-export async function submitQuote(d: QuoteData, { files, website, onProgress }: SubmitOptions): Promise<{ id: string }> {
+export async function submitQuote(d: QuoteData, catalogo: Catalogo, { files, website, onProgress }: SubmitOptions): Promise<{ id: string }> {
   const base = apiBase();
   if (!base) throw new SendError('config', 'El envío todavía no está configurado [API PENDIENTE].');
   const fotos = await subirFotos(base, files, onProgress);
@@ -277,7 +362,16 @@ export async function submitQuote(d: QuoteData, { files, website, onProgress }: 
   return api<{ id: string }>(
     base,
     '/quotes',
-    { ...resto, fotos, whatsapp: soloDigitos(d.whatsapp), ruc: soloDigitos(d.ruc), consentimiento: true, website },
+    {
+      ...resto,
+      respuestas: normalizarRespuestas(catalogo, d.servicios, d.respuestas),
+      notas: d.notas.trim(),
+      fotos,
+      whatsapp: soloDigitos(d.whatsapp),
+      ruc: soloDigitos(d.ruc),
+      consentimiento: true,
+      website,
+    },
     30_000,
   );
 }

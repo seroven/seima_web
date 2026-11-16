@@ -1,11 +1,12 @@
-// Los 6 pasos del cotizador. Cada paso es una pregunta; la lógica y las opciones viven en lib/quote.ts
-// y los controles (campos, chips, tarjetas, dropdown…) en el kit compartido components/ui.
+// Los 6 pasos del cotizador. Cada paso es una pregunta; la lógica vive en lib/quote.ts y los controles
+// (campos, chips, tarjetas, dropdown…) en el kit compartido components/ui.
+// Los servicios y las preguntas por servicio NO están escritos aquí: vienen del catálogo de la API (GET /quote-form).
 import { motion } from 'motion/react';
 import { useEffect, useId, useMemo, useRef } from 'react';
-import { Chip, Chips, Collapse, Combobox, Field, Icon, OptionCard, OptionGrid, Stepper, TextInput } from '../ui';
+import { Chip, Chips, Collapse, Combobox, Field, Icon, OptionCard, OptionGrid, Stepper, TextArea, TextInput } from '../ui';
 import {
-  ACABADOS, DISTRITOS, MAX_FOTOS, PLAZOS, SERVICIOS, areaDe, formatCelular, pideAcabado,
-  type QuoteData,
+  DISTRITOS, MAX_FOTOS, MAX_NOTAS, PLAZOS, areaDe, formatCelular, gruposDePreguntas,
+  type Catalogo, type PreguntaCatalogo, type QuoteData, type Respuesta,
 } from '../../lib/quote';
 import { resumenFilas } from './Summary';
 
@@ -26,26 +27,90 @@ export function StepCliente({ data, set }: P) {
 }
 
 /* ---------- 2 · ¿Qué necesitas? ---------- */
-export function StepServicios({ data, set }: P) {
-  const toggle = (id: string) => set('servicios', data.servicios.includes(id) ? data.servicios.filter((s) => s !== id) : [...data.servicios, id]);
+interface ServiciosProps extends P {
+  catalogo: Catalogo | null;
+  /** Mensaje si no se pudo cargar el catálogo. */
+  catalogoError: string | null;
+  onReintentar: () => void;
+}
+
+export function StepServicios({ data, set, catalogo, catalogoError, onReintentar }: ServiciosProps) {
+  const toggle = (slug: string) => set('servicios', data.servicios.includes(slug) ? data.servicios.filter((s) => s !== slug) : [...data.servicios, slug]);
+
+  if (!catalogo) {
+    return catalogoError ? (
+      <div className="q-stack">
+        <p className="q-error" role="alert">{catalogoError}</p>
+        <div className="q-nav">
+          <button type="button" className="q-back" onClick={onReintentar}>Reintentar</button>
+        </div>
+      </div>
+    ) : (
+      <p className="q-help" role="status">Cargando opciones…</p>
+    );
+  }
+
   return (
     <>
       <p className="q-help">Puedes elegir varias.</p>
       <OptionGrid role="group" label="Servicios" columns={2}>
-        {SERVICIOS.map((s) => (
-          <OptionCard key={s.id} type="checkbox" name="servicios" checked={data.servicios.includes(s.id)} onChange={() => toggle(s.id)} icon={s.icon} title={s.label} />
+        {catalogo.servicios.map((s) => (
+          <OptionCard key={s.slug} type="checkbox" name="servicios" checked={data.servicios.includes(s.slug)} onChange={() => toggle(s.slug)} icon={s.icono} title={s.nombre} />
         ))}
       </OptionGrid>
     </>
   );
 }
 
+/* ---------- Una pregunta del catálogo, con el control que le toca según su tipo ---------- */
+function PreguntaControl({ p, valor, onChange }: { p: PreguntaCatalogo; valor: Respuesta | undefined; onChange: (v: Respuesta | undefined) => void }) {
+  if (p.tipo === 'numero') {
+    const min = p.min ?? 0;
+    return <Stepper value={typeof valor === 'number' ? valor : min} onChange={onChange} min={min} max={p.max ?? 99} label={p.etiqueta.toLowerCase()} />;
+  }
+
+  if (p.tipo === 'multiple') {
+    const elegidas = Array.isArray(valor) ? valor : [];
+    const alternar = (slug: string) => {
+      const siguiente = elegidas.includes(slug) ? elegidas.filter((x) => x !== slug) : [...elegidas, slug];
+      onChange(siguiente.length ? siguiente : undefined);
+    };
+    return (
+      <Chips label={p.texto}>
+        {p.opciones.map((o) => <Chip key={o.slug} checked={elegidas.includes(o.slug)} onClick={() => alternar(o.slug)}>{o.etiqueta}</Chip>)}
+      </Chips>
+    );
+  }
+
+  // Una sola opción: tarjetas si TODAS las opciones traen descripción (p. ej. el acabado); si no, chips (se puede volver a tocar para quitar la elección)
+  if (p.opciones.length > 0 && p.opciones.every((o) => o.descripcion)) {
+    return (
+      <OptionGrid role="radiogroup" label={p.texto}>
+        {p.opciones.map((o) => (
+          <OptionCard key={o.slug} type="radio" name={p.slug} checked={valor === o.slug} onChange={() => onChange(o.slug)} title={o.etiqueta} desc={o.descripcion ?? undefined} compact />
+        ))}
+      </OptionGrid>
+    );
+  }
+  return (
+    <Chips label={p.texto}>
+      {p.opciones.map((o) => <Chip key={o.slug} checked={valor === o.slug} onClick={() => onChange(valor === o.slug ? undefined : o.slug)}>{o.etiqueta}</Chip>)}
+    </Chips>
+  );
+}
+
 /* ---------- 3 · Cuéntanos del espacio ---------- */
-export function StepEspacio({ data, set }: P) {
+export function StepEspacio({ data, set, catalogo }: P & { catalogo: Catalogo | null }) {
   const idL = useId();
   const idA = useId();
   const idM = useId();
   const area = areaDe(data);
+  const grupos = catalogo ? gruposDePreguntas(catalogo, data.servicios) : [];
+
+  const responder = (slug: string, v: Respuesta | undefined) => {
+    const { [slug]: _quitada, ...resto } = data.respuestas;
+    set('respuestas', v === undefined ? resto : { ...resto, [slug]: v });
+  };
 
   return (
     <div className="q-stack">
@@ -80,41 +145,18 @@ export function StepEspacio({ data, set }: P) {
         </Collapse>
       </fieldset>
 
-      <Collapse show={pideAcabado(data)}>
-        <fieldset className="q-block">
-          <legend>Nivel de acabado</legend>
-          <OptionGrid role="radiogroup" label="Nivel de acabado">
-            {ACABADOS.map((a) => (
-              <OptionCard key={a.id} type="radio" name="acabado" checked={data.acabado === a.id} onChange={() => set('acabado', a.id)} title={a.label} desc={a.desc} compact />
-            ))}
-          </OptionGrid>
+      {/* Preguntas según lo que pidió: salen del catálogo de la API */}
+      {grupos.map((g) => (
+        <fieldset className="q-block" key={g.clave}>
+          <legend>{g.titulo}</legend>
+          {g.preguntas.map((p) => (
+            <div key={p.slug} className="q-pregunta">
+              <p className="q-sub">{p.texto}</p>
+              <PreguntaControl p={p} valor={data.respuestas[p.slug]} onChange={(v) => responder(p.slug, v)} />
+            </div>
+          ))}
         </fieldset>
-      </Collapse>
-
-      <Collapse show={data.servicios.includes('cocina')}>
-        <fieldset className="q-block">
-          <legend>Sobre la cocina</legend>
-          <p className="q-sub">¿Quieres mueble alto?</p>
-          <Chips label="Mueble alto">
-            <Chip checked={data.muebleAlto === 'si'} onClick={() => set('muebleAlto', 'si')}>Sí</Chip>
-            <Chip checked={data.muebleAlto === 'no'} onClick={() => set('muebleAlto', 'no')}>No</Chip>
-            <Chip checked={data.muebleAlto === 'nose'} onClick={() => set('muebleAlto', 'nose')}>No sé</Chip>
-          </Chips>
-          <p className="q-sub">¿Ya hay estructura o es desde cero?</p>
-          <Chips label="Estructura">
-            <Chip checked={data.estructura === 'hay'} onClick={() => set('estructura', 'hay')}>Ya hay estructura</Chip>
-            <Chip checked={data.estructura === 'cero'} onClick={() => set('estructura', 'cero')}>Desde cero</Chip>
-          </Chips>
-        </fieldset>
-      </Collapse>
-
-      <Collapse show={data.servicios.includes('departamento')}>
-        <fieldset className="q-block">
-          <legend>Sobre el departamento</legend>
-          <p className="q-sub">¿Cuántos ambientes?</p>
-          <Stepper value={data.ambientes} onChange={(n) => set('ambientes', n)} min={1} max={10} label="ambientes" />
-        </fieldset>
-      </Collapse>
+      ))}
     </div>
   );
 }
@@ -122,6 +164,7 @@ export function StepEspacio({ data, set }: P) {
 /* ---------- 4 · ¿Dónde y cuándo? ---------- */
 export function StepLugar({ data, set, files, onFiles }: P & { files: File[]; onFiles: (f: File[]) => void }) {
   const idD = useId();
+  const idN = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const previews = useMemo(() => files.map((f) => ({ f, url: URL.createObjectURL(f) })), [files]);
   useEffect(() => () => previews.forEach((p) => URL.revokeObjectURL(p.url)), [previews]);
@@ -163,6 +206,11 @@ export function StepLugar({ data, set, files, onFiles }: P & { files: File[]; on
         </div>
         <p className="q-help">Hasta 6 fotos. Se envían junto con tu solicitud.</p>
       </fieldset>
+
+      <Field id={idN} label="¿Algo más que debamos saber?" hint="Opcional. Por ejemplo: horarios para ir a ver el lugar, si hay mascotas o cómo se entra.">
+        <TextArea id={idN} maxLength={MAX_NOTAS} placeholder="Escribe aquí lo que quieras contarnos" value={data.notas} onChange={(e) => set('notas', e.target.value)} />
+        <span className="q-count" aria-hidden="true">{data.notas.length}/{MAX_NOTAS}</span>
+      </Field>
     </div>
   );
 }
@@ -198,6 +246,7 @@ export function StepDatos({ data, set }: P) {
 /* ---------- 6 · Revisa y envía ---------- */
 interface ResumenProps {
   data: QuoteData;
+  catalogo: Catalogo | null;
   tituloProyecto: string | null;
   consent: boolean;
   onConsent: (v: boolean) => void;
@@ -205,9 +254,9 @@ interface ResumenProps {
   onWebsite: (v: string) => void;
 }
 
-export function StepResumen({ data, tituloProyecto, consent, onConsent, website, onWebsite }: ResumenProps) {
+export function StepResumen({ data, catalogo, tituloProyecto, consent, onConsent, website, onWebsite }: ResumenProps) {
   const idW = useId();
-  const filas = resumenFilas(data, tituloProyecto);
+  const filas = resumenFilas(data, tituloProyecto, catalogo);
   return (
     <div className="q-stack">
       <p className="q-help">Revisa que todo esté bien. Al enviar, nos llega tu solicitud y te respondemos por WhatsApp al número que dejaste.</p>
