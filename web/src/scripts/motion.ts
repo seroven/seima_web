@@ -56,6 +56,7 @@ async function init() {
       heroIn(gsap);
       heroIntro(gsap);
       plan(gsap);
+      notFound(gsap);
       proceso(gsap, ScrollTrigger);
       compare(gsap);
       words(gsap);
@@ -240,6 +241,19 @@ function heroIntro(gsap: any) {
   tl.to(structure, { opacity: 0.4, duration: 0.6 }, 2.3);
   tl.fromTo(finish, { clipPath: 'inset(0% 100% 0% 0%)', opacity: 0.4 }, { clipPath: 'inset(0% 0% 0% 0%)', opacity: 1, duration: 1.1, ease: 'power2.inOut' }, 2.7);
   tl.fromTo(spots, { autoAlpha: 0, scale: 0.6 }, { autoAlpha: 1, scale: 1, duration: 0.45, ease: 'back.out(2)', stagger: 0.1 }, 3.5);
+}
+
+/* ---------- 404: la pared queda a medias (perfiles + algunas placas + el rodillo detenido) ---------- */
+function notFound(gsap: any) {
+  const root = $("[data-nf]");
+  if (!root) return;
+  const studs = $$('[data-w="studs"] rect', root);
+  const boards = $('[data-w="boards"]', root);
+  const roller = $('[data-w="roller"]', root);
+  const tl = gsap.timeline({ delay: 0.3, defaults: { ease: "power3.out" } });
+  tl.fromTo(studs, { scaleY: 0, transformOrigin: "50% 100%" }, { scaleY: 1, duration: 0.7, stagger: 0.05 }, 0);
+  tl.fromTo(boards, { clipPath: "inset(0% 100% 0% 0%)" }, { clipPath: "inset(0% 38% 0% 0%)", duration: 1.3, ease: "power2.inOut" }, 0.7);
+  tl.fromTo(roller, { x: 0, opacity: 0 }, { x: 400, opacity: 1, duration: 1.3, ease: "power2.inOut" }, 0.7);
 }
 
 /* ---------- Empresas: el plano de planta se dibuja solo ---------- */

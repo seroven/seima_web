@@ -1,0 +1,61 @@
+---
+import Base from '../layouts/Base.astro';
+import Words from '../components/Words.astro';
+import Wall from '../components/Wall.astro';
+---
+<Base
+  title="Página no encontrada · SEIMA Servicios Generales"
+  description="No encontramos la página que buscas. Vuelve al inicio o mira nuestros proyectos de drywall, enchapado, electricidad, melamina y pintura."
+  noindex
+>
+  <section class="nf dark" data-nf>
+    <div class="nf__bg" aria-hidden="true"></div>
+    <div class="wrap nf__grid">
+      <div class="nf__copy">
+        <p class="eyebrow" data-hero-in>Error 404</p>
+        <p class="nf__code" aria-hidden="true"><span>4</span><span class="nf__zero">0</span><span>4</span></p>
+        <h1><Words text="Esta página" accent="sigue en obra." br /></h1>
+        <p class="nf__lead" data-hero-in>No encontramos lo que buscas. Puede que el enlace haya cambiado o que todavía no esté construida.</p>
+        <div class="nf__cta" data-hero-in>
+          <a class="btn btn--lg" href="/">Volver al inicio →</a>
+          <a class="btn btn--ghost btn--lg" href="/proyectos">Ver proyectos</a>
+        </div>
+        <p class="nf__links" data-hero-in>También puedes ir a <a href="/empresas">Empresas</a> o <a href="/cotizador">armar tu cotización</a>.</p>
+      </div>
+      <div class="nf__art" aria-hidden="true"><Wall /></div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .nf { position: relative; overflow: hidden; min-height: calc(100svh - var(--header)); display: grid; align-items: center; }
+  .nf__bg {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(55% 55% at 78% 55%, rgb(224 40 60 / 0.15), transparent 70%),
+      radial-gradient(rgb(255 255 255 / 0.07) 1px, transparent 1.5px) 0 0 / 28px 28px;
+    mask-image: linear-gradient(#000 70%, transparent);
+  }
+  .nf__grid { position: relative; display: grid; gap: 2.5rem; align-items: center; padding-block: clamp(2.5rem, 7vw, 5rem); }
+  .nf__copy { display: grid; gap: clamp(0.9rem, 2vw, 1.4rem); align-content: center; justify-items: start; }
+  .nf .eyebrow { color: #ff6b7a; }
+  .nf__code { margin: 0; display: flex; gap: 0.05em; font-stretch: 125%; font-weight: 900; font-size: clamp(5rem, 20vw, 9.5rem); line-height: 0.85; letter-spacing: -0.03em; }
+  .nf__code span { color: transparent; -webkit-text-stroke: 2px #fff; }
+  .nf__code .nf__zero { color: var(--red); -webkit-text-stroke: 0; }
+  .nf h1 { font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1; letter-spacing: -0.02em; }
+  .nf__lead { color: #b5b5b5; font-size: clamp(1rem, 2.3vw, 1.15rem); max-width: 32rem; }
+  .nf__cta { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+  .nf__links { color: var(--muted-dark); font-size: 0.92rem; }
+  .nf__links a { color: #fff; text-underline-offset: 3px; }
+  .nf__links a:hover { color: #ff6b7a; }
+  @media (min-width: 900px) { .nf__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 3rem; } }
+
+  /* La pared queda a medias: perfiles, algunas placas y el rodillo detenido (sin JS se ve igual) */
+  .nf__art :global([data-w='tile']),
+  .nf__art :global([data-w='power']),
+  .nf__art :global([data-w='led']),
+  .nf__art :global([data-w='cabinets']),
+  .nf__art :global([data-w='paint']) { display: none; }
+  .nf__art :global([data-w='boards']) { clip-path: inset(0% 38% 0% 0%); }
+  .nf__art :global([data-w='roller']) { transform: translateX(400px); }
+</style>
