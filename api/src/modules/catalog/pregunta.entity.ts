@@ -24,15 +24,9 @@ export class Pregunta {
   @Column({ type: 'varchar', length: 60 })
   etiqueta!: string;
 
+  /** unica = una opción · multiple = varias. */
   @Column({ type: 'enum', enum: PREGUNTA_TIPOS, enumName: 'pregunta_tipo' })
   tipo!: PreguntaTipo;
-
-  /** Solo para tipo `numero`: rango permitido. */
-  @Column({ type: 'int', nullable: true })
-  min!: number | null;
-
-  @Column({ type: 'int', nullable: true })
-  max!: number | null;
 
   @Column({ type: 'int', default: 0 })
   orden!: number;

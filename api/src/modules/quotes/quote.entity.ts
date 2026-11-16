@@ -2,15 +2,14 @@ import { Column, CreateDateColumn, Entity, Index, JoinColumn, JoinTable, ManyToM
 import { Servicio } from '../catalog/servicio.entity';
 import { Project } from '../projects/project.entity';
 import { QuotePhoto } from './quote-photo.entity';
-import { CLIENTES, ESTADOS_COTIZACION, MEDIDAS_MODO, type Cliente, type EstadoCotizacion, type MedidasModo } from './quote.constants';
+import { CLIENTES, ESTADOS_COTIZACION, type Cliente, type EstadoCotizacion } from './quote.constants';
 import { RespuestaCotizacion } from './respuesta-cotizacion.entity';
-
-const aNumero = { to: (v?: number | null) => v ?? null, from: (v: string | null) => (v === null ? null : Number(v)) };
 
 /**
  * Solicitud enviada desde el cotizador. Luis la revisa desde el panel (cambiando su `estado`).
  * Todo se guarda como campos y tablas para poder filtrar: servicios (quote_services), respuestas a las preguntas
- * de cada servicio (quote_answers), fotos (quote_photos) y los datos generales de abajo.
+ * de cada servicio (quote_answers: opción elegida + dato extra opcional; incluye las medidas), fotos (quote_photos) y los
+ * datos generales de abajo. Nada específico de un servicio vive aquí.
  */
 @Entity('quotes')
 @Index('idx_quotes_estado_creada', ['estado', 'createdAt'])
@@ -29,19 +28,6 @@ export class Quote {
   /** Respuestas a las preguntas de esos servicios (tabla quote_answers; se guardan junto con la cotización). */
   @OneToMany(() => RespuestaCotizacion, (r) => r.quote, { cascade: ['insert'] })
   respuestas!: Relation<RespuestaCotizacion[]>;
-
-  @Column({ type: 'enum', enum: MEDIDAS_MODO, enumName: 'quote_medidas_modo', default: 'nose' })
-  medidasModo!: MedidasModo;
-
-  @Column({ type: 'numeric', precision: 8, scale: 2, nullable: true, transformer: aNumero })
-  largo!: number | null;
-
-  @Column({ type: 'numeric', precision: 8, scale: 2, nullable: true, transformer: aNumero })
-  ancho!: number | null;
-
-  /** Área final (calculada si dieron largo × ancho). */
-  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true, transformer: aNumero })
-  areaM2!: number | null;
 
   @Column({ type: 'varchar', length: 120 })
   distrito!: string;

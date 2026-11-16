@@ -8,8 +8,11 @@ export interface QuoteFilters {
   estado?: EstadoCotizacion;
   /** slug de un servicio: cotizaciones que lo incluyen */
   servicio?: string;
-  /** Cada filtro de respuesta exige que la cotización tenga esa respuesta: pregunta + opción (o valor numérico). */
-  respuestas?: { pregunta: string; opcion?: string; valor?: number }[];
+  /**
+   * Cada filtro de respuesta exige que la cotización tenga esa respuesta: la pregunta (por slug) y, opcionalmente,
+   * la opción elegida y/o el dato extra exacto que escribió.
+   */
+  respuestas?: { pregunta: string; opcion?: string; valor?: string }[];
   page?: number;
   limit?: number;
 }
@@ -32,11 +35,11 @@ export class QuotesRepository {
     return this.repo.findOne({ where: { id } });
   }
 
-  /** La cotización completa: servicios, respuestas (con su pregunta y opción) y fotos ordenadas. La usará el panel. */
+  /** La cotización completa: servicios, respuestas (con su opción y su pregunta) y fotos ordenadas. La usará el panel. */
   findByIdFull(id: string): Promise<Quote | null> {
     return this.repo.findOne({
       where: { id },
-      relations: { servicios: true, respuestas: { pregunta: true, opcion: true }, fotos: true },
+      relations: { servicios: true, respuestas: { opcion: { pregunta: true } }, fotos: true },
       order: { fotos: { orden: 'ASC' } },
     });
   }
@@ -58,9 +61,10 @@ export class QuotesRepository {
       const sub = this.respuestas
         .createQueryBuilder(`a${i}`)
         .select(`a${i}.quoteId`)
-        .innerJoin(`a${i}.pregunta`, `p${i}`, `p${i}.slug = :pregunta${i}`, { [`pregunta${i}`]: r.pregunta });
-      if (r.opcion !== undefined) sub.innerJoin(`a${i}.opcion`, `o${i}`, `o${i}.slug = :opcion${i}`, { [`opcion${i}`]: r.opcion });
-      if (r.valor !== undefined) sub.andWhere(`a${i}.valorNumero = :valor${i}`, { [`valor${i}`]: r.valor });
+        .innerJoin(`a${i}.opcion`, `o${i}`)
+        .innerJoin(`o${i}.pregunta`, `p${i}`, `p${i}.slug = :pregunta${i}`, { [`pregunta${i}`]: r.pregunta });
+      if (r.opcion !== undefined) sub.andWhere(`o${i}.slug = :opcion${i}`, { [`opcion${i}`]: r.opcion });
+      if (r.valor !== undefined) sub.andWhere(`a${i}.valor = :valor${i}`, { [`valor${i}`]: r.valor });
       qb.andWhere(`q.id IN (${sub.getQuery()})`).setParameters(sub.getParameters());
     });
 

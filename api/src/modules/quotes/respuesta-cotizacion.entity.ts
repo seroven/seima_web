@@ -1,20 +1,16 @@
-import { Check, Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, type Relation } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, type Relation } from 'typeorm';
 import { OpcionPregunta } from '../catalog/opcion-pregunta.entity';
-import { Pregunta } from '../catalog/pregunta.entity';
 import { Quote } from './quote.entity';
 
 /**
- * Una respuesta del cliente a una pregunta del cotizador, guardada como FILA (no como texto) para poder filtrar en el panel:
- *  - pregunta `unica`:    una fila con `option_id`
- *  - pregunta `multiple`: una fila por cada opción elegida
- *  - pregunta `numero`:   una fila con `valor_numero` (sin opción)
- * Ejemplo de filtro: "cocinas con mueble alto" = respuestas de la pregunta `mueble-alto` con la opción `si`.
+ * Una respuesta del cliente: la OPCIÓN que eligió (la pregunta sale de la opción) y, si esa opción pedía un dato extra
+ * ("Otro" → ¿cuál?, "Sé el área" → m²), ese dato en `valor` como texto. Una pregunta de varias opciones genera una fila
+ * por cada opción elegida.
+ * Ejemplo de filtro: "cocinas con mueble alto" = respuestas cuya opción es `si` de la pregunta `mueble-alto`.
  */
 @Entity('quote_answers')
-@Index('uq_quote_answers_opcion', ['quoteId', 'questionId', 'optionId'], { unique: true, where: '"option_id" IS NOT NULL' })
-@Index('uq_quote_answers_numero', ['quoteId', 'questionId'], { unique: true, where: '"option_id" IS NULL' })
-@Index('idx_quote_answers_filtro', ['questionId', 'optionId'])
-@Check('chk_quote_answers_valor', '("option_id" IS NOT NULL) <> ("valor_numero" IS NOT NULL)')
+@Index('uq_quote_answers_opcion', ['quoteId', 'optionId'], { unique: true })
+@Index('idx_quote_answers_opcion', ['optionId'])
 export class RespuestaCotizacion {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -26,24 +22,17 @@ export class RespuestaCotizacion {
   @JoinColumn({ name: 'quote_id' })
   quote!: Relation<Quote>;
 
-  @Column({ type: 'uuid', name: 'question_id' })
-  questionId!: string;
+  /** No se puede borrar una opción que ya tiene respuestas (se desactiva con `activo`). */
+  @Column({ type: 'uuid', name: 'option_id' })
+  optionId!: string;
 
-  /** No se puede borrar una pregunta que ya tiene respuestas (se desactiva con `activo`). */
-  @ManyToOne(() => Pregunta, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'question_id' })
-  pregunta!: Relation<Pregunta>;
-
-  @Column({ type: 'uuid', name: 'option_id', nullable: true })
-  optionId!: string | null;
-
-  @ManyToOne(() => OpcionPregunta, { nullable: true, onDelete: 'RESTRICT' })
+  @ManyToOne(() => OpcionPregunta, { nullable: false, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'option_id' })
-  opcion!: Relation<OpcionPregunta> | null;
+  opcion!: Relation<OpcionPregunta>;
 
-  /** Solo para preguntas de tipo `numero`. */
-  @Column({ type: 'int', nullable: true })
-  valorNumero!: number | null;
+  /** El dato extra que escribió el cliente (texto o número como texto). Vacío si la opción no pedía nada. */
+  @Column({ type: 'text', nullable: true })
+  valor!: string | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

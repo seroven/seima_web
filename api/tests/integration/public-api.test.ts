@@ -95,19 +95,20 @@ describe('GET /projects/:slug (público)', () => {
 });
 
 describe('POST /quotes (público)', () => {
-  it('guarda la solicitud, calcula el área y devuelve el resumen', async () => {
+  it('guarda la solicitud y devuelve el resumen', async () => {
     const res = await agent()
       .post(`${API}/quotes`)
-      .send({ ...cotizacionValida, servicios: ['cocina', 'departamento', 'cocina'], respuestas: { acabado: 'corte45', 'mueble-alto': 'si', estructura: 'cero', ambientes: 3 }, notas: 'Hay un perro en casa', fotos: ['seima/quotes/uno', 'seima/quotes/dos'], proyecto: 'cocina-drywall-porcelanato' });
+      .send({ ...cotizacionValida, servicios: ['cocina', 'departamento', 'cocina'], respuestas: { area: [{ opcion: 'sabe', valor: '12' }], acabado: [{ opcion: 'corte45' }], 'mueble-alto': [{ opcion: 'si' }], estructura: [{ opcion: 'cero' }], ambientes: [{ opcion: '3' }] }, notas: 'Hay un perro en casa', fotos: ['seima/quotes/uno', 'seima/quotes/dos'], proyecto: 'cocina-drywall-porcelanato' });
     expect(res.status).toBe(201);
     const { id, mensaje } = res.body.data;
     expect(id).toMatch(/^[0-9a-f-]{36}$/);
     expect(mensaje).toContain('*Nueva solicitud · SEIMA web*');
     expect(mensaje).toContain('Servicios: Cocina, Departamento completo'); // sin duplicados
-    expect(mensaje).toContain('Medidas: 4 × 3 m (≈ 12 m²)');
+    expect(mensaje).toContain('Área: Sé el área aproximada: 12 m²');
     expect(mensaje).toContain('Acabado: Corte 45° + resina');
     expect(mensaje).toContain('Mueble alto: Sí');
     expect(mensaje).toContain('Ambientes: 3');
+    expect(mensaje).toContain('Estructura: Desde cero');
     expect(mensaje).toContain('Notas: Hay un perro en casa');
     expect(mensaje).toContain('Referencia: proyecto «Cocina en drywall y porcelanato»');
     expect(mensaje).toContain('Contacto: Ana Prueba · 987 654 321');
@@ -116,13 +117,13 @@ describe('POST /quotes (público)', () => {
   it('acepta EXACTAMENTE el cuerpo que arma el cotizador de la web (cadenas vacías y null incluidos)', async () => {
     // Forma real del cuerpo que arma web/src/lib/quote.ts → submitQuote (whatsapp y ruc ya vienen solo con dígitos)
     const deLaWeb = {
-      cliente: 'persona', servicios: ['pintura'], medidasModo: 'nose', largo: '', ancho: '', m2: '', respuestas: { 'pintura-zona': 'interior' }, notas: '',
+      cliente: 'persona', servicios: ['pintura'], respuestas: { 'pintura-zona': [{ opcion: 'interior', valor: null }], area: [{ opcion: 'nose', valor: '' }] }, notas: '',
       distrito: 'Los Olivos', plazo: 'asap', fotos: [], nombre: 'Ana Test', whatsapp: '987654321', consentimiento: true, website: '',
       razonSocial: '', ruc: '', proyecto: null,
     };
     const res = await agent().post(`${API}/quotes`).send(deLaWeb);
     expect(res.status).toBe(201);
-    expect(res.body.data.mensaje).toContain('Medidas: por definir');
+    expect(res.body.data.mensaje).toContain('Área: Aún no lo sé');
     expect(res.body.data.mensaje).toContain('Zona: Interior');
     expect(res.body.data.mensaje).toContain('Contacto: Ana Test · 987 654 321');
   });
@@ -177,7 +178,7 @@ describe('POST /quotes (público)', () => {
   });
 
   it('ignora las respuestas de preguntas que no aplican a los servicios elegidos', async () => {
-    const res = await agent().post(`${API}/quotes`).send({ ...cotizacionValida, servicios: ['pintura'], respuestas: { acabado: 'granito', 'mueble-alto': 'si', ambientes: 5 } });
+    const res = await agent().post(`${API}/quotes`).send({ ...cotizacionValida, servicios: ['pintura'], respuestas: { acabado: [{ opcion: 'granito' }], 'mueble-alto': [{ opcion: 'si' }], ambientes: [{ opcion: '5' }] } });
     expect(res.status).toBe(201);
     expect(res.body.data.mensaje).not.toContain('Acabado');
     expect(res.body.data.mensaje).not.toContain('Mueble alto');

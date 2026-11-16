@@ -2,14 +2,14 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AppError } from '../../src/common/errors/app-error';
 import type { CatalogRepository } from '../../src/modules/catalog/catalog.repository';
 import type { ProjectsRepository } from '../../src/modules/projects/projects.repository';
-import { buildQuoteMessage, medidasTexto, type MessageInput } from '../../src/modules/quotes/quote-message';
+import { buildQuoteMessage, type MessageInput } from '../../src/modules/quotes/quote-message';
 import type { QuotesRepository } from '../../src/modules/quotes/quotes.repository';
 import { createQuoteSchema, type CreateQuoteInput } from '../../src/modules/quotes/quotes.schemas';
 import { QuotesService } from '../../src/modules/quotes/quotes.service';
 import { rejected } from './fakes';
 
 const valida = {
-  cliente: 'persona', servicios: ['cocina'], medidasModo: 'lxa', largo: '4', ancho: '3',
+  cliente: 'persona', servicios: ['cocina'],
   distrito: 'Comas', plazo: '1mes', nombre: 'Ana Prueba', whatsapp: '987 654 321', consentimiento: true,
 };
 const foto = (n: number | string) => `seima/quotes/foto${n}`;
@@ -21,20 +21,9 @@ const ok = (extra: Record<string, unknown> = {}) => {
 };
 
 describe('createQuoteSchema', () => {
-  it('acepta un pedido válido y normaliza (whatsapp solo dígitos, números, defaults)', () => {
-    const d = ok();
-    expect(d).toMatchObject({ whatsapp: '987654321', largo: 4, ancho: 3, fotos: [], respuestas: {}, medidasModo: 'lxa' });
+  it('acepta un pedido válido y normaliza (whatsapp solo dígitos, defaults)', () => {
+    expect(ok()).toMatchObject({ whatsapp: '987654321', fotos: [], respuestas: {} });
   });
-
-  it.each([
-    ['4,5', 4.5],
-    ['4.5', 4.5],
-    [4, 4],
-    ['  7 ', 7],
-  ])('número %j → %j', (entrada, esperado) => expect(ok({ largo: entrada }).largo).toBe(esperado));
-
-  it.each([[''], [null], ['   ']])('largo vacío (%j) = no enviado', (v) => expect(ok({ largo: v }).largo).toBeUndefined());
-  it.each([['0'], ['-3'], ['abc'], ['100001']])('largo inválido %j', (v) => expect(parse({ largo: v }).success).toBe(false));
 
   it('el consentimiento es obligatorio y debe ser exactamente true', () => {
     expect(parse({ consentimiento: undefined }).success).toBe(false);
@@ -48,7 +37,7 @@ describe('createQuoteSchema', () => {
     for (const mala of ['otra/carpeta/x', 'seima/quotes', 'seima/quotes/../secreto', 'seima/quotesX/a', 'http://evil.com/x.jpg', '', 'seima/quotes/a b']) {
       expect(parse({ fotos: [mala] }).success, mala).toBe(false);
     }
-    expect(parse({ fotos: [1] }).success).toBe(false); // el viejo formato (un número) ya no se acepta
+    expect(parse({ fotos: [1] }).success).toBe(false);
     expect(parse({ fotos: Array.from({ length: 6 }, (_, i) => foto(i)) }).success).toBe(true);
   });
 
@@ -64,11 +53,21 @@ describe('createQuoteSchema', () => {
     expect(parse({ servicios: Array.from({ length: 11 }, (_, i) => `s${i}`) }).success).toBe(false);
   });
 
-  it('respuestas: un objeto { pregunta: opción | número | lista de opciones }', () => {
-    const d = ok({ respuestas: { 'mueble-alto': 'si', ambientes: 3, muebles: ['closet', 'tv'] } });
-    expect(d.respuestas).toEqual({ 'mueble-alto': 'si', ambientes: 3, muebles: ['closet', 'tv'] });
-    expect(parse({ respuestas: { 'Mala Clave': 'x' } }).success).toBe(false);
-    expect(parse({ respuestas: { ok: { anidado: true } } }).success).toBe(false);
+  it('respuestas: { pregunta: [{ opcion, valor? }] }; el valor (texto o número) llega como texto; vacío = sin dato', () => {
+    const d = ok({ respuestas: { 'mueble-alto': [{ opcion: 'si' }], area: [{ opcion: 'sabe', valor: 85 }], muebles: [{ opcion: 'closet', valor: '' }, { opcion: 'otro', valor: 'repisa' }, { opcion: 'tv', valor: null }] } });
+    expect(d.respuestas).toEqual({
+      'mueble-alto': [{ opcion: 'si', valor: undefined }],
+      area: [{ opcion: 'sabe', valor: '85' }],
+      muebles: [{ opcion: 'closet', valor: undefined }, { opcion: 'otro', valor: 'repisa' }, { opcion: 'tv', valor: undefined }],
+    });
+  });
+
+  it('respuestas: rechaza formas inválidas', () => {
+    expect(parse({ respuestas: { 'Mala Clave': [{ opcion: 'x' }] } }).success).toBe(false);
+    expect(parse({ respuestas: { ok: 'si' } }).success).toBe(false); // el viejo formato (texto suelto) ya no se acepta
+    expect(parse({ respuestas: { ok: [] } }).success).toBe(false);
+    expect(parse({ respuestas: { ok: [{ opcion: 'Mala Opcion' }] } }).success).toBe(false);
+    expect(parse({ respuestas: { ok: [{ opcion: 'a', valor: { x: 1 } }] } }).success).toBe(false);
     expect(parse({ respuestas: 'texto' }).success).toBe(false);
   });
 
@@ -112,28 +111,16 @@ describe('createQuoteSchema', () => {
   });
 });
 
-describe('medidasTexto', () => {
-  it('por definir en "nose", sin área o sin dimensiones', () => {
-    expect(medidasTexto({ medidasModo: 'nose', largo: null, ancho: null, areaM2: null })).toBe('por definir');
-    expect(medidasTexto({ medidasModo: 'm2', largo: null, ancho: null, areaM2: null })).toBe('por definir');
-    expect(medidasTexto({ medidasModo: 'lxa', largo: null, ancho: 3, areaM2: 12 })).toBe('por definir');
-  });
-  it('m² directos y largo × ancho', () => {
-    expect(medidasTexto({ medidasModo: 'm2', largo: null, ancho: null, areaM2: 25 })).toBe('25 m²');
-    expect(medidasTexto({ medidasModo: 'lxa', largo: 4, ancho: 3, areaM2: 12 })).toBe('4 × 3 m (≈ 12 m²)');
-  });
-});
-
 describe('buildQuoteMessage', () => {
   const base: MessageInput = {
-    cliente: 'persona', servicios: ['Pintura'], respuestas: [], medidasModo: 'nose', largo: null, ancho: null, areaM2: null,
-    distrito: 'Comas', plazo: 'asap', notas: null, fotos: 0, nombre: 'Ana', whatsapp: '987654321', razonSocial: null, ruc: null,
+    cliente: 'persona', servicios: ['Pintura'], respuestas: [], distrito: 'Comas', plazo: 'asap', notas: null, fotos: 0,
+    nombre: 'Ana', whatsapp: '987654321', razonSocial: null, ruc: null,
   };
   const msg = (o: Partial<MessageInput> = {}, t?: string | null) => buildQuoteMessage({ ...base, ...o }, t);
 
   it('mensaje mínimo', () => {
     expect(msg().split('\n')).toEqual([
-      '*Nueva solicitud · SEIMA web*', 'Cliente: Persona', 'Servicios: Pintura', 'Medidas: por definir',
+      '*Nueva solicitud · SEIMA web*', 'Cliente: Persona', 'Servicios: Pintura',
       'Distrito: Comas · Plazo: Lo antes posible', 'Fotos: sin fotos', 'Contacto: Ana · 987 654 321',
     ]);
   });
@@ -141,10 +128,9 @@ describe('buildQuoteMessage', () => {
     expect(msg({ cliente: 'empresa', razonSocial: 'Demo SAC', ruc: '20123456789' })).toContain('Cliente: Empresa — Demo SAC (RUC 20123456789)');
     expect(msg({ cliente: 'empresa', razonSocial: 'Demo SAC' })).toContain('Cliente: Empresa — Demo SAC\n');
   });
-  it('cada respuesta es una línea "etiqueta: valor", después de las medidas y antes del lugar', () => {
-    const lineas = msg({ respuestas: [{ etiqueta: 'Acabado', valor: 'Granito' }, { etiqueta: 'Baños', valor: '2' }] }).split('\n');
-    expect(lineas.indexOf('Acabado: Granito')).toBe(lineas.findIndex((l) => l.startsWith('Medidas:')) + 1);
-    expect(lineas).toContain('Acabado: Granito');
+  it('cada respuesta es una línea "etiqueta: valor", justo después de los servicios y antes del lugar', () => {
+    const lineas = msg({ respuestas: [{ etiqueta: 'Área', valor: 'Sé el área: 85 m²' }, { etiqueta: 'Baños', valor: '2' }] }).split('\n');
+    expect(lineas.indexOf('Área: Sé el área: 85 m²')).toBe(lineas.findIndex((l) => l.startsWith('Servicios:')) + 1);
     expect(lineas).toContain('Baños: 2');
     expect(lineas.indexOf('Baños: 2')).toBeLessThan(lineas.findIndex((l) => l.startsWith('Distrito:')));
   });
@@ -164,11 +150,12 @@ describe('buildQuoteMessage', () => {
 
 /* ---------- Servicio, con un catálogo falso (sin base de datos) ---------- */
 const SERVICIOS = ['cocina', 'bano', 'pintura'].map((slug) => ({ id: `s-${slug}`, slug, nombre: slug === 'bano' ? 'Baño' : slug[0].toUpperCase() + slug.slice(1) }));
-const op = (slug: string, etiqueta: string) => ({ id: `o-${slug}`, slug, etiqueta, activo: true });
+const op = (slug: string, etiqueta: string, extra: Record<string, unknown> = {}) => ({ id: `o-${slug}`, slug, etiqueta, activo: true, tipoEntrada: 'ninguna', entradaAyuda: null, ...extra });
 const PREGUNTAS = [
-  { id: 'p-acabado', slug: 'acabado', etiqueta: 'Acabado', tipo: 'unica', min: null, max: null, opciones: [op('estandar', 'Estándar'), op('granito', 'Granito')], servicios: [{ slug: 'cocina' }, { slug: 'bano' }] },
-  { id: 'p-alto', slug: 'mueble-alto', etiqueta: 'Mueble alto', tipo: 'unica', min: null, max: null, opciones: [op('si', 'Sí'), op('no', 'No')], servicios: [{ slug: 'cocina' }] },
-  { id: 'p-banos', slug: 'cantidad-banos', etiqueta: 'Baños', tipo: 'numero', min: 1, max: 5, opciones: [], servicios: [{ slug: 'bano' }] },
+  { id: 'p-area', slug: 'area', etiqueta: 'Área', tipo: 'unica', opciones: [op('sabe', 'Sé el área', { id: 'o-area-sabe', tipoEntrada: 'numero', entradaAyuda: 'm²' }), op('nose', 'Aún no lo sé', { id: 'o-area-nose' })], servicios: [{ slug: 'cocina' }, { slug: 'bano' }, { slug: 'pintura' }] },
+  { id: 'p-acabado', slug: 'acabado', etiqueta: 'Acabado', tipo: 'unica', opciones: [op('estandar', 'Estándar'), op('granito', 'Granito')], servicios: [{ slug: 'cocina' }, { slug: 'bano' }] },
+  { id: 'p-alto', slug: 'mueble-alto', etiqueta: 'Mueble alto', tipo: 'unica', opciones: [op('si', 'Sí'), op('no', 'No')], servicios: [{ slug: 'cocina' }] },
+  { id: 'p-banos', slug: 'cantidad-banos', etiqueta: 'Baños', tipo: 'unica', opciones: [op('2', '2', { id: 'o-banos-2' }), op('mas', 'Más de 4', { id: 'o-banos-mas', tipoEntrada: 'numero', entradaAyuda: 'baños' })], servicios: [{ slug: 'bano' }] },
 ];
 
 describe('QuotesService', () => {
@@ -198,22 +185,27 @@ describe('QuotesService', () => {
     expect(r.mensaje).toContain('Servicios: Cocina, Baño');
   });
 
-  it('guarda cada respuesta como fila (pregunta + opción o número) y la pone en el resumen', async () => {
+  it('guarda cada respuesta como fila (opción + dato extra) y la pone en el resumen', async () => {
     const t = armar();
-    const r = await t.crear({ servicios: ['cocina', 'bano'], respuestas: { acabado: 'granito', 'mueble-alto': 'si', 'cantidad-banos': 2 } });
+    const r = await t.crear({
+      servicios: ['cocina', 'bano'],
+      respuestas: { area: [{ opcion: 'sabe', valor: '85' }], acabado: [{ opcion: 'granito' }], 'mueble-alto': [{ opcion: 'si' }], 'cantidad-banos': [{ opcion: 'mas', valor: '6' }] },
+    });
     expect(t.guardado().respuestas).toEqual([
-      { questionId: 'p-acabado', optionId: 'o-granito', valorNumero: null },
-      { questionId: 'p-alto', optionId: 'o-si', valorNumero: null },
-      { questionId: 'p-banos', optionId: null, valorNumero: 2 },
+      { optionId: 'o-area-sabe', valor: '85' },
+      { optionId: 'o-granito', valor: null },
+      { optionId: 'o-si', valor: null },
+      { optionId: 'o-banos-mas', valor: '6' },
     ]);
+    expect(r.mensaje).toContain('Área: Sé el área: 85 m²');
     expect(r.mensaje).toContain('Acabado: Granito');
     expect(r.mensaje).toContain('Mueble alto: Sí');
-    expect(r.mensaje).toContain('Baños: 2');
+    expect(r.mensaje).toContain('Baños: Más de 4: 6 baños');
   });
 
   it('descarta las respuestas de preguntas que no aplican a los servicios elegidos', async () => {
     const t = armar();
-    await t.crear({ servicios: ['pintura'], respuestas: { acabado: 'granito', 'mueble-alto': 'si' } });
+    await t.crear({ servicios: ['pintura'], respuestas: { acabado: [{ opcion: 'granito' }], 'mueble-alto': [{ opcion: 'si' }] } });
     expect(t.guardado().respuestas).toEqual([]);
   });
 
@@ -225,10 +217,11 @@ describe('QuotesService', () => {
     expect(t.quotes.create).not.toHaveBeenCalled();
   });
 
-  it('opción o pregunta inventada → 422 y no se guarda nada', async () => {
+  it('opción o pregunta inventada, o dato extra faltante → 422 y no se guarda nada', async () => {
     const t = armar();
-    expect(((await rejected(t.crear({ respuestas: { acabado: 'dorado' } }))) as AppError).status).toBe(422);
-    expect(((await rejected(t.crear({ respuestas: { fantasma: 'x' } }))) as AppError).status).toBe(422);
+    expect(((await rejected(t.crear({ respuestas: { acabado: [{ opcion: 'dorado' }] } }))) as AppError).status).toBe(422);
+    expect(((await rejected(t.crear({ respuestas: { fantasma: [{ opcion: 'x' }] } }))) as AppError).status).toBe(422);
+    expect(((await rejected(t.crear({ respuestas: { area: [{ opcion: 'sabe' }] } }))) as AppError).status).toBe(422);
     expect(t.quotes.create).not.toHaveBeenCalled();
   });
 
@@ -242,28 +235,10 @@ describe('QuotesService', () => {
     expect(u.guardado().notas).toBeNull();
   });
 
-  it('calcula el área largo × ancho con un decimal', async () => {
+  it('ya no guarda columnas de medidas (son una respuesta más)', async () => {
     const t = armar();
-    await t.crear({ largo: '3.33', ancho: '3' });
-    expect(t.guardado()).toMatchObject({ largo: 3.33, ancho: 3, areaM2: 10 });
-  });
-
-  it('modo m²: usa los m² y descarta largo/ancho', async () => {
-    const t = armar();
-    await t.crear({ medidasModo: 'm2', m2: '25', largo: '9', ancho: '9' });
-    expect(t.guardado()).toMatchObject({ largo: null, ancho: null, areaM2: 25 });
-  });
-
-  it('modo "no sé": sin medidas aunque lleguen valores', async () => {
-    const t = armar();
-    await t.crear({ medidasModo: 'nose', largo: '4', ancho: '3', m2: '12' });
-    expect(t.guardado()).toMatchObject({ largo: null, ancho: null, areaM2: null });
-  });
-
-  it('modo largo×ancho incompleto: área null', async () => {
-    const t = armar();
-    await t.crear({ ancho: '' });
-    expect(t.guardado().areaM2).toBeNull();
+    await t.crear();
+    for (const campo of ['medidasModo', 'largo', 'ancho', 'areaM2']) expect(t.guardado()).not.toHaveProperty(campo);
   });
 
   it('razón social y RUC solo se guardan para empresas', async () => {
@@ -297,7 +272,6 @@ describe('QuotesService', () => {
     const antes = Date.now();
     const r = await t.crear({ fotos: [foto(1), foto(2)] });
     expect(t.guardado()).toMatchObject({ whatsapp: '987654321', nombre: 'Ana Prueba', distrito: 'Comas' });
-    // cada foto es una fila de quote_photos, con el orden en que se subió
     expect(t.guardado().fotos).toEqual([
       { cloudinaryId: foto(1), orden: 0 },
       { cloudinaryId: foto(2), orden: 1 },

@@ -132,7 +132,7 @@ Módulos: `categories`, `projects` (incluye `project_photos`), `quotes`, `auth` 
 | `GET /projects?categoria=&destacado=&page=&limit=` | Proyectos publicados, destacados primero. `category` también vale como alias. Cada uno trae su **portada** (`antes` y `despues`: la foto principal de la etapa). `limit` máx. 100 (por defecto 50) |
 | `GET /projects/:slug` | Ficha completa: `fotos` agrupadas por etapa (`antes`, `durante`, `despues`), cada etapa ordenada, más la `portada` |
 | `GET /quote-form` | **El formulario del cotizador:** los servicios activos y las preguntas de cada uno (con sus opciones). La web lo pide al cargar y arma el formulario con esto; ver "Cotizador parametrizado" |
-| `POST /quotes` | Guarda la cotización **como filas** (ver abajo) y devuelve `{ id, mensaje, creadaEn }` (`mensaje` = resumen en texto). Cuerpo: `servicios` (slugs), `respuestas` (`{ pregunta: opción \| número \| [opciones] }`), `notas` (hasta 500 caracteres), `fotos` (public_id ya subidos, máx. 6), `consentimiento: true` obligatorio, `website` (campo trampa: si viene lleno se descarta en silencio). Servicios o respuestas que no existen en el catálogo → 422. Límite por IP (10/hora por defecto) |
+| `POST /quotes` | Guarda la cotización **como filas** (ver abajo) y devuelve `{ id, mensaje, creadaEn }` (`mensaje` = resumen en texto). Cuerpo: `servicios` (slugs), `respuestas` (`{ pregunta: [{ opcion, valor? }] }`, siempre una lista; `valor` solo si la opción pide un dato extra), `notas` (hasta 500 caracteres), `fotos` (public_id ya subidos, máx. 6), `consentimiento: true` obligatorio, `website` (campo trampa: si viene lleno se descarta en silencio). Servicios o respuestas que no existen en el catálogo → 422. Límite por IP (10/hora por defecto) |
 | `POST /uploads/quote-photos/signature` | Devuelve la firma para subir las fotos **directo a Cloudinary** (`uploadUrl`, `apiKey`, `timestamp`, `folder`, `allowedFormats`, `signature`…). El API secret nunca sale del servidor. 503 si faltan las credenciales de Cloudinary. Límite por IP (20/hora) |
 
 Cada foto: `{ id, etapa, orden, esPrincipal, pie, ancho, alto, cloudinaryId, url }`. `url` es la URL pública de Cloudinary (`f_auto,q_auto`) o `null` en los datos de prueba (ids `demo/…`).
@@ -144,17 +144,19 @@ Nada de lo que pregunta el cotizador está escrito en el código de la web: vive
 | Tabla | Qué guarda |
 |---|---|
 | `services` | Servicios que se pueden pedir (cocina, baño…) |
-| `questions` | Preguntas (`tipo`: `unica`, `multiple` o `numero`; `etiqueta` corta para resúmenes; `min`/`max` si es número) |
-| `question_options` | Opciones de cada pregunta |
+| `questions` | Preguntas (`tipo`: `unica` = una opción, `multiple` = varias; `etiqueta` corta para resúmenes) |
+| `question_options` | Opciones de cada pregunta. **`tipo_entrada`** (`ninguna`, `texto` o `numero`) y `entrada_ayuda`: si al elegirla se pide un dato más ("Otro" → ¿cuál?, "Sé el área" → m²). La web muestra el campo y valida; la API valida lo mismo |
 | `question_services` | En qué servicios se hace cada pregunta (una pregunta puede servir a varios: el acabado se pregunta una sola vez) |
 | `quote_services` | Servicios que pidió cada cotización |
-| `quote_answers` | **Una fila por respuesta**: cotización + pregunta + opción (o `valor_numero`). Una pregunta múltiple genera una fila por opción |
+| `quote_answers` | **Una fila por opción elegida**: cotización + opción (la pregunta sale de la opción) + `valor` (texto con el dato extra, vacío si la opción no pedía nada). Una pregunta múltiple genera una fila por opción |
 | `quote_photos` | Fotos de cada cotización |
-| `quotes` | Datos generales: cliente, medidas, distrito, plazo, `notas`, contacto, estado, resumen en texto |
+| `quotes` | Solo datos generales: cliente, distrito, plazo, `notas`, contacto, estado, resumen en texto. **Nada específico de un servicio, ni las medidas** (el área es la pregunta `area`) |
 
 **Cambiar una pregunta, opción o servicio:** edita `src/database/seeds/catalog.data.ts` y corre `npm run migration:run` (o `seed:catalog`). Es idempotente: actualiza lo que existe y agrega lo nuevo por `slug`; **no borra** (hay respuestas guardadas que apuntan a esas filas; para retirar algo, `activo = false`). El formulario de la web lo toma solo, sin tocar su código. Una prueba (`tests/unit/catalog.test.ts`) revisa que el catálogo sea coherente.
 
-**Filtrar para el panel:** `QuotesRepository.search({ estado, servicio, respuestas: [{ pregunta, opcion | valor }], page, limit })`. Ejemplos: cocinas con mueble alto → `{ servicio: 'cocina', respuestas: [{ pregunta: 'mueble-alto', opcion: 'si' }] }`; baños de 2 → `{ respuestas: [{ pregunta: 'cantidad-banos', valor: 2 }] }`. `findByIdFull(id)` trae una cotización con servicios, respuestas (pregunta y opción), y fotos.
+**Todo es "pregunta → opciones → respuesta":** no hay tipos de dato por pregunta. Los contadores son opciones (1, 2, 3… y "Más de N", que pide el número), las medidas son la pregunta `area` ("Sé el área aproximada" pide m², o "Aún no lo sé") y "Otro" pide un texto. **Para agregar un servicio** (a futuro, desde el panel): una fila en `services` y filas en `question_services` que lo ligan a las preguntas que se le hacen (incluida `area`, si aplica); si hace falta una pregunta nueva, se crea con sus opciones. Sin código ni migraciones.
+
+**Filtrar para el panel:** `QuotesRepository.search({ estado, servicio, respuestas: [{ pregunta, opcion?, valor? }], page, limit })`. Ejemplos: cocinas con mueble alto → `{ servicio: 'cocina', respuestas: [{ pregunta: 'mueble-alto', opcion: 'si' }] }`; baños de 2 → `{ respuestas: [{ pregunta: 'cantidad-banos', opcion: '2' }] }`; quien dijo saber su área → `{ respuestas: [{ pregunta: 'area', opcion: 'sabe' }] }`. `valor` es texto (validado como número cuando la opción es `numero`, así siempre se puede convertir). `findByIdFull(id)` trae una cotización con servicios, respuestas (pregunta y opción), y fotos.
 
 **Fotos del cotizador:** la web pide la firma, sube cada foto a Cloudinary (`multipart` a `uploadUrl` con `file`, `api_key`, `timestamp`, `folder`, `allowed_formats`, `signature`) y luego manda los `public_id` que devuelve Cloudinary en `POST /quotes`. Requiere `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` en el `.env` del entorno.
 

@@ -21,9 +21,6 @@ export function useDatabase() {
 export const cotizacionValida = {
   cliente: 'persona',
   servicios: ['cocina'],
-  medidasModo: 'lxa',
-  largo: '4',
-  ancho: '3',
   distrito: 'Comas',
   plazo: '1mes',
   nombre: 'Ana Prueba',

@@ -20,9 +20,7 @@ const aCatalogo = (p: Pregunta): PreguntaCatalogo => ({
   slug: p.slug,
   etiqueta: p.etiqueta,
   tipo: p.tipo,
-  min: p.min,
-  max: p.max,
-  opciones: p.opciones.map((o) => ({ id: o.id, slug: o.slug, etiqueta: o.etiqueta })),
+  opciones: p.opciones.map((o) => ({ id: o.id, slug: o.slug, etiqueta: o.etiqueta, tipoEntrada: o.tipoEntrada, entradaAyuda: o.entradaAyuda })),
   servicios: p.servicios.map((s) => s.slug),
 });
 
@@ -46,37 +44,30 @@ export class QuotesService {
       throw validationError(faltantes.map((s) => ({ campo: 'servicios', mensaje: `Servicio no disponible: ${s}` })));
     }
 
-    // Las respuestas se validan contra las preguntas del catálogo; las que no aplican a estos servicios se descartan
+    // Las respuestas se validan contra las preguntas y opciones del catálogo; las que no aplican a estos servicios se descartan
     const preguntas = (await this.catalog.findActiveQuestions()).map(aCatalogo);
     const { filas, resumen } = resolverRespuestas(preguntas, input.servicios, input.respuestas);
 
     // Si el proyecto de referencia no existe o no está publicado, simplemente no se enlaza (no es un error del cliente)
     const proyecto = input.proyecto ? await this.projects.findPublishedBySlug(input.proyecto) : null;
 
-    // Solo se guarda lo que aplica al pedido
-    const largo = input.medidasModo === 'lxa' ? (input.largo ?? null) : null;
-    const ancho = input.medidasModo === 'lxa' ? (input.ancho ?? null) : null;
-    const areaM2 =
-      input.medidasModo === 'm2' ? (input.m2 ?? null) : input.medidasModo === 'lxa' && largo && ancho ? Math.round(largo * ancho * 10) / 10 : null;
     const notas = input.notas ?? null;
+    const razonSocial = input.cliente === 'empresa' ? (input.razonSocial ?? null) : null;
+    const ruc = input.cliente === 'empresa' ? (input.ruc ?? null) : null;
 
     const mensaje = buildQuoteMessage(
       {
         cliente: input.cliente,
         servicios: input.servicios.map((s) => porSlug.get(s)!.nombre),
         respuestas: resumen,
-        medidasModo: input.medidasModo,
-        largo,
-        ancho,
-        areaM2,
         distrito: input.distrito,
         plazo: input.plazo,
         notas,
         fotos: input.fotos.length,
         nombre: input.nombre,
         whatsapp: input.whatsapp,
-        razonSocial: input.cliente === 'empresa' ? (input.razonSocial ?? null) : null,
-        ruc: input.cliente === 'empresa' ? (input.ruc ?? null) : null,
+        razonSocial,
+        ruc,
       },
       proyecto?.titulo,
     );
@@ -87,18 +78,14 @@ export class QuotesService {
       servicios: input.servicios.map((s) => ({ id: porSlug.get(s)!.id })),
       respuestas: filas,
       fotos: input.fotos.map((cloudinaryId, orden) => ({ cloudinaryId, orden })),
-      medidasModo: input.medidasModo,
-      largo,
-      ancho,
-      areaM2,
       distrito: input.distrito,
       plazo: input.plazo,
       notas,
       consentimientoEn: new Date(),
       nombre: input.nombre,
       whatsapp: input.whatsapp,
-      razonSocial: input.cliente === 'empresa' ? (input.razonSocial ?? null) : null,
-      ruc: input.cliente === 'empresa' ? (input.ruc ?? null) : null,
+      razonSocial,
+      ruc,
       proyectoId: proyecto?.id ?? null,
       mensaje,
     });

@@ -1,16 +1,19 @@
 import { z } from 'zod';
 import { env } from '../../config/env';
-import { CLIENTES, MAX_FOTOS, MAX_NOTAS, MEDIDAS_MODO, PLAZO_IDS } from './quote.constants';
+import { CLIENTES, MAX_FOTOS, MAX_NOTAS, PLAZO_IDS } from './quote.constants';
 
 const digitos = (s: string) => s.replace(/\D/g, '');
 const vacioAUndefined = (v: unknown) => (v === '' || v === null ? undefined : v);
 const slug = z.string().min(1).max(60).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Identificador inválido');
 
-/** Acepta 4, "4", "4,5"; vacío = no enviado. */
-const numero = z.preprocess(
-  (v) => (typeof v === 'string' ? (v.trim() === '' ? undefined : Number(v.replace(',', '.'))) : vacioAUndefined(v)),
-  z.number().positive().max(100000).optional(),
-);
+/** Una opción elegida y, si la opción pedía un dato extra, ese dato (texto o número). Se valida de fondo en el servicio. */
+const seleccion = z.object({
+  opcion: slug,
+  valor: z
+    .union([z.string().max(300), z.number()])
+    .nullish()
+    .transform((v) => (v === null || v === undefined || v === '' ? undefined : String(v))),
+});
 
 /**
  * Cuerpo de POST /quotes. Mismos campos que arma el cotizador de la web (web/src/lib/quote.ts → submitQuote).
@@ -22,14 +25,11 @@ export const createQuoteSchema = z
     cliente: z.enum(CLIENTES),
     /** slugs de los servicios elegidos (catálogo `services`) */
     servicios: z.array(slug).min(1, 'Elige al menos un servicio').max(10).transform((a) => [...new Set(a)]),
-    /** Respuestas por pregunta: { "mueble-alto": "si", "ambientes": 3, "melamina-muebles": ["closet", "tv"] } */
-    respuestas: z
-      .record(slug, z.union([z.string().max(60), z.number(), z.array(z.string().max(60)).max(20)]))
-      .default({}),
-    medidasModo: z.enum(MEDIDAS_MODO).default('nose'),
-    largo: numero,
-    ancho: numero,
-    m2: numero,
+    /**
+     * Respuestas por pregunta: la lista de opciones elegidas, cada una con su dato extra si lo pedía.
+     * { "mueble-alto": [{ "opcion": "si" }], "area": [{ "opcion": "sabe", "valor": "85" }] }
+     */
+    respuestas: z.record(slug, z.array(seleccion).min(1).max(20)).default({}),
     distrito: z.string().trim().min(2).max(120),
     plazo: z.enum(PLAZO_IDS),
     /** Datos extra en texto libre (opcional). */

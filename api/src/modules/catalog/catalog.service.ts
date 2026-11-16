@@ -1,5 +1,5 @@
 import type { CatalogRepository } from './catalog.repository';
-import type { PreguntaTipo } from './catalog.types';
+import type { PreguntaTipo, TipoEntrada } from './catalog.types';
 
 export interface QuoteFormDto {
   servicios: { slug: string; nombre: string; icono: string }[];
@@ -8,9 +8,15 @@ export interface QuoteFormDto {
     texto: string;
     etiqueta: string;
     tipo: PreguntaTipo;
-    min: number | null;
-    max: number | null;
-    opciones: { slug: string; etiqueta: string; descripcion: string | null }[];
+    opciones: {
+      slug: string;
+      etiqueta: string;
+      descripcion: string | null;
+      /** Si al elegir la opción se pide un dato más: ninguna | texto | numero. */
+      tipoEntrada: TipoEntrada;
+      /** Texto de ejemplo (texto) o unidad (numero) del campo. */
+      entradaAyuda: string | null;
+    }[];
     /** Slugs de los servicios en los que se hace la pregunta. */
     servicios: string[];
   }[];
@@ -30,9 +36,7 @@ export class CatalogService {
         texto: p.texto,
         etiqueta: p.etiqueta,
         tipo: p.tipo,
-        min: p.min,
-        max: p.max,
-        opciones: p.opciones.map((o) => ({ slug: o.slug, etiqueta: o.etiqueta, descripcion: o.descripcion })),
+        opciones: p.opciones.map((o) => ({ slug: o.slug, etiqueta: o.etiqueta, descripcion: o.descripcion, tipoEntrada: o.tipoEntrada, entradaAyuda: o.entradaAyuda })),
         servicios: p.servicios.filter((s) => activos.has(s.slug)).map((s) => s.slug),
       })),
     };

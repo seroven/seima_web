@@ -28,25 +28,23 @@ export async function seedCatalog(ds: DataSource): Promise<{ servicios: number; 
     });
     const existente = await preguntas.findOne({ where: { slug: p.slug }, relations: { servicios: true } });
     const pregunta = existente ?? preguntas.create({ slug: p.slug });
-    Object.assign(pregunta, {
-      texto: p.texto,
-      etiqueta: p.etiqueta,
-      tipo: p.tipo,
-      min: p.min ?? null,
-      max: p.max ?? null,
-      orden: i,
-      activo: true,
-      servicios: aplica,
-    });
+    Object.assign(pregunta, { texto: p.texto, etiqueta: p.etiqueta, tipo: p.tipo, orden: i, activo: true, servicios: aplica });
     await preguntas.save(pregunta);
 
-    if (p.opciones?.length) {
-      await opciones.upsert(
-        p.opciones.map((o, j) => ({ questionId: pregunta.id, slug: o.slug, etiqueta: o.etiqueta, descripcion: o.descripcion ?? null, orden: j, activo: true })),
-        ['questionId', 'slug'],
-      );
-      totalOpciones += p.opciones.length;
-    }
+    await opciones.upsert(
+      p.opciones.map((o, j) => ({
+        questionId: pregunta.id,
+        slug: o.slug,
+        etiqueta: o.etiqueta,
+        descripcion: o.descripcion ?? null,
+        tipoEntrada: o.entrada ?? ('ninguna' as const),
+        entradaAyuda: o.ayuda ?? null,
+        orden: j,
+        activo: true,
+      })),
+      ['questionId', 'slug'],
+    );
+    totalOpciones += p.opciones.length;
   }
   return { servicios: SERVICIOS.length, preguntas: PREGUNTAS.length, opciones: totalOpciones };
 }

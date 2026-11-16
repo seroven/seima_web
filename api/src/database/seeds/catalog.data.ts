@@ -1,9 +1,14 @@
 // Catálogo del cotizador: servicios y las preguntas que se hacen según el servicio elegido.
-// Para cambiar una pregunta u opción: edita este archivo y corre `npm run seed:catalog` (es idempotente: actualiza lo que
-// existe y agrega lo nuevo por `slug`; NUNCA borra, para no romper respuestas ya guardadas. Para retirar algo, ponle `activo: false`
-// desde el panel o directamente en la base).
-// Reglas: cada pregunta lleva 1 o 2 por servicio, de un toque, y casi siempre con "No sé" para no bloquear a nadie.
-import type { PreguntaTipo } from '../../modules/catalog/catalog.types';
+// Para cambiar una pregunta u opción: edita este archivo y corre `npm run migration:run` (o `seed:catalog`). Es idempotente:
+// actualiza lo que existe y agrega lo nuevo por `slug`; NUNCA borra, para no romper respuestas ya guardadas (para retirar algo,
+// ponle `activo = false`). OJO: cuando exista el panel administrativo, la base pasa a ser la fuente de verdad y este seed
+// deberá limitarse a insertar lo que falta (si no, pisaría lo que se edite desde el panel).
+//
+// Modelo: TODO es "pregunta → opciones". Una opción puede pedir un dato extra al elegirla (`entrada`):
+//   - 'texto'  (p. ej. "Otro" → ¿cuál?)             `ayuda` = texto de ejemplo del campo
+//   - 'numero' (p. ej. "Sé el área" → 85 m²)        `ayuda` = unidad
+// Reglas: 1 a 4 preguntas por servicio, de un toque, y casi siempre con "No sé" para no bloquear a nadie.
+import type { PreguntaTipo, TipoEntrada } from '../../modules/catalog/catalog.types';
 
 export interface ServicioData {
   slug: string;
@@ -16,6 +21,9 @@ export interface OpcionData {
   slug: string;
   etiqueta: string;
   descripcion?: string;
+  /** Dato extra que pide la opción (por defecto, ninguno). */
+  entrada?: Exclude<TipoEntrada, 'ninguna'>;
+  ayuda?: string;
 }
 
 export interface PreguntaData {
@@ -24,11 +32,9 @@ export interface PreguntaData {
   /** Nombre corto para resúmenes y el panel. */
   etiqueta: string;
   tipo: PreguntaTipo;
-  min?: number;
-  max?: number;
   /** slugs de los servicios en los que se hace. */
   servicios: string[];
-  opciones?: OpcionData[];
+  opciones: OpcionData[];
 }
 
 export const SERVICIOS: ServicioData[] = [
@@ -50,7 +56,28 @@ const SI_NO_NOSE: OpcionData[] = [
   { slug: 'nose', etiqueta: 'No sé' },
 ];
 
+/** Opciones 1, 2, 3… hasta `hasta`, y una última "Más de N" que pide el número exacto. */
+const cantidad = (hasta: number, unidad: string): OpcionData[] => [
+  ...Array.from({ length: hasta }, (_, i) => ({ slug: String(i + 1), etiqueta: String(i + 1) })),
+  { slug: 'mas', etiqueta: `Más de ${hasta}`, entrada: 'numero', ayuda: unidad },
+];
+
+/** Todos los servicios menos electricidad (ahí se pregunta por puntos, no por m²). */
+const CON_AREA = SERVICIOS.map((s) => s.slug).filter((s) => s !== 'electricidad');
+
 export const PREGUNTAS: PreguntaData[] = [
+  // ---- Medidas (una pregunta más: sirve a casi todos los servicios) ----
+  {
+    slug: 'area',
+    texto: '¿Cuántos m² aproximadamente?',
+    etiqueta: 'Área',
+    tipo: 'unica',
+    servicios: CON_AREA,
+    opciones: [
+      { slug: 'sabe', etiqueta: 'Sé el área aproximada', entrada: 'numero', ayuda: 'm²' },
+      { slug: 'nose', etiqueta: 'Aún no lo sé' },
+    ],
+  },
   // ---- Acabado (compartida por varios servicios: se muestra una sola vez) ----
   {
     slug: 'acabado',
@@ -79,11 +106,11 @@ export const PREGUNTAS: PreguntaData[] = [
     ],
   },
   // ---- Baño ----
-  { slug: 'cantidad-banos', texto: '¿Cuántos baños?', etiqueta: 'Baños', tipo: 'numero', min: 1, max: 5, servicios: ['bano'] },
+  { slug: 'cantidad-banos', texto: '¿Cuántos baños?', etiqueta: 'Baños', tipo: 'unica', servicios: ['bano'], opciones: cantidad(4, 'baños') },
   // (retirar lo anterior: compartida por baño y enchapado)
   { slug: 'retirar-anterior', texto: '¿Hay que retirar lo anterior (enchape o revestimiento antiguo)?', etiqueta: 'Retirar lo anterior', tipo: 'unica', servicios: ['bano', 'enchapado'], opciones: SI_NO_NOSE },
   // ---- Departamento ----
-  { slug: 'ambientes', texto: '¿Cuántos ambientes?', etiqueta: 'Ambientes', tipo: 'numero', min: 1, max: 10, servicios: ['departamento'] },
+  { slug: 'ambientes', texto: '¿Cuántos ambientes?', etiqueta: 'Ambientes', tipo: 'unica', servicios: ['departamento'], opciones: cantidad(6, 'ambientes') },
   {
     slug: 'departamento-estado',
     texto: '¿Está vacío o habitado?',
@@ -96,7 +123,7 @@ export const PREGUNTAS: PreguntaData[] = [
     ],
   },
   // ---- Divisiones y cuartos ----
-  { slug: 'cantidad-divisiones', texto: '¿Cuántas divisiones?', etiqueta: 'Divisiones', tipo: 'numero', min: 1, max: 10, servicios: ['divisiones'] },
+  { slug: 'cantidad-divisiones', texto: '¿Cuántas divisiones?', etiqueta: 'Divisiones', tipo: 'unica', servicios: ['divisiones'], opciones: cantidad(4, 'divisiones') },
   {
     slug: 'puertas-ventanas',
     texto: '¿Llevan puerta o ventana?',
@@ -172,7 +199,7 @@ export const PREGUNTAS: PreguntaData[] = [
       { slug: 'closet', etiqueta: 'Closet' },
       { slug: 'escritorio', etiqueta: 'Escritorio' },
       { slug: 'tv', etiqueta: 'Mueble de TV' },
-      { slug: 'otro', etiqueta: 'Otro' },
+      { slug: 'otro', etiqueta: 'Otro', entrada: 'texto', ayuda: '¿Cuál?' },
     ],
   },
   {
@@ -222,7 +249,7 @@ export const PREGUNTAS: PreguntaData[] = [
       { slug: 'tienda', etiqueta: 'Tienda' },
       { slug: 'restaurante', etiqueta: 'Restaurante o café' },
       { slug: 'oficina', etiqueta: 'Oficina' },
-      { slug: 'otro', etiqueta: 'Otro' },
+      { slug: 'otro', etiqueta: 'Otro', entrada: 'texto', ayuda: '¿Cuál?' },
     ],
   },
   {
