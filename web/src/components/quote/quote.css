@@ -93,3 +93,26 @@
 .q-sheet__panel .q-summary { border-radius: 24px 24px 0 0; }
 
 .q-off { color: var(--ink); }
+
+/* ---------- Pantalla de envío (avión de papel) ---------- */
+.q-sending { display: grid; justify-items: center; align-content: center; gap: 1.3rem; min-height: 24rem; text-align: center; padding-block: 1rem; }
+.q-sky { width: min(20rem, 80%); height: auto; overflow: visible; }
+.q-sky .cloud ellipse { fill: #e4e4e4; }
+.q-sky .trail { fill: var(--red); }
+.q-sky .plane--a { fill: var(--red); }
+.q-sky .plane--b { fill: #b01729; }
+.q-sky .plane--c { fill: #ff8a96; }
+.q-sky .seal { fill: var(--red); }
+.q-sky .seal__check { fill: none; stroke: #fff; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
+.q-sending__text { display: grid; gap: 0.35rem; justify-items: center; min-height: 4.4rem; }
+.q-sending__title { font-size: clamp(1.5rem, 4.6vw, 2.2rem); line-height: 1.05; margin: 0; }
+.q-sending__status { margin: 0; color: var(--muted-light); font-weight: 600; }
+.q-dots { display: flex; gap: 0.55rem; }
+.q-dots i { width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--tint-2); transition: background-color 0.3s ease; }
+.q-dots i[data-estado='hecha'] { background: var(--red); }
+.q-dots i[data-estado='actual'] { background: var(--ink); }
+
+/* Pantalla final: el ícono lleva un destello que se expande una sola vez y una palomita que se descubre */
+.q-done__icon { position: relative; }
+.q-done__ring { position: absolute; inset: 0; border-radius: 50%; background: var(--red); pointer-events: none; }
+.q-done__check { position: relative; display: grid; place-items: center; }
