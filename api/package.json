@@ -1,0 +1,60 @@
+{
+  "name": "seima-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API de SEIMA Servicios Generales (Express + TypeScript + TypeORM + PostgreSQL)",
+  "main": "dist/server.js",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "node scripts/run.js --guard=safe tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node scripts/run.js --guard=safe node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/run.js --env=test vitest run",
+    "env:check": "node scripts/run.js --guard=safe tsx scripts/env-check.ts",
+    "typeorm": "node scripts/run.js --guard=safe tsx ./node_modules/typeorm/cli.js",
+    "migration:generate": "node scripts/run.js --guard=safe tsx ./node_modules/typeorm/cli.js migration:generate -d src/database/data-source.ts",
+    "migration:create": "tsx ./node_modules/typeorm/cli.js migration:create",
+    "migration:run": "node scripts/run.js --guard=write tsx ./node_modules/typeorm/cli.js migration:run -d src/database/data-source.ts",
+    "migration:revert": "node scripts/run.js --guard=write tsx ./node_modules/typeorm/cli.js migration:revert -d src/database/data-source.ts",
+    "migration:show": "node scripts/run.js --guard=safe tsx ./node_modules/typeorm/cli.js migration:show -d src/database/data-source.ts",
+    "migration:run:prod": "node scripts/run.js --guard=write node ./node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js",
+    "db:reset": "node scripts/db-reset.js",
+    "seed": "node scripts/run.js --guard=write tsx src/database/seeds/run.ts all",
+    "seed:categories": "node scripts/run.js --guard=write tsx src/database/seeds/run.ts categories",
+    "seed:admin": "node scripts/run.js --guard=write tsx src/database/seeds/run.ts admin",
+    "seed:demo": "node scripts/run.js --guard=destructive tsx src/database/seeds/run.ts demo",
+    "test:unit": "node scripts/run.js --env=test vitest run --project unit",
+    "test:integration": "node scripts/run.js --env=test vitest run --project integration",
+    "test:watch": "node scripts/run.js --env=test vitest --project unit"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.4",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.31",
+    "typeorm-naming-strategies": "^4.1.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.20.5",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.3.2",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
+  }
+}
