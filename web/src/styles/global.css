@@ -280,10 +280,12 @@ html.restoring main {
     display: none;
   }
 }
-@media (max-width: 560px) {
-  .nav a[href="/"] { display: none; } /* el logo ya lleva al inicio */
-  .nav { gap: 0.8rem; font-size: 0.88rem; }
-  .nav .btn { padding: 0.5rem 0.85rem; }
+/* Celular: los enlaces pasan al menú a pantalla completa; quedan el logo, "Cotizar" y el botón de menú */
+@media (max-width: 720px) {
+  .site-header .wrap { gap: 0.6rem; }
+  .nav { margin-left: auto; gap: 0; }
+  .nav .nav__link { display: none; }
+  .nav .btn { padding: 0.5rem 0.95rem; font-size: 0.88rem; }
   .brand svg { width: 26px; height: 26px; }
 }
 

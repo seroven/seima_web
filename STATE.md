@@ -21,7 +21,7 @@
 **Git:** remoto `origin` = https://github.com/seroven/seima_web.git. Ramas: `main` (estable) y **`staging` (donde se trabaja)**. Commits se hacen cuando Sebas lo pide. El push no es automático.
 
 **Rutas que existen:** `/` (landing), `/proyectos` (catálogo), `/proyectos/[slug]` (ficha, 7 proyectos de prueba), `/cotizador` (cotizador de 6 pasos), `/empresas` (página para empresas).
-**Rutas que faltan:** 404, menú móvil completo, API.
+**Rutas que faltan:** 404, API.
 
 **Datos:** `web/src/data/projects.ts` — 7 proyectos **de prueba** (todo `[DATO REAL]` / `[FOTO REAL]`). Se reemplaza por `GET /projects`.
 **Entorno:** `PUBLIC_WHATSAPP_NUMBER` sin configurar → los botones de WhatsApp salen como placeholder punteado "[NÚMERO PENDIENTE]". `PUBLIC_API_URL` sin configurar → el cotizador no guarda la solicitud (no hay API aún) pero igual arma el mensaje. Ver `web/.env.example`.
@@ -51,7 +51,8 @@
 | `components/Presentation.astro` | Visor a pantalla completa (`<dialog>`): todas las fotos ordenadas por etapa. Flechas laterales, arrastre (pointer events), teclado, animación de entrada/salida. Lo abren el botón "Modo presentación" y cualquier foto de la galería (`[data-shot]`, desde esa foto). Un solo listener global. |
 | `components/BackButton.astro` | Botón "Volver" de la ficha (texto según origen). |
 | `components/Cta.astro` | Botón de WhatsApp; sin número → placeholder. |
-| `components/Header.astro`, `Footer.astro` | Cabecera fija y pie. |
+| `components/Header.astro` | Cabecera fija. En escritorio: enlaces + "Cotizar". En celular (≤720 px): logo + "Cotizar" + botón de menú que abre un **menú a pantalla completa** (`<dialog>`): círculo que crece desde el botón (`clip-path`), enlaces numerados que suben escalonados, página actual en rojo, "Arma tu cotización" y TikTok; cierra con X, Esc o al elegir un enlace, con animación inversa. |
+| `components/Footer.astro` | Pie. |
 | `scripts/motion.ts` | **Toda la coreografía** GSAP/ScrollTrigger/Lenis: escenas de la landing, galería horizontal, `story()` (barra fija de etapas + entrada de fotos, **sin pin**), comparador, reveals, contadores. |
 | `scripts/nav.ts` | Memoria de scroll propia y origen de navegación (botón Volver). |
 | `scripts/peek.ts` | Mantener presionado una tarjeta en celular → muestra el "antes". |
@@ -97,7 +98,7 @@
 - Modelo de datos de fotos (etapa, principal, galería) en la API → `docs/modelo-datos.md`. (La parte visual ya está en la web con datos de prueba.)
 
 **Por construir (orden acordado)**
-1. Detalles globales: **menú móvil a pantalla completa** (hoy en celular el header solo oculta "Inicio" para que quepan Proyectos, Empresas y Cotizar), botones magnéticos, cursor "ver", 404.
+1. Detalles globales: botones magnéticos, cursor "ver", **404**.
 3. API Express (incluye `POST /quotes`: el cotizador ya lo llama si existe `PUBLIC_API_URL`; subida de fotos del cliente a Cloudinary) + PostgreSQL + seed + Cloudinary.
 4. Calidad: Open Graph con imagen real, accesibilidad, prueba en celular real, despliegue en Render.
 
@@ -112,6 +113,7 @@
 ### 2026-11-15
 
 **Decisiones**
+- **Menú móvil a pantalla completa** (de la lista del brainstorm "menú que se abre a pantalla completa"): solo en celular (≤720 px). "Cotizar" se queda visible en el header (conversión) y el resto de enlaces pasan al menú. Mismo patrón que el visor de fotos: `<dialog>` modal (foco atrapado y Esc gratis), entrada/salida animadas y un solo listener global para abrirlo. Incluye enlace al TikTok oficial `@seima.drywall` (dato del brief).
 - **Voz del cotizador: "nosotros"** (pedido de Sebas): se eliminan las menciones a Luis en tercera persona del cotizador (cabecera, ayudas, pantalla final, mensaje sin número, descripción SEO y la opción "Recomiéndame" → "Que ustedes me aconsejen"). Regla añadida a `CLAUDE.md` (reglas de contenido). El pie de página conserva "Luis Rodríguez".
 - **Página Empresas** (según `docs/fuentes/contexto-chat.md` §4): hero propio con "Solicitar propuesta", capacidad, proceso de 4 pasos (visita técnica → propuesta por partidas → avance documentado → entrega y revisión). **Solo trabajos reales** (varios departamentos, obras de dos pisos, locales como tiendas y consultorios, solo mano de obra) y cifras reales (+50 proyectos, +10 años de experiencia, dato de Sebas). **Sin facturación ni nombres de clientes.** El proceso es un flujo de scroll normal (línea que se llena + pasos que se encienden), no un pin. En el header se añade el enlace "Empresas"; la tarjeta "Para empresas" de la landing ahora lleva a `/empresas`.
 - **Kit de UI compartido (`components/ui`) y dropdown propio:** los controles del cotizador se extrajeron a componentes reutilizables y el `<datalist>` nativo del distrito se sustituyó por un **`Combobox`** con el estilo de la web: lista con **alto máximo** (15 rem; en celular máx. 38 % de la pantalla) y scroll fino estilizado, coincidencias resaltadas en rojo, opción activa sombreada, marca de la elegida, apertura **hacia arriba** si abajo no hay espacio, teclado completo (↑ ↓ Inicio Fin Enter Esc Tab; Enter elige sin enviar el formulario) y patrón ARIA combobox/listbox. Permite valores libres (`allowCustom`). **Anillo de foco:** se mantiene (sombra roja) pero ya no se recorta (ver lección 18); el recorte era un `overflow:hidden` propio del cotizador y también se corrigió en la barra de etapas de la ficha y en la galería horizontal de la landing.
@@ -136,6 +138,8 @@
 - La barra de scroll se oculta solo con movimiento activo, y se compensa con la línea de progreso.
 
 **Cambios**
+- *(sin commit aún)* **Menú móvil a pantalla completa** (`components/Header.astro`, reglas de `global.css`): botón de tres líneas, diálogo con animación `clip-path` desde el botón, enlaces escalonados, foco en el diálogo al abrir (sin anillo sobre el logo), cierre con X/Esc/enlace, bloqueo de scroll (`html.menu-on`) y cierre automático si la pantalla pasa a escritorio. Sustituye el parche temporal que ocultaba "Inicio" ≤560 px. Probado en un iframe de 390 px: abre, foco correcto, cierra animado, navegar desde el menú cambia de página y libera el scroll; `npm run build` correcto (11 páginas).
+- Push de `staging` a GitHub hecho (sincronizado hasta `88b6e9a`).
 - *(sin commit aún)* **Cotizador en voz "nosotros":** 10 textos reescritos en `pages/cotizador.astro`, `components/quote/Quote.tsx`, `components/quote/Steps.tsx` y `lib/quote.ts`. Verificado en el navegador recorriendo los pasos (no queda "Luis" en el cotizador; el único en la página es el del pie).
 - `f1f7896` — **Página Empresas** (ver entrada siguiente; antes figuraba sin commit).
 - `f1f7896` — **Página Empresas** (`pages/empresas.astro`, `components/Plan.astro`, `plan()` y `proceso()` en `motion.ts`, enlace en `Header.astro`, tarjeta de la landing, `?cliente=` en `Quote.tsx`). Probado: hero con el plano dibujándose, bento sin textos cortados (se pasó a rejilla de 12 columnas), proceso con línea y pasos que se encienden, "Solicitar propuesta" abre el cotizador en el paso 2 con "Para: Empresa", celular sin desborde y `npm run build` correcto (11 páginas). Arreglos de paso: (a) el header no cabía en celular con el enlace nuevo → se oculta "Inicio" ≤560 px y se compacta; (b) los bloques que solo entran (`data-noexit`, p. ej. el cierre rojo) ahora terminan de aparecer antes de llegar al fondo de la página (`end: top 62%`).

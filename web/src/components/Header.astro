@@ -1,6 +1,13 @@
 ---
+// Cabecera. En escritorio: enlaces + "Cotizar". En celular: "Cotizar" + botón de menú que abre un menú a pantalla completa.
 const path = Astro.url.pathname;
-const active = (p: string) => (p === '/' ? path === '/' : path.startsWith(p)) ? 'page' : undefined;
+const active = (p: string) => ((p === '/' ? path === '/' : path.startsWith(p)) ? 'page' : undefined);
+const links = [
+  { href: '/', label: 'Inicio' },
+  { href: '/proyectos', label: 'Proyectos' },
+  { href: '/empresas', label: 'Empresas' },
+  { href: '/cotizador', label: 'Cotizador' },
+];
 ---
 <header class="site-header on-dark">
   <div class="wrap">
@@ -9,10 +16,165 @@ const active = (p: string) => (p === '/' ? path === '/' : path.startsWith(p)) ? 
       <span><b>SEIMA</b><small>Servicios Generales</small></span>
     </a>
     <nav class="nav" aria-label="Principal">
-      <a href="/" aria-current={active('/')}>Inicio</a>
-      <a href="/proyectos" aria-current={active('/proyectos')}>Proyectos</a>
-      <a href="/empresas" aria-current={active('/empresas')}>Empresas</a>
+      <a class="nav__link" href="/" aria-current={active('/')}>Inicio</a>
+      <a class="nav__link" href="/proyectos" aria-current={active('/proyectos')}>Proyectos</a>
+      <a class="nav__link" href="/empresas" aria-current={active('/empresas')}>Empresas</a>
       <a class="btn" href="/cotizador">Cotizar</a>
     </nav>
+    <button type="button" class="menu-btn" data-menu-open aria-haspopup="dialog" aria-controls="site-menu" aria-expanded="false" aria-label="Abrir menú">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </header>
+
+<!-- Menú a pantalla completa (solo celular): se abre con un círculo que crece desde el botón -->
+<dialog id="site-menu" class="menu" data-menu tabindex="-1" data-lenis-prevent aria-label="Menú">
+  <div class="menu__glow" aria-hidden="true"></div>
+  <div class="wrap menu__bar">
+    <a class="brand" href="/" aria-label="SEIMA Servicios Generales, inicio">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 2 15h4v13h8v-8h4v8h8V15h4z" fill="#fff"/><rect x="13" y="13" width="6" height="5" fill="#e0283c"/></svg>
+      <span><b>SEIMA</b><small>Servicios Generales</small></span>
+    </a>
+    <button type="button" class="menu__close" data-menu-close aria-label="Cerrar menú">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg>
+    </button>
+  </div>
+  <nav class="wrap menu__nav" aria-label="Menú">
+    <ol>
+      {links.map((l, i) => (
+        <li style={`--i:${i}`}>
+          <a class="menu__link" href={l.href} aria-current={active(l.href)}>
+            <span class="menu__n">0{i + 1}</span>
+            <span class="menu__t">{l.label}</span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </nav>
+  <div class="wrap menu__foot">
+    <a class="btn btn--lg" href="/cotizador">Arma tu cotización →</a>
+    <p>Lima y provincias · <a href="https://www.tiktok.com/@seima.drywall" target="_blank" rel="noopener">TikTok @seima.drywall</a></p>
+  </div>
+</dialog>
+
+<script>
+  function setup() {
+    const dlg = document.querySelector<HTMLDialogElement>('[data-menu]');
+    const btn = document.querySelector<HTMLButtonElement>('[data-menu-open]');
+    if (!dlg || !btn || dlg.dataset.ready) return;
+    dlg.dataset.ready = '1';
+    const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let closing = false;
+
+    const sync = (open: boolean) => {
+      btn.setAttribute('aria-expanded', String(open));
+      btn.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+      document.documentElement.classList.toggle('menu-on', open);
+    };
+
+    (dlg as any)._open = () => {
+      if (dlg.open) return;
+      const r = btn.getBoundingClientRect();
+      dlg.style.setProperty('--ox', r.left + r.width / 2 + 'px');
+      dlg.style.setProperty('--oy', r.top + r.height / 2 + 'px');
+      dlg.showModal();
+      dlg.focus({ preventScroll: true }); // sin anillo de foco sobre el logo al abrir; Tab sigue funcionando
+      sync(true);
+    };
+
+    const close = () => {
+      if (!dlg.open || closing) return;
+      if (reduce()) {
+        dlg.close();
+        return;
+      }
+      closing = true;
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        dlg.classList.remove('is-closing');
+        closing = false;
+        dlg.close();
+      };
+      dlg.classList.add('is-closing');
+      dlg.addEventListener('animationend', (e) => e.target === dlg && finish());
+      setTimeout(finish, 700);
+    };
+
+    dlg.addEventListener('close', () => sync(false));
+    dlg.addEventListener('cancel', (e) => {
+      e.preventDefault(); // Esc: cerrar con animación
+      close();
+    });
+    dlg.querySelector('[data-menu-close]')!.addEventListener('click', close);
+    // Cualquier enlace del menú lo cierra (si es la misma página, no hay navegación y debe cerrarse igual)
+    dlg.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => (a.target === '_blank' ? null : close())));
+    // Si se ensancha la pantalla (a escritorio) con el menú abierto, se cierra
+    matchMedia('(min-width: 721px)').addEventListener('change', (e) => e.matches && dlg.open && dlg.close());
+  }
+  document.addEventListener('astro:page-load', setup);
+
+  // Un solo listener global (con ClientRouter el módulo vive entre páginas)
+  document.addEventListener('click', (e) => {
+    if (!(e.target as Element).closest('[data-menu-open]')) return;
+    const dlg = document.querySelector<HTMLDialogElement>('[data-menu]') as any;
+    dlg?._open?.();
+  });
+</script>
+
+<style>
+  /* Botón de menú (solo celular): tres líneas */
+  .menu-btn {
+    display: none; width: 44px; height: 44px; border: 0; border-radius: 50%; cursor: pointer; padding: 0;
+    background: rgb(255 255 255 / 0.08); color: #fff; place-content: center; gap: 5px; transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .menu-btn:hover { background: rgb(255 255 255 / 0.16); }
+  .menu-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(224 40 60 / 0.6); }
+  .menu-btn span { display: block; width: 18px; height: 2px; border-radius: 2px; background: currentColor; transition: width 0.25s ease; }
+  .menu-btn span:nth-child(2) { width: 12px; margin-left: auto; }
+  .menu-btn:hover span:nth-child(2) { width: 18px; }
+
+  @media (max-width: 720px) {
+    .menu-btn { display: grid; }
+  }
+
+  /* Menú a pantalla completa */
+  .menu { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: var(--ink); color: #fff; overflow: hidden; }
+  .menu[open] { display: grid; grid-template-rows: auto 1fr auto; }
+  .menu::backdrop { background: var(--ink); }
+  .menu:focus { outline: none; }
+  .menu__glow {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(60% 45% at 80% 85%, rgb(224 40 60 / 0.22), transparent 70%),
+      radial-gradient(rgb(255 255 255 / 0.07) 1px, transparent 1.5px) 0 0 / 28px 28px;
+  }
+  .menu__bar { position: relative; display: flex; align-items: center; justify-content: space-between; min-height: var(--header); }
+  .menu__close { width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgb(255 255 255 / 0.1); color: #fff; display: grid; place-items: center; cursor: pointer; transition: background-color 0.2s ease, rotate 0.3s ease; }
+  .menu__close:hover { background: var(--red); rotate: 90deg; }
+  .menu__close:focus-visible { outline: none; box-shadow: 0 0 0 3px rgb(224 40 60 / 0.6); }
+  .menu__nav { position: relative; display: grid; align-content: center; }
+  .menu__nav ol { list-style: none; margin: 0; padding: 0; display: grid; gap: clamp(0.4rem, 2.5vh, 1.2rem); }
+  .menu__link { display: flex; align-items: baseline; gap: 1rem; padding-block: 0.3rem; text-decoration: none; color: #fff; transition: color 0.2s ease, translate 0.3s cubic-bezier(0.2, 0.7, 0, 1); }
+  .menu__n { font-size: 0.85rem; font-weight: 800; color: var(--red); min-width: 1.6rem; }
+  .menu__t { font-stretch: 125%; font-weight: 900; font-size: clamp(2.4rem, 12vw, 4.2rem); line-height: 1.02; letter-spacing: -0.02em; }
+  .menu__link:hover, .menu__link:focus-visible { translate: 8px 0; color: #ff6b7a; outline: none; }
+  .menu__link[aria-current='page'] .menu__t { color: var(--red); }
+  .menu__foot { position: relative; display: grid; gap: 1rem; padding-block: 1rem 1.6rem; justify-items: start; }
+  .menu__foot p { color: var(--muted-dark); font-size: 0.88rem; }
+  .menu__foot p a { color: #fff; text-underline-offset: 3px; }
+
+  /* Entrada: el círculo crece desde el botón; los enlaces suben escalonados. Salida: la inversa. */
+  .menu[open] { animation: menu-in 0.6s cubic-bezier(0.2, 0.7, 0, 1) both; }
+  .menu[open] .menu__bar { animation: menu-fade 0.4s 0.25s ease both; }
+  .menu[open] li { animation: menu-rise 0.6s calc(0.22s + var(--i) * 0.07s) cubic-bezier(0.2, 0.7, 0, 1) both; }
+  .menu[open] .menu__foot { animation: menu-rise 0.6s 0.55s cubic-bezier(0.2, 0.7, 0, 1) both; }
+  .menu.is-closing { animation: menu-out 0.4s cubic-bezier(0.5, 0, 0.75, 0) both; }
+  @keyframes menu-in { from { clip-path: circle(0px at var(--ox, 90%) var(--oy, 30px)); } to { clip-path: circle(150vmax at var(--ox, 90%) var(--oy, 30px)); } }
+  @keyframes menu-out { from { clip-path: circle(150vmax at var(--ox, 90%) var(--oy, 30px)); } to { clip-path: circle(0px at var(--ox, 90%) var(--oy, 30px)); } }
+  @keyframes menu-fade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes menu-rise { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+
+  :global(html.menu-on) { overflow: hidden; }
+</style>
