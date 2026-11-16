@@ -21,6 +21,8 @@ npm run seed:demo             # (opcional) 7 proyectos de PRUEBA con fotos ficti
 npm run dev                   # http://localhost:4000/api/v1   (recarga al guardar)
 ```
 
+`DB_SCHEMA` es el schema de PostgreSQL donde se crean las tablas (por defecto `public`). Si no existe, `migration:run` lo crea solo.
+
 `JWT_SECRET` (mín. 32 caracteres): `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
 
 ## Entornos: dev · qa · pd (y test)
@@ -69,7 +71,8 @@ npm run env:check -- --env=qa                # ¿qué entorno/base es? ¿conecta
 | `npm run test:integration` | Solo integración (API real contra la base de pruebas) |
 | `npm run test:watch` | Unitarias en modo observador (se repiten al guardar) |
 | `npm run migration:generate -- src/database/migrations/Nombre` | **Genera una migración comparando las entidades con la base** |
-| `npm run migration:run` | Aplica las migraciones pendientes |
+| `npm run migration:run` | Crea el schema (`DB_SCHEMA`) si falta y aplica las migraciones pendientes |
+| `npm run db:schema` | Solo crea el schema si no existe |
 | `npm run migration:revert` | Revierte la última migración |
 | `npm run migration:show` | Muestra cuáles están aplicadas |
 | `npm run migration:create -- src/database/migrations/Nombre` | Migración vacía (para datos o SQL a mano) |
@@ -87,6 +90,8 @@ La estructura de la base **solo cambia por migraciones** (`synchronize` está ap
 3. `npm run migration:generate -- src/database/migrations/AgregarCampoX` → TypeORM escribe la migración con el SQL necesario.
 4. **Revisa** el archivo generado.
 5. `npm run migration:run` → se aplica. (En producción corre `migration:run:prod` antes de arrancar.)
+
+> **Schema:** las tablas, los enums y la tabla `migrations` viven en `DB_SCHEMA`. Las migraciones **no deben escribir el schema a mano** (nada de `"public"."tabla"`): se aplican en el schema configurado mediante el `search_path` de la conexión. Una prueba lo vigila.
 
 > Las entidades llevan siempre el `type` de cada columna explícito (`@Column({ type: 'varchar', length: 60 })`): `tsx` no emite metadatos de decoradores.
 

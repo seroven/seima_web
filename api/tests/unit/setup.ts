@@ -9,3 +9,4 @@ process.env.JWT_AUDIENCE = 'seima-panel';
 process.env.JWT_EXPIRES_IN = '1h';
 process.env.BCRYPT_ROUNDS = '10';
 process.env.CLOUDINARY_CLOUD_NAME = 'demo-cloud';
+process.env.DB_SCHEMA = 'public';

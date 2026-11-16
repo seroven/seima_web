@@ -21,6 +21,10 @@ export default async function setup() {
     throw new Error(`Las pruebas solo corren contra una base de pruebas (el nombre debe contener "test"). Base actual: "${nombre}". Revisa .env.test`);
   }
 
+  // El schema (DB_SCHEMA) puede no existir todavía: se crea antes de vaciar y migrar
+  const env = { ...process.env, NODE_ENV: 'test' } as NodeJS.ProcessEnv;
+  delete env.VITEST;
+  execSync('npx tsx src/database/ensure-schema.ts', { stdio: 'pipe', env });
   cli('schema:drop');
   cli('migration:run');
 

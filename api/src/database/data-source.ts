@@ -13,6 +13,10 @@ export const dataSourceOptions: DataSourceOptions = {
     ? { url: env.DATABASE_URL }
     : { host: env.DB_HOST, port: env.DB_PORT, username: env.DB_USER, password: env.DB_PASSWORD, database: env.DB_NAME }),
   ssl: env.DB_SSL ? { rejectUnauthorized: false } : false,
+  // Schema de PostgreSQL (DB_SCHEMA). `schema` lo usa TypeORM en sus consultas y en la tabla de migraciones;
+  // el search_path hace que el SQL sin prefijo de las migraciones (tablas, enums, índices) caiga en ese mismo schema.
+  schema: env.DB_SCHEMA,
+  extra: { options: `-c search_path=${env.DB_SCHEMA}` },
   entities, // lista explícita (database/entities.ts): funciona igual con tsx, con la app compilada y en las pruebas
   // Las migraciones sí se buscan por patrón: el CLI las genera y se detectan solas (.ts en desarrollo, .js compilado).
   // Dentro de Vitest no se cargan (Node no entiende .ts nativamente ahí); las pruebas crean la base con el CLI en otro proceso.

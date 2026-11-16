@@ -69,6 +69,11 @@ const schema = z
     DB_USER: z.string().default('postgres'),
     DB_PASSWORD: z.string().default(''),
     DB_NAME: z.string().default('seima'),
+    // Schema de PostgreSQL donde viven las tablas (y la tabla de migraciones). Debe existir o crearse con migration:run.
+    DB_SCHEMA: z
+      .string()
+      .regex(/^[a-z_][a-z0-9_]{0,62}$/i, 'DB_SCHEMA inválido (letras, números y guion bajo; no puede empezar con número)')
+      .default('public'),
     DB_SSL: boolStr,
 
     JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres'),
@@ -111,17 +116,17 @@ if (!parsed.success) {
 export const env = parsed.data;
 export type Env = typeof env;
 
-/** Descripción corta de a qué base apunta este entorno (sin contraseña). */
+/** Descripción corta de a qué base y schema apunta este entorno (sin contraseña). */
 export function describirBase(e: Env = env): string {
   if (e.DATABASE_URL) {
     try {
       const u = new URL(e.DATABASE_URL);
-      return `${u.hostname}:${u.port || 5432}${u.pathname}`;
+      return `${u.hostname}:${u.port || 5432}${u.pathname} · schema ${e.DB_SCHEMA}`;
     } catch {
       return '(DATABASE_URL)';
     }
   }
-  return `${e.DB_HOST}:${e.DB_PORT}/${e.DB_NAME}`;
+  return `${e.DB_HOST}:${e.DB_PORT}/${e.DB_NAME} · schema ${e.DB_SCHEMA}`;
 }
 
 // Los comandos de scripts/run.js piden este banner: así siempre se ve en qué entorno y contra qué base se trabaja.

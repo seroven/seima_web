@@ -17,10 +17,10 @@
     "typeorm": "node scripts/run.js --guard=safe tsx ./node_modules/typeorm/cli.js",
     "migration:generate": "node scripts/run.js --guard=safe tsx ./node_modules/typeorm/cli.js migration:generate -d src/database/data-source.ts",
     "migration:create": "tsx ./node_modules/typeorm/cli.js migration:create",
-    "migration:run": "node scripts/run.js --guard=write tsx ./node_modules/typeorm/cli.js migration:run -d src/database/data-source.ts",
+    "migration:run": "node scripts/migrate.js",
     "migration:revert": "node scripts/run.js --guard=write tsx ./node_modules/typeorm/cli.js migration:revert -d src/database/data-source.ts",
     "migration:show": "node scripts/run.js --guard=safe tsx ./node_modules/typeorm/cli.js migration:show -d src/database/data-source.ts",
-    "migration:run:prod": "node scripts/run.js --guard=write node ./node_modules/typeorm/cli.js migration:run -d dist/database/data-source.js",
+    "migration:run:prod": "node scripts/migrate.js --prod",
     "db:reset": "node scripts/db-reset.js",
     "seed": "node scripts/run.js --guard=write tsx src/database/seeds/run.ts all",
     "seed:categories": "node scripts/run.js --guard=write tsx src/database/seeds/run.ts categories",
@@ -28,7 +28,8 @@
     "seed:demo": "node scripts/run.js --guard=destructive tsx src/database/seeds/run.ts demo",
     "test:unit": "node scripts/run.js --env=test vitest run --project unit",
     "test:integration": "node scripts/run.js --env=test vitest run --project integration",
-    "test:watch": "node scripts/run.js --env=test vitest --project unit"
+    "test:watch": "node scripts/run.js --env=test vitest --project unit",
+    "db:schema": "node scripts/run.js --guard=write tsx src/database/ensure-schema.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

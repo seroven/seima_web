@@ -9,10 +9,11 @@ const bloqueo = revisarGuarda(entorno, 'destructive', yes);
 if (bloqueo) falla(`[${entorno.toUpperCase()}] ${bloqueo}`);
 
 const typeorm = (accion) => ['tsx', ['./node_modules/typeorm/cli.js', accion, '-d', 'src/database/data-source.ts']];
+const asegurarSchema = ['tsx', ['src/database/ensure-schema.ts']];
 
 (async () => {
-  for (const accion of ['schema:drop', 'migration:run']) {
-    const [cmd, args] = typeorm(accion);
+  // schema (si falta) → vaciar tablas del schema → migraciones desde cero
+  for (const [cmd, args] of [asegurarSchema, typeorm('schema:drop'), typeorm('migration:run')]) {
     const codigo = await ejecutar(cmd, args, entorno);
     if (codigo !== 0) process.exit(codigo);
   }
