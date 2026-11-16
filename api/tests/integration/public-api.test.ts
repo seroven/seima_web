@@ -1,0 +1,184 @@
+import { describe, expect, it } from 'vitest';
+import { API, agent, cotizacionValida, useDatabase } from './helpers';
+
+useDatabase();
+
+describe('GET /health', () => {
+  it('responde ok con la base conectada', async () => {
+    const res = await agent().get(`${API}/health`);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: 'ok', db: 'up' });
+  });
+});
+
+describe('GET /categories (público)', () => {
+  it('devuelve las categorías activas en orden', async () => {
+    const res = await agent().get(`${API}/categories`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(8);
+    expect(res.body.data[0]).toEqual({ slug: 'cocinas', nombre: 'Cocinas', orden: 0 });
+  });
+});
+
+describe('GET /projects (público)', () => {
+  it('lista los proyectos publicados con su portada', async () => {
+    const res = await agent().get(`${API}/projects`);
+    expect(res.status).toBe(200);
+    expect(res.body.meta).toMatchObject({ page: 1, total: 7 });
+    const cocina = res.body.data.find((p: { slug: string }) => p.slug === 'cocina-drywall-porcelanato');
+    expect(cocina.portada.despues.esPrincipal).toBe(true);
+    expect(cocina.portada.antes.etapa).toBe('antes');
+    expect(cocina).not.toHaveProperty('fotos'); // la lista no manda toda la galería
+  });
+
+  it('pone los destacados primero', async () => {
+    const res = await agent().get(`${API}/projects`);
+    const flags = res.body.data.map((p: { destacado: boolean }) => p.destacado);
+    expect(flags.slice(0, 3)).toEqual([true, true, true]);
+  });
+
+  it('filtra por categoría (categoria y alias category) y por destacado', async () => {
+    const a = await agent().get(`${API}/projects?categoria=locales`);
+    const b = await agent().get(`${API}/projects?category=locales`);
+    expect(a.body.data.map((p: { slug: string }) => p.slug)).toEqual(['local-comercial-acabados']);
+    expect(b.body.data).toEqual(a.body.data);
+    const d = await agent().get(`${API}/projects?destacado=true`);
+    expect(d.body.data).toHaveLength(3);
+  });
+
+  it('pagina', async () => {
+    const res = await agent().get(`${API}/projects?limit=3&page=3`);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.meta).toMatchObject({ page: 3, limit: 3, total: 7, totalPages: 3 });
+  });
+
+  it('rechaza parámetros inválidos con 422 en español', async () => {
+    const res = await agent().get(`${API}/projects?limit=9999&categoria=Mala%20Categoria`);
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    expect(res.body.error.details.map((d: { campo: string }) => d.campo).sort()).toEqual(['categoria', 'limit']);
+  });
+});
+
+describe('GET /projects/:slug (público)', () => {
+  it('devuelve la galería agrupada por etapa y ordenada, con una sola principal por etapa', async () => {
+    const res = await agent().get(`${API}/projects/mini-departamento-drywall`);
+    expect(res.status).toBe(200);
+    const { fotos } = res.body.data;
+    expect([fotos.antes.length, fotos.durante.length, fotos.despues.length]).toEqual([5, 8, 10]);
+    for (const etapa of ['antes', 'durante', 'despues'] as const) {
+      expect(fotos[etapa].filter((f: { esPrincipal: boolean }) => f.esPrincipal)).toHaveLength(1);
+      expect(fotos[etapa].map((f: { orden: number }) => f.orden)).toEqual([...fotos[etapa].map((f: { orden: number }) => f.orden)].sort((x, y) => x - y));
+    }
+  });
+
+  it('tolera una etapa sin fotos', async () => {
+    const res = await agent().get(`${API}/projects/falso-techo-drywall`);
+    expect(res.body.data.fotos.durante).toEqual([]);
+    expect(res.body.data.portada.despues).not.toBeNull();
+  });
+
+  it('no inventa URL para fotos de prueba (demo/…)', async () => {
+    const res = await agent().get(`${API}/projects/closet-melamina`);
+    expect(res.body.data.fotos.antes[0].url).toBeNull();
+  });
+
+  it('404 si no existe', async () => {
+    const res = await agent().get(`${API}/projects/no-existe`);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+});
+
+describe('POST /quotes (público)', () => {
+  it('guarda la solicitud, calcula el área y devuelve el mensaje de WhatsApp', async () => {
+    const res = await agent()
+      .post(`${API}/quotes`)
+      .send({ ...cotizacionValida, servicios: ['cocina', 'departamento', 'cocina'], acabado: 'corte45', muebleAlto: 'si', estructura: 'cero', ambientes: 3, fotos: 2, proyecto: 'cocina-drywall-porcelanato' });
+    expect(res.status).toBe(201);
+    const { id, mensaje } = res.body.data;
+    expect(id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(mensaje).toContain('*Nueva solicitud · SEIMA web*');
+    expect(mensaje).toContain('Servicios: Cocina, Departamento completo'); // sin duplicados
+    expect(mensaje).toContain('Medidas: 4 × 3 m (≈ 12 m²)');
+    expect(mensaje).toContain('Referencia: proyecto «Cocina en drywall y porcelanato»');
+    expect(mensaje).toContain('Contacto: Ana Prueba · 987 654 321');
+  });
+
+  it('acepta EXACTAMENTE el cuerpo que arma el cotizador de la web (cadenas vacías y null incluidos)', async () => {
+    // Forma real de QuoteData en web/src/lib/quote.ts → submitQuote (whatsapp y ruc ya vienen solo con dígitos)
+    const deLaWeb = {
+      cliente: 'persona', servicios: ['pintura'], medidasModo: 'nose', largo: '', ancho: '', m2: '', acabado: null, muebleAlto: null,
+      estructura: null, ambientes: 2, distrito: 'Los Olivos', plazo: 'asap', fotos: 0, nombre: 'Ana Test', whatsapp: '987654321',
+      razonSocial: '', ruc: '', proyecto: null,
+    };
+    const res = await agent().post(`${API}/quotes`).send(deLaWeb);
+    expect(res.status).toBe(201);
+    expect(res.body.data.mensaje).toContain('Medidas: por definir');
+    expect(res.body.data.mensaje).toContain('Contacto: Ana Test · 987 654 321');
+  });
+
+  it('ignora lo que no aplica al pedido (acabado sin enchape, extras de cocina sin cocina)', async () => {
+    const res = await agent().post(`${API}/quotes`).send({ ...cotizacionValida, servicios: ['pintura'], acabado: 'granito', muebleAlto: 'si', ambientes: 5 });
+    expect(res.status).toBe(201);
+    expect(res.body.data.mensaje).not.toContain('Acabado');
+    expect(res.body.data.mensaje).not.toContain('Cocina:');
+    expect(res.body.data.mensaje).not.toContain('Departamento:');
+  });
+
+  it('empresa exige razón social; el RUC debe tener 11 dígitos', async () => {
+    const base = { ...cotizacionValida, cliente: 'empresa', servicios: ['local'] };
+    const sin = await agent().post(`${API}/quotes`).send(base);
+    expect(sin.status).toBe(422);
+    expect(sin.body.error.details[0].campo).toBe('razonSocial');
+    const ruc = await agent().post(`${API}/quotes`).send({ ...base, razonSocial: 'Constructora Demo SAC', ruc: '123' });
+    expect(ruc.status).toBe(422);
+    const ok = await agent().post(`${API}/quotes`).send({ ...base, razonSocial: 'Constructora Demo SAC', ruc: '20123456789' });
+    expect(ok.status).toBe(201);
+    expect(ok.body.data.mensaje).toContain('Cliente: Empresa — Constructora Demo SAC (RUC 20123456789)');
+  });
+
+  it.each([
+    ['celular inválido', { whatsapp: '123' }],
+    ['servicio desconocido', { servicios: ['volar'] }],
+    ['sin servicios', { servicios: [] }],
+    ['plazo desconocido', { plazo: 'ayer' }],
+    ['nombre muy corto', { nombre: 'A' }],
+  ])('rechaza %s con 422', async (_caso, cambio) => {
+    const res = await agent().post(`${API}/quotes`).send({ ...cotizacionValida, ...cambio });
+    expect(res.status).toBe(422);
+  });
+
+  it('un proyecto de referencia inexistente no rompe la solicitud', async () => {
+    const res = await agent().post(`${API}/quotes`).send({ ...cotizacionValida, proyecto: 'no-existe' });
+    expect(res.status).toBe(201);
+    expect(res.body.data.mensaje).not.toContain('Referencia');
+  });
+
+  it('JSON mal formado → 400', async () => {
+    const res = await agent().post(`${API}/quotes`).set('Content-Type', 'application/json').send('{rota');
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('BAD_JSON');
+  });
+});
+
+describe('Seguridad general', () => {
+  it('envía cabeceras de helmet y no revela Express', async () => {
+    const res = await agent().get(`${API}/health`);
+    expect(res.headers['x-powered-by']).toBeUndefined();
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+  });
+
+  it('CORS: permite el origen de la web y no el de extraños', async () => {
+    const ok = await agent().get(`${API}/health`).set('Origin', 'http://localhost:4321');
+    expect(ok.headers['access-control-allow-origin']).toBe('http://localhost:4321');
+    const mal = await agent().get(`${API}/health`).set('Origin', 'https://sitio-malicioso.com');
+    expect(mal.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('ruta inexistente → 404 con el formato de error de la API', async () => {
+    const res = await agent().get(`${API}/nada`);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+});
