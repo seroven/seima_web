@@ -134,6 +134,33 @@ html.restoring main {
   }
 }
 
+/* ---------- Cursor personalizado sobre las fotos (solo puntero fino + movimiento) ---------- */
+.fx-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 90;
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  border-radius: 50%;
+  background: var(--red);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0);
+}
+html.fx-on [data-cursor],
+html.fx-on [data-cursor] * {
+  cursor: none !important;
+}
+
 /* ---------- Zonas ---------- */
 .dark {
   background: var(--ink);
@@ -176,10 +203,10 @@ html.restoring main {
   border-radius: 999px;
   border: 0;
   cursor: pointer;
-  transition: transform 0.25s ease, background-color 0.25s ease;
+  transition: translate 0.25s ease, background-color 0.25s ease;
 }
 .btn:hover {
-  transform: translateY(-2px);
+  translate: 0 -2px;
   background: #c81d30;
 }
 .btn--ghost {
@@ -208,7 +235,7 @@ html.restoring main {
   font-size: 0.9rem;
 }
 .btn--off:hover {
-  transform: none;
+  translate: none;
   background: transparent;
 }
 

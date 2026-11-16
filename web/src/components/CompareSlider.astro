@@ -7,7 +7,7 @@ const { project: p } = Astro.props;
 const before = principal(p, 'antes') ?? p.fotos[0];
 const after = principal(p, 'despues') ?? p.fotos[p.fotos.length - 1];
 ---
-<div class="cmp" data-compare style="--p:50">
+<div class="cmp" data-compare data-cursor="Arrastra" style="--p:50">
   <div class="cmp__layer"><Photo src={after.src} alt={after.alt} tone={p.tono} fill label="[FOTO REAL · DESPUÉS]" plain /></div>
   <div class="cmp__layer cmp__before"><Photo src={before.src} alt={before.alt} tone={(p.tono + 3) % 6} fill label="[FOTO REAL · ANTES]" plain /></div>
   <div class="cmp__handle" aria-hidden="true"><span class="cmp__knob"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M9 6 3 12l6 6M15 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span></div>

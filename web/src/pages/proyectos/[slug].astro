@@ -106,7 +106,7 @@ const share = `https://wa.me/?text=${encodeURIComponent(`${p.titulo} · SEIMA Se
           <ul class="mosaic">
             {e.fotos.map((f, j) => (
               <li class="mosaic__item" data-t={e.tipos[j]}>
-                <button type="button" class="shot" data-shot data-global={globalIndex(f)} aria-label={`Ver foto ${j + 1} de ${e.fotos.length} — ${e.label}`}>
+                <button type="button" class="shot" data-shot data-cursor="Ampliar" data-global={globalIndex(f)} aria-label={`Ver foto ${j + 1} de ${e.fotos.length} — ${e.label}`}>
                   <Photo src={f.src} alt={f.alt} tone={(p.tono + i * 2 + j) % 6} fill label={`[FOTO REAL · ${e.label.toUpperCase()} ${j + 1}]`} />
                 </button>
               </li>

@@ -57,6 +57,8 @@ async function init() {
       heroIntro(gsap);
       plan(gsap);
       notFound(gsap);
+      magnets(gsap);
+      cursorFx(gsap);
       proceso(gsap, ScrollTrigger);
       compare(gsap);
       words(gsap);
@@ -241,6 +243,83 @@ function heroIntro(gsap: any) {
   tl.to(structure, { opacity: 0.4, duration: 0.6 }, 2.3);
   tl.fromTo(finish, { clipPath: 'inset(0% 100% 0% 0%)', opacity: 0.4 }, { clipPath: 'inset(0% 0% 0% 0%)', opacity: 1, duration: 1.1, ease: 'power2.inOut' }, 2.7);
   tl.fromTo(spots, { autoAlpha: 0, scale: 0.6 }, { autoAlpha: 1, scale: 1, duration: 0.45, ease: 'back.out(2)', stagger: 0.1 }, 3.5);
+}
+
+/* ---------- Botones magnéticos: siguen al cursor con suavidad (solo puntero fino) ---------- */
+function magnets(gsap: any) {
+  if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  let cur: HTMLElement | null = null;
+  const sel = ".btn:not(.btn--off)";
+  const reset = (el: HTMLElement) => gsap.to(el, { x: 0, y: 0, duration: 0.7, ease: "elastic.out(1, 0.4)", overwrite: "auto" });
+
+  const move = (e: PointerEvent) => {
+    const el = (e.target as Element).closest?.(sel) as HTMLElement | null;
+    // Dentro de islas de React (Motion) y diálogos no se aplica: dos motores sobre el mismo transform chocarían
+    const ok = el && !el.closest(".q, dialog");
+    if (cur && cur !== el) {
+      reset(cur);
+      cur = null;
+    }
+    if (!el || !ok) return;
+    cur = el;
+    const r = el.getBoundingClientRect();
+    const dx = e.clientX - (r.left + r.width / 2);
+    const dy = e.clientY - (r.top + r.height / 2);
+    gsap.to(el, { x: gsap.utils.clamp(-10, 10, dx * 0.25), y: gsap.utils.clamp(-8, 8, dy * 0.35), duration: 0.35, ease: "power3.out", overwrite: "auto" });
+  };
+  const out = (e: PointerEvent) => {
+    if (cur && !cur.contains(e.relatedTarget as Node | null)) {
+      reset(cur);
+      cur = null;
+    }
+  };
+  document.addEventListener("pointermove", move, { passive: true });
+  document.addEventListener("pointerout", out);
+  cleanups.push(() => {
+    document.removeEventListener("pointermove", move);
+    document.removeEventListener("pointerout", out);
+    if (cur) gsap.set(cur, { clearProps: "x,y" });
+  });
+}
+
+/* ---------- Cursor "Ver / Ampliar / Arrastra" sobre las fotos (solo puntero fino) ---------- */
+function cursorFx(gsap: any) {
+  if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  const dot = document.createElement("div");
+  dot.className = "fx-cursor";
+  dot.setAttribute("aria-hidden", "true");
+  document.body.appendChild(dot);
+  document.documentElement.classList.add("fx-on");
+
+  const qx = gsap.quickTo(dot, "x", { duration: 0.35, ease: "power3.out" });
+  const qy = gsap.quickTo(dot, "y", { duration: 0.35, ease: "power3.out" });
+  let active: Element | null = null;
+
+  const show = (el: Element) => {
+    active = el;
+    dot.textContent = (el as HTMLElement).dataset.cursor ?? "";
+    gsap.to(dot, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)", overwrite: "auto" });
+  };
+  const hide = () => {
+    active = null;
+    gsap.to(dot, { scale: 0, opacity: 0, duration: 0.2, ease: "power2.in", overwrite: "auto" });
+  };
+  const move = (e: PointerEvent) => {
+    qx(e.clientX);
+    qy(e.clientY);
+    const el = (e.target as Element).closest?.("[data-cursor]") ?? null;
+    if (el && el !== active) show(el);
+    else if (!el && active) hide();
+  };
+  const leave = () => active && hide();
+  document.addEventListener("pointermove", move, { passive: true });
+  document.documentElement.addEventListener("pointerleave", leave);
+  cleanups.push(() => {
+    document.removeEventListener("pointermove", move);
+    document.documentElement.removeEventListener("pointerleave", leave);
+    document.documentElement.classList.remove("fx-on");
+    dot.remove();
+  });
 }
 
 /* ---------- 404: la pared queda a medias (perfiles + algunas placas + el rodillo detenido) ---------- */

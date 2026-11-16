@@ -8,7 +8,7 @@ const after = principal(p, 'despues') ?? p.fotos[0];
 const before = principal(p, 'antes');
 ---
 <a class:list={['pcard', fill && 'pcard--fill', cls]} href={`/proyectos/${p.slug}`} data-cat={p.categoria}>
-  <div class="pcard__media" transition:name={`foto-${p.slug}`}>
+  <div class="pcard__media" data-cursor="Ver" transition:name={`foto-${p.slug}`}>
     <Photo src={after.src} alt={after.alt} tone={p.tono} ar={ar} fill={fill} />
     {before && (
       <div class="pcard__peek" aria-hidden="true">

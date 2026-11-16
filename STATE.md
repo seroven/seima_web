@@ -99,9 +99,8 @@
 - Modelo de datos de fotos (etapa, principal, galería) en la API → `docs/modelo-datos.md`. (La parte visual ya está en la web con datos de prueba.)
 
 **Por construir (orden acordado)**
-1. Detalles globales: botones magnéticos y cursor "ver".
-3. API Express (incluye `POST /quotes`: el cotizador ya lo llama si existe `PUBLIC_API_URL`; subida de fotos del cliente a Cloudinary) + PostgreSQL + seed + Cloudinary.
-4. Calidad: Open Graph con imagen real, accesibilidad, prueba en celular real, despliegue en Render.
+1. **API: se define en una conversación aparte** (hay que acordar bien las bases antes de construir: modelo de datos, endpoints, hosting, Cloudinary). Cuando se haga: API Express (incluye `POST /quotes`: el cotizador ya lo llama si existe `PUBLIC_API_URL`; subida de fotos del cliente a Cloudinary) + PostgreSQL + seed + Cloudinary.
+2. Calidad: Open Graph con imagen real, accesibilidad, prueba en celular real, despliegue en Render.
 
 **Bloqueado por Luis (contenido real):** número de WhatsApp, fotos de 8–12 proyectos (antes/durante/después), cifras, testimonios, precios referenciales sí/no, equipo/"Nosotros". Ver `docs/fuentes/contexto-chat.md` §7.
 
@@ -114,6 +113,8 @@
 ### 2026-11-15
 
 **Decisiones**
+- **La API se trata en una conversación aparte:** Sebas quiere definir bien las bases (modelo de datos, endpoints, hosting, Cloudinary) antes de construirla. Con esto se cierra el pulido pendiente de la web pública (lo único opcional que queda: ver lista de pendientes).
+- **Pulido "otro nivel" del brainstorm:** botones magnéticos (los `.btn` se desplazan hasta 10 px × 8 px hacia el cursor y vuelven con rebote elástico) y cursor "Ver / Ampliar / Arrastra" sobre las fotos (burbuja roja que sigue al puntero y oculta el cursor nativo solo sobre esas zonas). **Solo puntero fino con hover y con movimiento permitido**: en celular/táctil no existen. Las islas de React (`.q`) y los diálogos quedan fuera del efecto magnético para no mezclar GSAP y Motion sobre el mismo `transform`.
 - **404 "sigue en obra":** en vez de una pantalla de error genérica, reutiliza la pared del cotizador a medias (concepto "capa por capa"). Ofrece salidas claras (inicio, proyectos, Empresas, cotizador). `noindex` para que no se indexe. **Hosting:** Astro genera `dist/404.html`; al desplegar en Render hay que confirmar que el sitio estático lo sirva para rutas desconocidas.
 - **Menú móvil a pantalla completa** (de la lista del brainstorm "menú que se abre a pantalla completa"): solo en celular (≤720 px). "Cotizar" se queda visible en el header (conversión) y el resto de enlaces pasan al menú. Mismo patrón que el visor de fotos: `<dialog>` modal (foco atrapado y Esc gratis), entrada/salida animadas y un solo listener global para abrirlo. Incluye enlace al TikTok oficial `@seima.drywall` (dato del brief).
 - **Voz del cotizador: "nosotros"** (pedido de Sebas): se eliminan las menciones a Luis en tercera persona del cotizador (cabecera, ayudas, pantalla final, mensaje sin número, descripción SEO y la opción "Recomiéndame" → "Que ustedes me aconsejen"). Regla añadida a `CLAUDE.md` (reglas de contenido). El pie de página conserva "Luis Rodríguez".
@@ -140,7 +141,9 @@
 - La barra de scroll se oculta solo con movimiento activo, y se compensa con la línea de progreso.
 
 **Cambios**
-- *(sin commit aún)* **Página 404** (`pages/404.astro`, prop `noindex` en `layouts/Base.astro`, `notFound()` en `scripts/motion.ts`). Probado: en dev responde HTTP 404 con la página, `<meta robots noindex>` y sin canonical, animación (perfiles → placas → rodillo), celular sin desborde y `npm run build` genera `404.html` (12 páginas).
+- *(sin commit aún)* **Botones magnéticos y cursor personalizado** (`magnets()` y `cursorFx()` en `scripts/motion.ts`, estilos `.fx-cursor` en `global.css`, atributos `data-cursor` en `ProjectCard.astro` ("Ver"), `CompareSlider.astro` ("Arrastra") y los `.shot` de la ficha ("Ampliar"); el hover de `.btn` pasó de `transform` a `translate` para no chocar con GSAP). Probado con mouse real: la burbuja "Ver" aparece sobre la tarjeta del catálogo; el botón del hero de Empresas se desplaza (10 px, 6.8 px) cerca de su esquina y vuelve a `none` al salir; la burbuja se oculta al salir; tras 3 navegaciones con `ClientRouter` queda un solo cursor; `npm run build` correcto (12 páginas).
+- `a149ad2` — **Página 404** (ver entrada siguiente; antes figuraba sin commit).
+- `a149ad2` — **Página 404** (`pages/404.astro`, prop `noindex` en `layouts/Base.astro`, `notFound()` en `scripts/motion.ts`). Probado: en dev responde HTTP 404 con la página, `<meta robots noindex>` y sin canonical, animación (perfiles → placas → rodillo), celular sin desborde y `npm run build` genera `404.html` (12 páginas).
 - `8db96ce` — **Menú móvil a pantalla completa** (ver entrada siguiente; antes figuraba sin commit).
 - `8db96ce` — **Menú móvil a pantalla completa** (`components/Header.astro`, reglas de `global.css`): botón de tres líneas, diálogo con animación `clip-path` desde el botón, enlaces escalonados, foco en el diálogo al abrir (sin anillo sobre el logo), cierre con X/Esc/enlace, bloqueo de scroll (`html.menu-on`) y cierre automático si la pantalla pasa a escritorio. Sustituye el parche temporal que ocultaba "Inicio" ≤560 px. Probado en un iframe de 390 px: abre, foco correcto, cierra animado, navegar desde el menú cambia de página y libera el scroll; `npm run build` correcto (11 páginas).
 - Push de `staging` a GitHub hecho (sincronizado hasta `88b6e9a`).
