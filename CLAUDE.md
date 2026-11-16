@@ -76,7 +76,7 @@ El **panel administrativo es un proyecto aparte y está fuera de alcance** en es
    - Autenticación del panel: `POST /auth/login`, `GET /auth/me` (JWT). El resto de rutas del panel irán protegidas con `authenticate`.
 3. Script de **seed** para cargar proyectos (no hay panel todavía).
 
-Modelo de datos orientativo (ajustable; **las decisiones sobre fotos están en `docs/modelo-datos.md`**: etapa, foto principal por etapa, galería): `categories`, `projects` (slug, título, categoría, distrito, área m², días, servicios, descripción, destacado, tipo de cliente), `project_photos` (project_id, etapa: antes|durante|después, cloudinary_id, orden), `quotes` (tipo cliente, servicios, medidas, acabado, distrito, plazo, nombre, whatsapp, razón social/RUC opcionales, fotos [public_id de Cloudinary], consentimiento, estado, fecha).
+Modelo de datos orientativo (ajustable; **las decisiones sobre fotos están en `docs/modelo-datos.md`**: etapa, foto principal por etapa, galería): `categories`, `projects` (slug, título, categoría, distrito, área m², días, servicios, descripción, destacado, tipo de cliente), `project_photos` (project_id, etapa: antes|durante|después, cloudinary_id, orden), `quotes` (tipo cliente, servicios, medidas, acabado, distrito, plazo, nombre, whatsapp, razón social/RUC opcionales, fotos [tabla `quote_photos`: public_id de Cloudinary + orden], consentimiento, estado, fecha).
 
 ## Reglas de contenido (no negociables)
 
