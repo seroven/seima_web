@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AppDataSource } from '../../src/database/data-source';
+import { QuotePhoto } from '../../src/modules/quotes/quote-photo.entity';
 import { Quote } from '../../src/modules/quotes/quote.entity';
 import { API, agent, cotizacionValida, useDatabase } from './helpers';
 
@@ -123,11 +124,30 @@ describe('POST /quotes (público)', () => {
   it('guarda las fotos subidas (public_id), la constancia de consentimiento y deja la solicitud lista para el panel', async () => {
     const res = await agent().post(`${API}/quotes`).send({ ...cotizacionValida, fotos: ['seima/quotes/abc123', 'seima/quotes/def456'] });
     expect(res.status).toBe(201);
-    const fila = await AppDataSource.getRepository(Quote).findOneByOrFail({ id: res.body.data.id });
-    expect(fila.fotosIds).toEqual(['seima/quotes/abc123', 'seima/quotes/def456']);
+    const fila = await AppDataSource.getRepository(Quote).findOneOrFail({ where: { id: res.body.data.id }, relations: { fotos: true }, order: { fotos: { orden: 'ASC' } } });
+    expect(fila.fotos.map((f) => [f.orden, f.cloudinaryId])).toEqual([
+      [0, 'seima/quotes/abc123'],
+      [1, 'seima/quotes/def456'],
+    ]);
     expect(fila.consentimientoEn).toBeInstanceOf(Date);
     expect(fila.estado).toBe('nueva');
     expect(fila.mensaje).toContain('Fotos: 2 adjuntas');
+  });
+
+  it('las fotos viven en su propia tabla: se borran con la cotización y no se repite el orden', async () => {
+    const res = await agent().post(`${API}/quotes`).send({ ...cotizacionValida, fotos: ['seima/quotes/borrar1', 'seima/quotes/borrar2'] });
+    const id = res.body.data.id as string;
+    const fotos = AppDataSource.getRepository(QuotePhoto);
+    expect(await fotos.countBy({ quoteId: id })).toBe(2);
+    // dos fotos con el mismo orden en la misma cotización: la base lo rechaza
+    await expect(fotos.insert({ quoteId: id, cloudinaryId: 'seima/quotes/otra', orden: 0 })).rejects.toThrow();
+    await AppDataSource.getRepository(Quote).delete({ id });
+    expect(await fotos.countBy({ quoteId: id })).toBe(0); // ON DELETE CASCADE
+  });
+
+  it('sin fotos no crea filas de fotos', async () => {
+    const res = await agent().post(`${API}/quotes`).send(cotizacionValida);
+    expect(await AppDataSource.getRepository(QuotePhoto).countBy({ quoteId: res.body.data.id })).toBe(0);
   });
 
   it('sin consentimiento → 422 y no se guarda', async () => {

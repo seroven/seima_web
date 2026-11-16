@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, type Relation, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, type Relation, UpdateDateColumn } from 'typeorm';
 import { Project } from '../projects/project.entity';
+import { QuotePhoto } from './quote-photo.entity';
 import { CLIENTES, ESTADOS_COTIZACION, MEDIDAS_MODO, type Cliente, type EstadoCotizacion, type MedidasModo } from './quote.constants';
 
 const aNumero = { to: (v?: number | null) => v ?? null, from: (v: string | null) => (v === null ? null : Number(v)) };
@@ -48,9 +49,9 @@ export class Quote {
   @Column({ type: 'varchar', length: 20 })
   plazo!: string;
 
-  /** public_id de Cloudinary de las fotos que subió el cliente (la URL se arma al mostrarlas). */
-  @Column({ type: 'text', array: true, default: () => "'{}'" })
-  fotosIds!: string[];
+  /** Fotos que adjuntó el cliente (tabla quote_photos; se guardan junto con la cotización). */
+  @OneToMany(() => QuotePhoto, (f) => f.quote, { cascade: ['insert'] })
+  fotos!: Relation<QuotePhoto[]>;
 
   @Column({ type: 'varchar', length: 120 })
   nombre!: string;

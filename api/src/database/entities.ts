@@ -5,6 +5,7 @@ import { AdminUser } from '../modules/auth/admin-user.entity';
 import { Category } from '../modules/categories/category.entity';
 import { ProjectPhoto } from '../modules/projects/project-photo.entity';
 import { Project } from '../modules/projects/project.entity';
+import { QuotePhoto } from '../modules/quotes/quote-photo.entity';
 import { Quote } from '../modules/quotes/quote.entity';
 
-export const entities = [Category, Project, ProjectPhoto, Quote, AdminUser];
+export const entities = [Category, Project, ProjectPhoto, Quote, QuotePhoto, AdminUser];

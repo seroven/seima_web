@@ -232,9 +232,20 @@ describe('QuotesService', () => {
     const t = armar();
     const antes = Date.now();
     const r = await t.crear({ fotos: [foto(1), foto(2)] });
-    expect(t.guardado()).toMatchObject({ fotosIds: [foto(1), foto(2)], whatsapp: '987654321', nombre: 'Ana Prueba', distrito: 'Comas' });
+    expect(t.guardado()).toMatchObject({ whatsapp: '987654321', nombre: 'Ana Prueba', distrito: 'Comas' });
+    // cada foto es una fila de quote_photos, con el orden en que se subió
+    expect(t.guardado().fotos).toEqual([
+      { cloudinaryId: foto(1), orden: 0 },
+      { cloudinaryId: foto(2), orden: 1 },
+    ]);
     expect((t.guardado().consentimientoEn as Date).getTime()).toBeGreaterThanOrEqual(antes);
     expect(r.mensaje).toContain('Fotos: 2 adjuntas');
+  });
+
+  it('sin fotos, no se guarda ninguna fila de fotos', async () => {
+    const t = armar();
+    await t.crear();
+    expect(t.guardado().fotos).toEqual([]);
   });
 
   it('campo trampa lleno (robot): responde como si nada pero NO guarda ni consulta nada', async () => {

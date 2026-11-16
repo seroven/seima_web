@@ -46,7 +46,8 @@ export class QuotesService {
       ambientes: input.servicios.includes('departamento') ? (input.ambientes ?? null) : null,
       distrito: input.distrito,
       plazo: input.plazo,
-      fotosIds: input.fotos,
+      // Cada foto se guarda en quote_photos (con su orden) en la misma transacción que la cotización
+      fotos: input.fotos.map((cloudinaryId, orden) => ({ cloudinaryId, orden })),
       consentimientoEn: new Date(),
       nombre: input.nombre,
       whatsapp: input.whatsapp,

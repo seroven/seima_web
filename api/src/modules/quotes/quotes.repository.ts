@@ -16,4 +16,9 @@ export class QuotesRepository {
   findById(id: string): Promise<Quote | null> {
     return this.repo.findOne({ where: { id } });
   }
+
+  /** La cotización con sus fotos ordenadas (la usará el panel). */
+  findByIdWithPhotos(id: string): Promise<Quote | null> {
+    return this.repo.findOne({ where: { id }, relations: { fotos: true }, order: { fotos: { orden: 'ASC' } } });
+  }
 }
