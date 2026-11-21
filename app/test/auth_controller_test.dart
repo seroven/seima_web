@@ -166,4 +166,7 @@ class PushFalso implements PushService {
 
   @override
   Future<void> olvidar(AuthApi api) async {}
+
+  @override
+  Future<void> escucharAvisos({required void Function(String id) alAbrir, void Function()? alLlegar}) async {}
 }

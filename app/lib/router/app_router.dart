@@ -6,6 +6,7 @@ import '../auth/auth_controller.dart';
 import '../auth/auth_state.dart';
 import '../screens/ajustes_screen.dart';
 import '../screens/contrasena_screen.dart';
+import '../screens/cotizacion_screen.dart';
 import '../screens/datos_proyecto_screen.dart';
 import '../screens/etapa_screen.dart';
 import '../screens/listas_screen.dart';
@@ -39,6 +40,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/cargando', builder: (context, state) => const SplashScreen()),
       GoRoute(path: '/entrar', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/contrasena', builder: (context, state) => const ContrasenaScreen()),
+      GoRoute(path: '/cotizacion/:id', builder: (context, state) => CotizacionScreen(id: state.pathParameters['id']!)),
       GoRoute(path: '/proyecto/nuevo', builder: (context, state) => const DatosProyectoScreen()),
       GoRoute(
         path: '/proyecto/:id',

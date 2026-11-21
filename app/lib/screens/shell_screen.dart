@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../auth/almacen_sesion.dart';
 import '../auth/auth_controller.dart';
 import '../auth/biometrics.dart';
+import '../quotes/cotizacion.dart';
+import '../quotes/cotizaciones_controller.dart';
 import '../theme/seima_colors.dart';
 import '../theme/seima_theme.dart';
 import '../widgets/seima_button.dart';
@@ -29,20 +31,21 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final nuevas = contarNuevas(ref.watch(cotizacionesListaProvider).value ?? const []);
     return Scaffold(
       body: widget.shell,
       bottomNavigationBar: NavigationBar(
         selectedIndex: widget.shell.currentIndex,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         onDestinationSelected: (index) => widget.shell.goBranch(index, initialLocation: index == widget.shell.currentIndex),
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Proyectos'),
+        destinations: [
+          const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Proyectos'),
           NavigationDestination(
-            icon: Icon(Icons.inbox_outlined),
-            selectedIcon: Icon(Icons.inbox),
+            icon: _Bandeja(nuevas: nuevas, seleccionado: false),
+            selectedIcon: _Bandeja(nuevas: nuevas, seleccionado: true),
             label: 'Cotizaciones',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),
             label: 'Ajustes',
@@ -68,6 +71,23 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     } else {
       await ref.read(authProvider.notifier).rechazarHuella();
     }
+  }
+}
+
+class _Bandeja extends StatelessWidget {
+  const _Bandeja({required this.nuevas, required this.seleccionado});
+
+  final int nuevas;
+  final bool seleccionado;
+
+  @override
+  Widget build(BuildContext context) {
+    return Badge(
+      isLabelVisible: nuevas > 0,
+      backgroundColor: SeimaColors.red,
+      label: Text(insigniaNuevas(nuevas)),
+      child: Icon(seleccionado ? Icons.inbox : Icons.inbox_outlined),
+    );
   }
 }
 

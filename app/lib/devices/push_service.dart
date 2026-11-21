@@ -24,11 +24,35 @@ Future<void> fondoFirebase(RemoteMessage message) async {
 abstract class PushService {
   Future<String> registrar(AuthApi api);
   Future<void> olvidar(AuthApi api);
+  Future<void> escucharAvisos({required void Function(String id) alAbrir, void Function()? alLlegar});
 }
 
 class FirebasePush implements PushService {
   String? _token;
   bool _escuchando = false;
+
+  bool _avisos = false;
+
+  /// Escucha el aviso de una cotización nueva. Si tocan el aviso, llama [alAbrir] con su id.
+  @override
+  Future<void> escucharAvisos({required void Function(String id) alAbrir, void Function()? alLlegar}) async {
+    if (_avisos || !AppEnv.firebaseListo) return;
+    _avisos = true;
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp(options: AppEnv.firebase);
+      }
+      void tomar(RemoteMessage mensaje) {
+        final id = mensaje.data['quoteId'];
+        if (id is String && id.isNotEmpty) alAbrir(id);
+      }
+
+      FirebaseMessaging.onMessage.listen((_) => alLlegar?.call());
+      FirebaseMessaging.onMessageOpenedApp.listen(tomar);
+      final inicial = await FirebaseMessaging.instance.getInitialMessage();
+      if (inicial != null) tomar(inicial);
+    } catch (_) {}
+  }
 
   @override
   Future<String> registrar(AuthApi api) async {
