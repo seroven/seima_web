@@ -3,7 +3,10 @@ import Base from '../../layouts/Base.astro';
 import Words from '../../components/Words.astro';
 import ProjectCard from '../../components/ProjectCard.astro';
 import CategoryIcon from '../../components/CategoryIcon.astro';
-import { projects, categories } from '../../data/projects';
+import { cargarSitio } from '../../lib/proyectos-publicos';
+
+const sitio = await cargarSitio();
+const { projects, categories, demo } = sitio;
 
 // Filtros: "Todos" + cada ambiente, con cuántos proyectos tiene
 const filters = [
@@ -15,12 +18,12 @@ const filters = [
   title="Proyectos · SEIMA Servicios Generales"
   description="Catálogo de proyectos de SEIMA: cocinas, baños, departamentos, melamina, techos y más, en Lima y provincias."
 >
-  <section class="catalog light" data-catalog>
+  <section class="catalog light" data-catalog data-origen={sitio.origen}>
     <div class="wrap">
       <header class="head">
         <p class="eyebrow">Catálogo</p>
         <h1><Words text="Proyectos" /> <span class="head__count" aria-live="polite">(<span data-count-out>{projects.length}</span>)</span></h1>
-        <p class="head__note">Proyectos de prueba: las fotos y datos reales se cargan después. Pasa el mouse (o mantén presionada una tarjeta) para ver el antes.</p>
+        <p class="head__note">{sitio.origen === 'vacio' ? 'Aún no hay obras publicadas: estas son de prueba. ' : demo ? 'Proyectos de prueba: las fotos y datos reales se cargan después. ' : ''}Pasa el mouse (o mantén presionada una tarjeta) para ver el antes.</p>
       </header>
     </div>
 
@@ -63,7 +66,11 @@ const filters = [
           </div>
         ))}
       </div>
-      <p class="empty" data-empty hidden>Todavía no hay proyectos en esta categoría. Pronto subimos más.</p>
+      {projects.length === 0 ? (
+        <p class="empty">Todavía no hay obras publicadas.</p>
+      ) : (
+        <p class="empty" data-empty hidden>Todavía no hay proyectos en esta categoría. Pronto subimos más.</p>
+      )}
     </div>
   </section>
 </Base>

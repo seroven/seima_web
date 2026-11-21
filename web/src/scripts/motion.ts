@@ -379,7 +379,7 @@ function gallery(gsap: any) {
   const section = $('[data-gallery]');
   const view = $('[data-gallery-view]');
   const track = $('[data-gallery-track]');
-  if (!section || !view || !track) return;
+  if (!section || !view || !track || !$$('.gcard', track).length) return;
 
   // Fotos con efecto cortina al entrar la sección
   gsap.fromTo(

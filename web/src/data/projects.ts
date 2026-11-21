@@ -1,5 +1,5 @@
-// DATOS DE PRUEBA (etapa 1, sin API). Nada de esto es un proyecto real de Luis:
-// los campos que faltan se muestran como [DATO REAL]. Se reemplaza por GET /projects.
+// DATOS DE PRUEBA. Si PUBLIC_API_URL responde, la web usa lo publicado (web/src/lib/proyectos-publicos.ts).
+// Si no, se muestran estos. Nada de esto es un proyecto real de Luis.
 
 export type Etapa = 'antes' | 'durante' | 'despues';
 

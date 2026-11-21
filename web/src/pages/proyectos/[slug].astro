@@ -5,13 +5,19 @@ import Words from '../../components/Words.astro';
 import BackButton from '../../components/BackButton.astro';
 import CompareSlider from '../../components/CompareSlider.astro';
 import Presentation from '../../components/Presentation.astro';
-import { projects, categoryName, etapaLabel, etapas, fotosDe, fotosOrdenadas, principal, show, type Foto, type Project } from '../../data/projects';
+import { categoryName, etapaLabel, etapas, fotosDe, fotosOrdenadas, principal, show, type Foto } from '../../data/projects';
+import { cargarSitio, proyectoPublico } from '../../lib/proyectos-publicos';
 
-export function getStaticPaths() {
-  return projects.map((project) => ({ params: { slug: project.slug }, props: { project } }));
+export async function getStaticPaths() {
+  const { projects } = await cargarSitio();
+  return projects.map((project) => ({ params: { slug: project.slug } }));
 }
 
-const { project: p } = Astro.props as { project: Project };
+const project = await proyectoPublico(Astro.params.slug ?? '');
+if (!project) {
+  return new Response('Esta obra no está publicada.', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+}
+const p = project;
 const cat = categoryName(p.categoria);
 const cover = principal(p, 'despues') ?? p.fotos[0];
 // Etapas que tienen fotos (una etapa sin fotos, p. ej. "durante", simplemente no se muestra)
@@ -76,7 +82,7 @@ const share = `https://wa.me/?text=${encodeURIComponent(`${p.titulo} · SEIMA Se
       </div>
       <div class="about__side" data-reveal>
         <ul class="tags">{p.servicios.map((s) => <li class="tag">{s}</li>)}</ul>
-        <p class="test">Proyecto de prueba: datos y fotos por reemplazar con los reales.</p>
+        {!p.descripcion || p.descripcion.includes('DESCRIPCIÓN REAL') ? <p class="test">Proyecto de prueba: datos y fotos por reemplazar con los reales.</p> : null}
       </div>
     </div>
   </section>
@@ -114,7 +120,7 @@ const share = `https://wa.me/?text=${encodeURIComponent(`${p.titulo} · SEIMA Se
           </ul>
         </section>
       ))}
-      <p class="story__text">[DESCRIPCIÓN REAL: qué pidió el cliente, qué se hizo y con qué materiales, en 3–4 líneas.]</p>
+      {p.descripcion.includes('DESCRIPCIÓN REAL') ? <p class="story__text">[DESCRIPCIÓN REAL: qué pidió el cliente, qué se hizo y con qué materiales, en 3–4 líneas.]</p> : null}
     </div>
   </section>
 

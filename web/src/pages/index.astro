@@ -4,7 +4,10 @@ import House from '../components/House.astro';
 import Wall from '../components/Wall.astro';
 import Words from '../components/Words.astro';
 import ProjectCard from '../components/ProjectCard.astro';
-import { projects } from '../data/projects';
+import { cargarSitio } from '../lib/proyectos-publicos';
+
+const sitio = await cargarSitio();
+const projects = sitio.projects;
 
 // Cada servicio es una capa de la pared (mismo orden que el brief).
 const services = [
@@ -96,6 +99,7 @@ const stats = [
         {projects.map((p) => (
           <div class="gcard"><ProjectCard project={p} ar="4 / 5" /></div>
         ))}
+        {projects.length === 0 && <p class="gallery__empty">Todavía no hay obras publicadas.</p>}
       </div>
     </div>
   </section>
@@ -218,6 +222,7 @@ const stats = [
     display: flex; gap: 1.2rem; width: max-content;
     padding-inline: max(var(--pad), calc((100vw - var(--max)) / 2 + var(--pad)));
   }
+  .gallery__empty { color: #fff; font-size: 1.15rem; margin: 0; }
   .gcard { flex: 0 0 min(78vw, 22rem); scroll-snap-align: start; }
   .gallery.is-pinned { height: calc(100svh - var(--header)); display: flex; flex-direction: column; justify-content: center; padding-block: 1rem; }
   .gallery.is-pinned .gallery__view { overflow: hidden; scroll-snap-type: none; }

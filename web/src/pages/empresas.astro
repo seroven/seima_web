@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 import Words from '../components/Words.astro';
 import Plan from '../components/Plan.astro';
 import ProjectCard from '../components/ProjectCard.astro';
-import { projects } from '../data/projects';
+import { cargarSitio } from '../lib/proyectos-publicos';
 
 // Capacidad: solo trabajos que Luis realmente hace (docs/fuentes/tiktok-analisis.md)
 const capacidades = [
@@ -21,7 +21,8 @@ const pasos = [
 ];
 
 // Proyectos de escala: departamentos y trabajos para empresas
-const escala = projects.filter((p) => p.cliente === 'empresa' || p.categoria === 'departamentos').slice(0, 3);
+const sitio = await cargarSitio();
+const escala = sitio.projects.filter((p) => p.cliente === 'empresa' || p.categoria === 'departamentos').slice(0, 3);
 const propuesta = '/cotizador?cliente=empresa';
 ---
 <Base

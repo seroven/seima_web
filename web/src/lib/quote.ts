@@ -262,6 +262,22 @@ const apiBase = () => {
 /** ¿Hay una API configurada? Sin ella el cotizador no puede enviar (se muestra un aviso). */
 export const apiConfigurada = () => apiBase() !== null;
 
+export const slugDeProyecto = (slug: string | null | undefined) => !!slug && /^[a-z0-9-]{1,120}$/.test(slug);
+
+/** Título de una obra publicada, para el resumen del cotizador. null si no está o no hay API. */
+export async function tituloDeProyecto(slug: string): Promise<string | null> {
+  const base = apiBase();
+  if (!base) return null;
+  try {
+    const res = await fetch(`${base}/projects/${encodeURIComponent(slug)}`, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: { titulo?: unknown } };
+    return typeof json.data?.titulo === 'string' ? json.data.titulo : null;
+  } catch {
+    return null;
+  }
+}
+
 interface Firma {
   uploadUrl: string;
   apiKey: string;

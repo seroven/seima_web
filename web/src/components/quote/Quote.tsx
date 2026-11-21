@@ -8,8 +8,7 @@ import { Icon } from '../ui';
 import Sending from './Sending';
 import Summary, { resumenFilas } from './Summary';
 import { StepCliente, StepDatos, StepEspacio, StepLugar, StepResumen, StepServicios } from './Steps';
-import { projects } from '../../data/projects';
-import { CATEGORIA_A_SERVICIO, SendError, emptyQuote, fetchCatalogo, formatCelular, normalizarRespuestas, submitQuote, validarPaso, type Catalogo, type QuoteData } from '../../lib/quote';
+import { CATEGORIA_A_SERVICIO, SendError, emptyQuote, fetchCatalogo, formatCelular, normalizarRespuestas, slugDeProyecto, submitQuote, tituloDeProyecto, validarPaso, type Catalogo, type QuoteData } from '../../lib/quote';
 import { waLink } from '../../lib/whatsapp';
 import './quote.css';
 
@@ -42,13 +41,25 @@ export default function Quote() {
   const [ready, setReady] = useState(false);
   const [catalogo, setCatalogo] = useState<Catalogo | null>(null); // servicios y preguntas (vienen de la API)
   const [catalogoError, setCatalogoError] = useState<string | null>(null);
+  const [tituloProyecto, setTituloProyecto] = useState<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const doneHeading = useRef<HTMLHeadingElement>(null);
   const top = useRef<HTMLDivElement>(null);
   const first = useRef(true);
 
-  const proyecto = projects.find((p) => p.slug === data.proyecto) ?? null;
-  const tituloProyecto = proyecto?.titulo ?? null;
+  useEffect(() => {
+    if (!data.proyecto) {
+      setTituloProyecto(null);
+      return;
+    }
+    let vivo = true;
+    tituloDeProyecto(data.proyecto).then((titulo) => {
+      if (vivo) setTituloProyecto(titulo);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [data.proyecto]);
 
   // Al montar: preselección desde la URL (?categoria=&proyecto=) o recuperar lo que se estaba llenando
   useEffect(() => {
@@ -63,7 +74,7 @@ export default function Quote() {
       setStep(1);
     }
     if (servicio || slug) {
-      setData((d) => ({ ...d, servicios: servicio ? [servicio] : d.servicios, proyecto: projects.some((p) => p.slug === slug) ? slug : null }));
+      setData((d) => ({ ...d, servicios: servicio ? [servicio] : d.servicios, proyecto: slugDeProyecto(slug) ? slug : null }));
     } else if (!cli) {
       try {
         const saved = JSON.parse(sessionStorage.getItem(KEY) ?? 'null');
