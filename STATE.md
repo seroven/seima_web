@@ -15,7 +15,7 @@
 **Stack real hoy**
 - `web/` — Astro **7.4.12**, GSAP + ScrollTrigger (+ Flip), Lenis, fuente Archivo variable (`@fontsource-variable/archivo/wdth.css`). **React 19 + `@astrojs/react` + Motion (`motion/react`) solo para el cotizador** (isla `client:load`). El resto sigue siendo Astro/GSAP.
 - `api/` — **creada (base)**: Node + Express 5 + **TypeScript + TypeORM** + PostgreSQL, por módulos, migraciones automáticas y JWT para el panel. Ver `api/README.md` y la sección "API" de abajo.
-- `app/` — **fase 4 en curso**: Flutter 3.44 + Riverpod, solo Android, paquete `pe.seima.app`. Ya entra, crea borradores, sube fotos y elige la comparación y la portada. Faltan los videos, la subida con la app cerrada y el deslizador de la comparación. Ver `docs/plan-app-movil.md`.
+- `app/` — **fase 3 en curso**: Flutter 3.44 + Riverpod, solo Android, paquete `pe.seima.app`. Ya entra, crea borradores, sube fotos y videos (máximo 1 minuto; con Wi-Fi si el ajuste está activo) y elige comparación y portada. Faltan el recorte, la subida con la app cerrada y el deslizador. Ver `docs/plan-app-movil.md`.
 - Node **≥ 22.23.4** (Astro 7 lo exige). Con `nvm use 22.23.4`.
 - Correr: `cd web && npm run dev` → http://localhost:4321/ (si el `node` de la terminal es viejo: `nvm use 22.23.4`).
 
@@ -119,7 +119,7 @@
 ## 3. Pendientes y próximos pasos
 
 **Decidido, sin construir**
-- **App móvil para Luis (Flutter + Riverpod).** Plan aprobado el 2026-11-21. **Fase 1 hecha y migrada en la base local.** En la app ya se entra, se crea el borrador, se suben fotos y se eligen comparación y portada. Faltan videos, subida en segundo plano y el deslizador. Sigue sin probarse en un Android real.
+- **App móvil para Luis (Flutter + Riverpod).** Plan aprobado el 2026-11-21. **Fase 1 hecha y migrada en la base local.** En la app ya se entra, se crea el borrador, se suben fotos y videos, y se eligen comparación y portada. Faltan el recorte, la subida con la app cerrada y el deslizador. Sigue sin probarse en un Android real.
 - Modelo de datos de fotos (etapa, principal, galería) en la API → `docs/modelo-datos.md`. (La parte visual ya está en la web con datos de prueba.)
 
 **Pendiente tras el envío directo del cotizador**
@@ -130,7 +130,7 @@
 
 **Por construir (orden del plan de la app)**
 1. **Fase 2 — app base:** el código está. Falta `flutter run` en un Android real (entrar, huella y, con Firebase lleno, un aviso).
-2. **Fase 3 — en curso:** fotos de Antes, Durante y Después. Faltan los videos, recortarlos y la subida con la app cerrada (solo Wi-Fi para videos).
+2. **Fase 3 — en curso:** fotos y videos de Antes, Durante y Después. El video de más de 1 minuto o de más de 50 MB no se sube. Con el ajuste activo, el video pide Wi-Fi. Faltan el recorte en el celular y la subida con la app cerrada.
 3. **Fase 4 — en curso:** ya se eligen comparación y portada, y se publica si no falta nada. Faltan el deslizador igual al de la web y compartir por WhatsApp.
 4. Fase 5: atender cotizaciones en la app.
 5. **Fase 6 — web:** conectar el catálogo a `GET /projects` (hoy sigue en `web/src/data/projects.ts`) y el comparador con video.
@@ -145,6 +145,10 @@
 ## 4. Historial (más reciente primero)
 
 ### 2026-11-21
+
+**Videos en la galería de la obra**
+- En Antes, Durante y Después hay «Elegir un video». Se lee la duración en el celular: más de 1 minuto o más de 50 MB no se sube (el recorte todavía no está). Si «Subir videos solo con Wi-Fi» está activo y no hay Wi-Fi, se avisa y no se manda.
+- La subida sigue en primer plano: si se cierra la app, se corta. `flutter analyze` limpio; 15 pruebas.
 
 **Comparación y portada en la app**
 - En la ficha ya se abren Comparación y Portada. Se elige un archivo listo de Antes y otro de Después. Si no se pueden comparar (foto con video, vertical con horizontal, video de más de 15 s), se explica con la misma frase que la API.
