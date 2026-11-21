@@ -25,6 +25,12 @@ class ProyectoDetalle extends AsyncNotifier<Proyecto> {
     return _guardar(() => ref.read(proyectosApiProvider).subirFoto(projectId: id, etapa: etapa, bytes: bytes, nombre: nombre));
   }
 
+  Future<String?> subirVideo({required String etapa, required String ruta, required String nombre, required int duracionMs}) {
+    return _guardar(
+      () => ref.read(proyectosApiProvider).subirVideo(projectId: id, etapa: etapa, ruta: ruta, nombre: nombre, duracionMs: duracionMs),
+    );
+  }
+
   Future<String?> quitarMedio(String medioId) {
     return _guardar(() => ref.read(proyectosApiProvider).quitarMedio(id, medioId));
   }

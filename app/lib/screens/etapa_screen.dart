@@ -1,9 +1,15 @@
+import 'dart:io';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
 
 import '../projects/proyecto.dart';
 import '../projects/proyectos_controller.dart';
+import '../projects/video_reglas.dart';
+import '../settings/ajustes_locales.dart';
 import '../theme/seima_colors.dart';
 import '../theme/seima_theme.dart';
 import '../widgets/seima_button.dart';
@@ -41,9 +47,9 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
           return ListView(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
             children: [
-              Text('Fotos de ${nombreEtapa(widget.etapa)}', style: archivo(28, 800, width: 118, height: 1.05)),
+              Text('Fotos y videos de ${nombreEtapa(widget.etapa)}', style: archivo(28, 800, width: 118, height: 1.05)),
               const SizedBox(height: 8),
-              Text('Los videos se agregan en el siguiente paso.', style: archivo(16, 500, color: SeimaColors.muted)),
+              Text('Los videos duran como máximo 1 minuto y, por defecto, solo se suben con Wi-Fi.', style: archivo(16, 500, color: SeimaColors.muted)),
               const SizedBox(height: 16),
               if (ocupado)
                 Padding(
@@ -54,6 +60,8 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
               SeimaButton(label: 'Elegir de la galería', busy: ocupado, onPressed: ocupado ? null : _galeria),
               const SizedBox(height: 10),
               SeimaButton(label: 'Tomar ahora', ink: true, onPressed: ocupado ? null : _camara),
+              const SizedBox(height: 10),
+              SeimaButton(label: 'Elegir un video', onPressed: ocupado ? null : _video),
               const SizedBox(height: 20),
               for (var i = 0; i < medios.length; i++)
                 _FilaMedio(
@@ -110,6 +118,63 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
     if (mounted) setState(() => _subiendo = 0);
   }
 
+  Future<void> _video() async {
+    final video = await _picker.pickVideo(source: ImageSource.gallery);
+    if (video == null || !mounted) return;
+    final soloWifi = ref.read(videosWifiProvider).value ?? true;
+    if (videoEsperaWifi(soloWifi: soloWifi, hayWifi: await _hayWifi())) {
+      setState(() => _error = 'No hay Wi-Fi. Conecta el Wi-Fi para subir el video.');
+      return;
+    }
+    final archivo = File(video.path);
+    final bytes = await archivo.length();
+    final duracion = await _duracion(video.path);
+    if (!mounted) return;
+    if (duracion == null) {
+      setState(() => _error = 'No se pudo leer el video.');
+      return;
+    }
+    final rechazo = rechazoDeVideo(bytes: bytes, duracionMs: duracion);
+    if (rechazo != null) {
+      setState(() => _error = rechazo);
+      return;
+    }
+    setState(() {
+      _total = 1;
+      _subiendo = 1;
+      _error = null;
+    });
+    final mensaje = await ref.read(proyectoProvider(widget.id).notifier).subirVideo(
+      etapa: widget.etapa,
+      ruta: video.path,
+      nombre: video.name.isEmpty ? 'video.mp4' : video.name,
+      duracionMs: duracion,
+    );
+    if (!mounted) return;
+    setState(() {
+      _subiendo = 0;
+      _error = mensaje;
+    });
+  }
+
+  Future<bool> _hayWifi() async {
+    final redes = await Connectivity().checkConnectivity();
+    return redes.contains(ConnectivityResult.wifi);
+  }
+
+  Future<int?> _duracion(String ruta) async {
+    final reproductor = VideoPlayerController.file(File(ruta));
+    try {
+      await reproductor.initialize();
+      final ms = reproductor.value.duration.inMilliseconds;
+      return ms > 0 ? ms : null;
+    } catch (_) {
+      return null;
+    } finally {
+      await reproductor.dispose();
+    }
+  }
+
   Future<void> _quitar(String medioId) async {
     final mensaje = await ref.read(proyectoProvider(widget.id).notifier).quitarMedio(medioId);
     if (mensaje != null && mounted) setState(() => _error = mensaje);
@@ -145,7 +210,11 @@ class _FilaMedio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final estado = medio.estado == 'subiendo' ? 'Subiendo' : (medio.listo ? 'Listo' : 'No se pudo');
+    final estado = medio.estado == 'subiendo'
+        ? 'Subiendo'
+        : medio.listo
+        ? (medio.tipo == 'video' && medio.duracionMs != null ? 'Listo · ${textoDuracion(medio.duracionMs!)}' : 'Listo')
+        : 'No se pudo';
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
