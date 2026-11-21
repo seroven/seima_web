@@ -15,7 +15,7 @@
 **Stack real hoy**
 - `web/` — Astro **7.4.12**, GSAP + ScrollTrigger (+ Flip), Lenis, fuente Archivo variable (`@fontsource-variable/archivo/wdth.css`). **React 19 + `@astrojs/react` + Motion (`motion/react`) solo para el cotizador** (isla `client:load`). El resto sigue siendo Astro/GSAP.
 - `api/` — **creada (base)**: Node + Express 5 + **TypeScript + TypeORM** + PostgreSQL, por módulos, migraciones automáticas y JWT para el panel. Ver `api/README.md` y la sección "API" de abajo.
-- `app/` — **fase 4 en curso**: Flutter 3.44 + Riverpod, solo Android, paquete `pe.seima.app`. Ya entra, crea borradores, sube fotos y videos, elige comparación y portada, y la vista previa horizontal es un deslizador. Faltan el recorte y la subida con la app cerrada. Ver `docs/plan-app-movil.md`.
+- `app/` — **fase 5 en curso**: Flutter 3.44 + Riverpod, solo Android, paquete `pe.seima.app`. Ya entra, publica obras y atiende cotizaciones (lista, detalle, WhatsApp, llamada y estados). Faltan el recorte, la subida con la app cerrada y probar el aviso en un celular. Ver `docs/plan-app-movil.md`.
 - Node **≥ 22.23.4** (Astro 7 lo exige). Con `nvm use 22.23.4`.
 - Correr: `cd web && npm run dev` → http://localhost:4321/ (si el `node` de la terminal es viejo: `nvm use 22.23.4`).
 
@@ -119,20 +119,20 @@
 ## 3. Pendientes y próximos pasos
 
 **Decidido, sin construir**
-- **App móvil para Luis (Flutter + Riverpod).** Plan aprobado el 2026-11-21. **Fase 1 hecha y migrada en la base local.** En la app ya se entra, se crea el borrador, se suben fotos y videos, se eligen comparación y portada (deslizador si el par es horizontal) y se puede compartir el título por WhatsApp. Faltan el recorte y la subida con la app cerrada. Sigue sin probarse en un Android real.
+- **App móvil para Luis (Flutter + Riverpod).** Plan aprobado el 2026-11-21. **Fase 1 hecha y migrada en la base local.** En la app ya se entra, se publican obras y se atienden cotizaciones. Faltan el recorte, la subida con la app cerrada y probar el aviso en un Android real.
 - Modelo de datos de fotos (etapa, principal, galería) en la API → `docs/modelo-datos.md`. (La parte visual ya está en la web con datos de prueba.)
 
 **Pendiente tras el envío directo del cotizador**
 - ~~Subida real a Cloudinary~~ **hecha en dev (2026-11-16)**. Falta replicar `CLOUDINARY_*` en QA/PD (variables de Render) y definir `PUBLIC_API_URL` en el hosting de la web.
 - **Revisar el texto de `/privacidad`** (es un borrador con `[DATO REAL]`: contacto y plazo de conservación) antes de publicar.
-- ~~El panel debe mostrar las solicitudes~~ **la API ya las entrega** (`GET /quotes`, `GET /quotes/:id`, `PATCH /quotes/:id/estado`). La pantalla en la app es la fase 5.
+- ~~El panel debe mostrar las solicitudes~~ **la API ya las entrega y la app ya las muestra** (`GET /quotes`, `GET /quotes/:id`, `PATCH /quotes/:id/estado`). Falta ver el aviso en un celular con Firebase.
 - Limpieza periódica de fotos subidas pero nunca enviadas (huérfanas en `seima/quotes`).
 
 **Por construir (orden del plan de la app)**
 1. **Fase 2 — app base:** el código está. Falta `flutter run` en un Android real (entrar, huella y, con Firebase lleno, un aviso).
 2. **Fase 3 — en curso:** fotos y videos de Antes, Durante y Después. El video de más de 1 minuto o de más de 50 MB no se sube. Con el ajuste activo, el video pide Wi-Fi. Faltan el recorte en el celular y la subida con la app cerrada.
-3. **Fase 4 — en curso:** par horizontal con deslizador; vertical, lado a lado. La portada muestra el después y, al mantener, el antes. Al publicar se comparte el título por WhatsApp. El enlace de la obra espera a que la web esté conectada.
-4. Fase 5: atender cotizaciones en la app.
+3. **Fase 4:** par horizontal con deslizador; vertical, lado a lado. La portada muestra el después y, al mantener, el antes. Al publicar se comparte el título por WhatsApp. El enlace de la obra espera a que la web esté conectada.
+4. **Fase 5 — en curso:** lista con filtro, detalle, WhatsApp, llamar y cambiar el estado. Si el aviso trae el id, abre esa cotización. Falta probarlo con Firebase en un celular.
 5. **Fase 6 — web:** conectar el catálogo a `GET /projects` (hoy sigue en `web/src/data/projects.ts`) y el comparador con video.
 6. Desplegar la API en Render y aplicar `migration:run` allí. En la base local de Sebas (`localhost:5432/postgres`, schema `seima`) la migración `AppMovil` ya corrió el 2026-11-21.
 
@@ -145,6 +145,11 @@
 ## 4. Historial (más reciente primero)
 
 ### 2026-11-21
+
+**Cotizaciones en la app**
+- La pestaña Cotizaciones lee `GET /quotes` (las nuevas quedan marcadas en rojo y en la barra). Se filtra por estado. El detalle muestra lo que pidió el cliente, sus fotos, «Escribir por WhatsApp» y «Llamar», y los botones «Ya la contacté», «Cerrada» y «Descartar».
+- Si el aviso de Firebase trae el id, la app abre esa cotización. Sin las claves de Firebase no se puede probar el aviso.
+- `flutter analyze` limpio; 22 pruebas.
 
 **Vista previa y compartir**
 - Si el par es horizontal, la comparación se ve con un deslizador (el antes se descubre arrastrando). Si es vertical, sigue lado a lado.

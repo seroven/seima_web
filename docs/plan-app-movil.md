@@ -1,6 +1,6 @@
 # Plan — App móvil para Luis (proyectos y cotizaciones)
 
-> Estado: **plan aprobado el 2026-11-21** (secciones 10 y 11 resueltas). Fases 0 y 1 (API) hechas; la migración ya corrió en la base local. En la app ya hay login, fotos, videos, comparación con deslizador y portada. Faltan el recorte y la subida en segundo plano.
+> Estado: **plan aprobado el 2026-11-21** (secciones 10 y 11 resueltas). Fases 0 y 1 (API) hechas; la migración ya corrió en la base local. En la app ya hay login, obras y cotizaciones. Faltan el recorte, la subida en segundo plano y probar el aviso en un celular.
 > Es la parte importante: Luis (no Sebas) sube los proyectos, fotos y videos, y atiende las cotizaciones. Reemplaza al "panel administrativo" que el brief dejaba fuera de alcance (la app **es** el panel de Luis).
 > Lo decidido ya está reflejado en `docs/brief.md`, `docs/modelo-datos.md` §4 y `CLAUDE.md` (alcance, carpeta `app/`, etiqueta de commit `[app]`).
 
@@ -148,7 +148,7 @@ Se hacen junto con **conectar la web a la API** (pendiente de antes): reemplazar
 | 2 | **App — base** | **En código (2026-11-21).** Proyecto Flutter, tema, `go_router`, `dio` con refresh, login, huella, navegación y registro del dispositivo. Falta el celular | Entra con usuario/huella en un Android real y recibe una notificación de prueba |
 | 3 | **App — proyecto y medios** | **En curso (2026-11-21).** Lista, borrador, fotos y videos por etapa (tope 1 min y 50 MB; Wi-Fi si el ajuste está activo). Faltan recorte y WorkManager | Sube fotos y videos reales a Cloudinary con la app cerrada |
 | 4 | **App — comparación, portada y publicar** | **En curso (2026-11-21).** Par horizontal con deslizador; vertical lado a lado. La portada muestra el después y, al mantener, el antes. Al publicar se comparte el título por WhatsApp (el enlace público espera a la web) | Publica un proyecto completo |
-| 5 | **App — cotizaciones** | Lista, detalle, estados, WhatsApp/llamar, push que abre el detalle | Llega una cotización desde la web y Luis la atiende desde la notificación |
+| 5 | **App — cotizaciones** | **En curso (2026-11-21).** Lista, filtro, detalle, WhatsApp, llamar y estados. El aviso abre la ficha si trae el id. Falta probarlo con Firebase en un celular | Llega una cotización desde la web y Luis la atiende desde la notificación |
 | 6 | **Web** (en paralelo con 3–5) | Conectar a la API; comparador (lado a lado / deslizador); mosaico y visor con video; portada antes/después; ocultos; OG | Lo publicado en la app se ve bien en celular y escritorio |
 | 7 | **Prueba con Luis** y pulido | Prueba observada, ajustes, entrega del APK | Luis publica y atiende solo |
 
