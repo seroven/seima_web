@@ -15,7 +15,7 @@
 **Stack real hoy**
 - `web/` — Astro **7.4.12**, GSAP + ScrollTrigger (+ Flip), Lenis, fuente Archivo variable (`@fontsource-variable/archivo/wdth.css`). **React 19 + `@astrojs/react` + Motion (`motion/react`) solo para el cotizador** (isla `client:load`). El resto sigue siendo Astro/GSAP.
 - `api/` — **creada (base)**: Node + Express 5 + **TypeScript + TypeORM** + PostgreSQL, por módulos, migraciones automáticas y JWT para el panel. Ver `api/README.md` y la sección "API" de abajo.
-- `app/` — **planeada, aún sin código**: Flutter + Riverpod, solo Android (`pe.seima.app`). La fase 1 (API) ya está. Sigue la fase 2 (proyecto Flutter, login y push). Ver `docs/plan-app-movil.md`.
+- `app/` — **fase 2 en curso**: Flutter 3.44 + Riverpod, solo Android, paquete `pe.seima.app`, nombre SEIMA. Tema, login, huella, navegación y registro del celular ya están en el código. Falta probarlo en un Android real (y las claves de Firebase para el aviso). Ver `docs/plan-app-movil.md` y `app/README.md`.
 - Node **≥ 22.23.4** (Astro 7 lo exige). Con `nvm use 22.23.4`.
 - Correr: `cd web && npm run dev` → http://localhost:4321/ (si el `node` de la terminal es viejo: `nvm use 22.23.4`).
 
@@ -119,7 +119,7 @@
 ## 3. Pendientes y próximos pasos
 
 **Decidido, sin construir**
-- **App móvil para Luis (Flutter + Riverpod).** Plan aprobado el 2026-11-21. **Fase 1 (API) hecha.** Siguiente: **fase 2** (proyecto Flutter, tema, login, huella, Firebase y el registro del celular). Sebas crea el proyecto de Firebase y llena las variables (guía en la sección 12 del plan) antes de probar un push de verdad.
+- **App móvil para Luis (Flutter + Riverpod).** Plan aprobado el 2026-11-21. **Fase 1 (API) hecha y migrada en la base local.** **Fase 2 en curso** (el proyecto ya entra, con huella y el registro del celular). Falta correrla en un Android real. Sebas crea el proyecto de Firebase y llena las variables (guía en la sección 12 del plan) antes de probar un push de verdad.
 - Modelo de datos de fotos (etapa, principal, galería) en la API → `docs/modelo-datos.md`. (La parte visual ya está en la web con datos de prueba.)
 
 **Pendiente tras el envío directo del cotizador**
@@ -129,14 +129,14 @@
 - Limpieza periódica de fotos subidas pero nunca enviadas (huérfanas en `seima/quotes`).
 
 **Por construir (orden del plan de la app)**
-1. **Fase 2 — app base:** proyecto Flutter, tema, login, huella, navegación y registro del dispositivo.
+1. **Fase 2 — app base:** el código está (tema, login, huella, navegación, Firebase). Falta `flutter run` en un Android real: entrar con usuario o huella y, con Firebase lleno, recibir un aviso de prueba.
 2. Fases 3 a 5: medios, comparación, portada, publicar y cotizaciones en la app.
 3. **Fase 6 — web:** conectar el catálogo a `GET /projects` (hoy sigue en `web/src/data/projects.ts`) y el comparador con video.
-4. Desplegar la API en Render y aplicar `migration:run` en la base de Sebas (la migración `AppMovil` todavía no está aplicada ahí).
+4. Desplegar la API en Render y aplicar `migration:run` allí. En la base local de Sebas (`localhost:5432/postgres`, schema `seima`) la migración `AppMovil` ya corrió el 2026-11-21.
 
 **Bloqueado por Luis (contenido real):** número de WhatsApp, fotos de 8–12 proyectos (antes/durante/después), cifras, testimonios, precios referenciales sí/no, equipo/"Nosotros". Ver `docs/fuentes/contexto-chat.md` §7.
 
-**Git:** `staging` sincronizada con GitHub (push del 2026-11-16, `e619a55`). `main` sigue en el commit inicial: falta el merge/PR `staging` → `main` cuando se apruebe.
+**Git:** `staging` tiene los commits de la fase 1 sin push (`42f42e9`, `a3a311b`). La fase 2 (`app/`) todavía no está en un commit. `main` sigue en el commit inicial.
 
 ---
 
@@ -144,12 +144,27 @@
 
 ### 2026-11-21
 
+**Commits de la fase 1 y migración en la base local**
+- `42f42e9` — `[api] feat: add mobile endpoints for projects, media and quotes`
+- `a3a311b` — `[docs] docs: record the mobile API phase as done`
+- `npm run migration:run` sobre la base de trabajo (`localhost:5432/postgres`, schema `seima`): corrió `AppMovil` y el catálogo siguió en 10 servicios, 21 preguntas y 69 opciones. No se tocó `seima_test`.
+- `npm run seed:admin` creó el usuario `luis`. El administrador que ya estaba conservó el usuario sacado de su correo.
+
+**Fase 2 empezada: base de la app (sin commit)**
+- `app/`: Flutter 3.44 (fvm, canal stable), solo Android, applicationId `pe.seima.app`, nombre SEIMA. El paquete Dart se llama `seima` (si no, el id habría quedado `pe.seima.seima`).
+- Tema igual a la web (Archivo variable, títulos con `wdth` 118, rojo `#E0283C`, texto rojo `#C81D30`, controles sin borde). Estas pantallas van en claro; el fondo oscuro queda para el detalle del proyecto.
+- `go_router`, `dio` con refresh que rota el token y no lo reusa, login, huella (`local_auth` + `flutter_secure_storage`; la huella no sale del teléfono), barra Proyectos · Cotizaciones · Ajustes, cambio de contraseña y el interruptor «Subir videos solo con Wi-Fi» (la subida llega en la fase 3).
+- Firebase se arma desde `app/.env` con `flutter_dotenv`, sin `google-services.json`. Si las claves están vacías, se puede entrar igual.
+- Se sigue usando `getToken()` aunque firebase_messaging 17 lo marque viejo: el servidor manda con `sendEachForMulticast`, que pide el token de registro, no el FID de `onRegistered`.
+- Riverpod a mano, sin generador, en esta rebanada. El generador entra cuando haya modelos de proyecto.
+- `flutter analyze` limpio y 9 pruebas (`flutter test`). No hay celular conectado: falta `flutter run`, la huella de verdad y un aviso de prueba.
+
 **Fase 1 de la app: API lista**
 - Migración `AppMovil` (conserva proyectos, fotos y el administrador): `project_photos` → `project_media`, `projects.publicado` → `estado`, `admin_users.usuario`, `refresh_tokens`, `device_tokens`. Las fotos que ya eran principales de antes/después quedan también como portada.
 - Login de Luis por usuario `luis`. En dev, qa y test la clave del seed es `123456`; en pd sale de `ADMIN_PASSWORD`. Refresh de 60 días con rotación y detección de reuso, logout y cambio de contraseña.
 - La app (rutas con JWT) crea borradores, reserva la subida firmada a `seima/projects/<id>`, confirma el archivo, arma el comparador y la portada, y publica solo si se cumple el mínimo. Un publicado no se borra: se oculta, y la web responde 404.
 - Cotizaciones del panel (`GET/PATCH /quotes`) y registro del celular. El push usa Firebase; si no está configurado o falla, la cotización igual se guarda.
-- Pruebas: 190 unitarias y 62 de integración, contra la base `seima_test` (schema `seima`). La base de trabajo de Sebas no se migró.
+- Pruebas: 190 unitarias y 62 de integración, contra la base `seima_test` (schema `seima`). La migración en la base de trabajo se aplicó el mismo día (ver arriba).
 
 **Dudas extra A–F resueltas por Sebas (plan §11)**
 - **A.** Vertical en celular → deslizador (fotos y videos). **B.** Recorte y compresión en el celular: aceptado. **C.** `123456` en dev y qa; en pd la contraseña sale de `ADMIN_PASSWORD` (elige Sebas). **D.** Con comparador de videos igual se exige una foto en antes y otra en después (portada). **E.** Paquete `pe.seima.app`; Sebas llena las variables de Firebase: en el `.env` de la API (cuenta de servicio: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`) y en **`app/.env`** (`FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_PROJECT_ID`, `API_URL`); la app inicia Firebase con esas opciones, sin `google-services.json`. **F.** Borradores se borran; publicados solo se ocultan.
