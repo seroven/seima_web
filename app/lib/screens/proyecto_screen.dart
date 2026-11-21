@@ -68,16 +68,18 @@ class ProyectoScreen extends ConsumerWidget {
               numero: 4,
               titulo: 'Comparación',
               hecho: dato.comparadorAntes != null && dato.comparadorDespues != null,
-              detalle: 'Se elige cuando Antes y Después tengan fotos.',
-              onTap: null,
+              detalle: dato.comparadorAntes != null && dato.comparadorDespues != null
+                  ? 'Antes y Después elegidos'
+                  : 'Elige uno de Antes y uno de Después',
+              onTap: () => context.push('/proyecto/$id/comparacion'),
             ),
             const SizedBox(height: 10),
             _Paso(
               numero: 5,
               titulo: 'Portada',
               hecho: dato.de('antes').any((m) => m.esPortada && m.listo) && dato.de('despues').any((m) => m.esPortada && m.listo),
-              detalle: 'La foto que se ve en el catálogo.',
-              onTap: null,
+              detalle: 'La foto que se ve en el catálogo',
+              onTap: () => context.push('/proyecto/$id/portada'),
             ),
             const SizedBox(height: 10),
             _Paso(

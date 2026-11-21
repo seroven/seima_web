@@ -24,6 +24,14 @@ class ProyectosApi {
 
   Future<Proyecto> cambiarEstado(String id, String estado) => _uno(() => _dio.patch('projects/$id/estado', data: {'estado': estado}));
 
+  Future<Proyecto> guardarComparador(String id, String antesId, String despuesId) {
+    return _uno(() => _dio.put('projects/$id/comparador', data: {'antesId': antesId, 'despuesId': despuesId}));
+  }
+
+  Future<Proyecto> guardarPortada(String id, String antesId, String despuesId) {
+    return _uno(() => _dio.put('projects/$id/portada', data: {'antesId': antesId, 'despuesId': despuesId}));
+  }
+
   Future<List<OpcionCatalogo>> categorias() => _catalogo(() => _dio.get('categories'), categoriasDesde);
 
   Future<List<OpcionCatalogo>> servicios() => _catalogo(() => _dio.get('quote-form'), serviciosDesde);

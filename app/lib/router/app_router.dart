@@ -10,6 +10,7 @@ import '../screens/datos_proyecto_screen.dart';
 import '../screens/etapa_screen.dart';
 import '../screens/listas_screen.dart';
 import '../screens/login_screen.dart';
+import '../screens/par_screen.dart';
 import '../screens/proyecto_screen.dart';
 import '../screens/proyectos_screen.dart';
 import '../screens/shell_screen.dart';
@@ -46,6 +47,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'datos',
             builder: (context, state) => DatosProyectoScreen(id: state.pathParameters['id']),
+          ),
+          GoRoute(
+            path: 'comparacion',
+            builder: (context, state) => ParScreen.comparacion(id: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: 'portada',
+            builder: (context, state) => ParScreen.portada(id: state.pathParameters['id']!),
           ),
           GoRoute(
             path: 'publicar',

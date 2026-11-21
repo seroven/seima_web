@@ -118,6 +118,39 @@ String nombreEtapa(String etapa) => switch (etapa) {
   _ => etapa,
 };
 
+/// El cuadrado cuenta como horizontal. Sin medidas no hay lado.
+String? ladoDe(int? ancho, int? alto) {
+  if (ancho == null || alto == null || ancho <= 0 || alto <= 0) return null;
+  return ancho >= alto ? 'horizontal' : 'vertical';
+}
+
+/// La misma frase que devuelve la API si el par no se puede comparar.
+String? mensajeIncompatible(Medio antes, Medio despues) {
+  if (!antes.listo || !despues.listo) return 'Espera a que terminen de subirse.';
+  if (antes.tipo != despues.tipo) return 'Para compararlos, los dos deben ser fotos o los dos videos.';
+  final ladoAntes = ladoDe(antes.ancho, antes.alto);
+  final ladoDespues = ladoDe(despues.ancho, despues.alto);
+  if (ladoAntes == null || ladoDespues == null) return 'Faltan las medidas del archivo.';
+  if (ladoAntes != ladoDespues) {
+    final cual = antes.tipo == 'video' ? 'videos' : 'fotos';
+    final lado = ladoAntes == 'vertical' ? 'verticales' : 'horizontales';
+    return 'Para compararlos, los dos deben ser $cual $lado.';
+  }
+  bool largo(Medio medio) => medio.duracionMs == null || medio.duracionMs! > 15000;
+  if (antes.tipo == 'video' && (largo(antes) || largo(despues))) {
+    return 'Los videos de la comparación duran como máximo 15 segundos.';
+  }
+  return null;
+}
+
+Medio? _porId(Proyecto proyecto, String etapa, String? id) {
+  if (id == null) return null;
+  for (final medio in proyecto.de(etapa)) {
+    if (medio.id == id) return medio;
+  }
+  return null;
+}
+
 /// Las mismas frases que exige la API antes de publicar.
 List<String> faltantesParaPublicar(Proyecto proyecto) {
   final todos = etapasObra.expand(proyecto.de).toList();
@@ -126,8 +159,13 @@ List<String> faltantesParaPublicar(Proyecto proyecto) {
   for (final etapa in etapasObra) {
     if (!proyecto.de(etapa).any((m) => m.listo)) faltan.add('Falta algo en ${nombreEtapa(etapa)}.');
   }
-  if (proyecto.comparadorAntes == null || proyecto.comparadorDespues == null) {
+  final antes = _porId(proyecto, 'antes', proyecto.comparadorAntes);
+  final despues = _porId(proyecto, 'despues', proyecto.comparadorDespues);
+  if (antes == null || despues == null) {
     faltan.add('Falta la comparación.');
+  } else {
+    final porque = mensajeIncompatible(antes, despues);
+    if (porque != null) faltan.add('La comparación no es válida.');
   }
   bool portada(String etapa) => proyecto.de(etapa).any((m) => m.esPortada && m.tipo == 'foto' && m.listo);
   if (!portada('antes') || !portada('despues')) faltan.add('Falta la portada.');

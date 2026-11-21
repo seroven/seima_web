@@ -65,4 +65,33 @@ void main() {
       'Falta la portada.',
     ]);
   });
+
+  test('explica cuando el par no se puede comparar', () {
+    final horizontal = _medio(id: 'a', ancho: 1600, alto: 900);
+    final vertical = _medio(id: 'b', ancho: 900, alto: 1600);
+    final video = _medio(id: 'c', tipo: 'video', ancho: 1600, alto: 900, duracionMs: 20000);
+
+    expect(mensajeIncompatible(horizontal, vertical), 'Para compararlos, los dos deben ser fotos horizontales.');
+    expect(mensajeIncompatible(horizontal, video), 'Para compararlos, los dos deben ser fotos o los dos videos.');
+    expect(mensajeIncompatible(horizontal, _medio(id: 'd', ancho: 1000, alto: 1000)), isNull);
+    expect(
+      mensajeIncompatible(video, _medio(id: 'e', tipo: 'video', ancho: 1600, alto: 900, duracionMs: 10000)),
+      'Los videos de la comparación duran como máximo 15 segundos.',
+    );
+  });
+}
+
+Medio _medio({required String id, String tipo = 'foto', int? ancho, int? alto, int? duracionMs}) {
+  return Medio(
+    id: id,
+    etapa: 'antes',
+    tipo: tipo,
+    orden: 0,
+    esPrincipal: false,
+    esPortada: false,
+    estado: 'listo',
+    ancho: ancho,
+    alto: alto,
+    duracionMs: duracionMs,
+  );
 }

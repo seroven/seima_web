@@ -37,6 +37,14 @@ class ProyectoDetalle extends AsyncNotifier<Proyecto> {
     return _guardar(() => ref.read(proyectosApiProvider).cambiarEstado(id, estado));
   }
 
+  Future<String?> guardarComparador(String antesId, String despuesId) {
+    return _guardar(() => ref.read(proyectosApiProvider).guardarComparador(id, antesId, despuesId));
+  }
+
+  Future<String?> guardarPortada(String antesId, String despuesId) {
+    return _guardar(() => ref.read(proyectosApiProvider).guardarPortada(id, antesId, despuesId));
+  }
+
   Future<String?> eliminar() async {
     try {
       await ref.read(proyectosApiProvider).eliminar(id);
