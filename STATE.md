@@ -4,7 +4,7 @@
 > **Obligatorio:** se actualiza con **cada cambio y cada decisión** (ver `CLAUDE.md`, sección "Documentación viva"). Lo nuevo va **arriba** del historial, bajo su fecha.
 > Complementa a `CLAUDE.md` (reglas), `docs/brief.md` (decisiones de producto) y `docs/modelo-datos.md` (base de datos).
 
-Última actualización: **2026-11-15**
+Última actualización: **2026-11-21**
 
 ---
 
@@ -15,6 +15,7 @@
 **Stack real hoy**
 - `web/` — Astro **7.4.12**, GSAP + ScrollTrigger (+ Flip), Lenis, fuente Archivo variable (`@fontsource-variable/archivo/wdth.css`). **React 19 + `@astrojs/react` + Motion (`motion/react`) solo para el cotizador** (isla `client:load`). El resto sigue siendo Astro/GSAP.
 - `api/` — **creada (base)**: Node + Express 5 + **TypeScript + TypeORM** + PostgreSQL, por módulos, migraciones automáticas y JWT para el panel. Ver `api/README.md` y la sección "API" de abajo.
+- `app/` — **planeada, aún sin código**: Flutter + Riverpod, solo Android (`pe.seima.app`), app de Luis para proyectos y cotizaciones. Ver `docs/plan-app-movil.md`.
 - Node **≥ 22.23.4** (Astro 7 lo exige). Con `nvm use 22.23.4`.
 - Correr: `cd web && npm run dev` → http://localhost:4321/ (si el `node` de la terminal es viejo: `nvm use 22.23.4`).
 
@@ -118,10 +119,11 @@
 ## 3. Pendientes y próximos pasos
 
 **Decidido, sin construir**
+- **App móvil para Luis (Flutter + Riverpod)** para subir proyectos, fotos y videos: plan detallado y preguntas abiertas en `docs/plan-app-movil.md` (2026-11-21). **Plan aprobado** el 2026-11-21 (16 preguntas y dudas A–F resueltas; fase 0 hecha). Siguiente: **fase 1 (API)**. Sebas crea el proyecto de Firebase y llena las variables (guía en la sección 12 del plan). Incluye **cotizaciones en la app + notificaciones push (Firebase)**.
 - Modelo de datos de fotos (etapa, principal, galería) en la API → `docs/modelo-datos.md`. (La parte visual ya está en la web con datos de prueba.)
 
 **Pendiente tras el envío directo del cotizador**
-- Poner en el `.env` de cada entorno de la API `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` y **probar una subida real** (solo se verificó contra Cloudinary simulado) + `PUBLIC_API_URL` en el hosting de la web.
+- ~~Subida real a Cloudinary~~ **hecha en dev (2026-11-16)**. Falta replicar `CLOUDINARY_*` en QA/PD (variables de Render) y definir `PUBLIC_API_URL` en el hosting de la web.
 - **Revisar el texto de `/privacidad`** (es un borrador con `[DATO REAL]`: contacto y plazo de conservación) antes de publicar.
 - El **panel** debe mostrar las solicitudes (`quotes`: estado, fotos de `quote_photos` (relación `fotos`), `mensaje`, botón para responder por WhatsApp al número del cliente).
 - Limpieza periódica de fotos subidas pero nunca enviadas (huérfanas en `seima/quotes`).
@@ -132,11 +134,41 @@
 
 **Bloqueado por Luis (contenido real):** número de WhatsApp, fotos de 8–12 proyectos (antes/durante/después), cifras, testimonios, precios referenciales sí/no, equipo/"Nosotros". Ver `docs/fuentes/contexto-chat.md` §7.
 
-**Pendiente de git:** subir a GitHub los commits locales de `staging`.
+**Git:** `staging` sincronizada con GitHub (push del 2026-11-16, `e619a55`). `main` sigue en el commit inicial: falta el merge/PR `staging` → `main` cuando se apruebe.
 
 ---
 
 ## 4. Historial (más reciente primero)
+
+### 2026-11-21
+
+**Dudas extra A–F resueltas por Sebas (plan §11)**
+- **A.** Vertical en celular → deslizador (fotos y videos). **B.** Recorte y compresión en el celular: aceptado. **C.** `123456` en dev y qa; en pd la contraseña sale de `ADMIN_PASSWORD` (elige Sebas). **D.** Con comparador de videos igual se exige una foto en antes y otra en después (portada). **E.** Paquete `pe.seima.app`; Sebas llena las variables de Firebase: en el `.env` de la API (cuenta de servicio: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`) y en **`app/.env`** (`FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_PROJECT_ID`, `API_URL`); la app inicia Firebase con esas opciones, sin `google-services.json`. **F.** Borradores se borran; publicados solo se ocultan.
+- Con esto se actualizaron `CLAUDE.md` (carpeta `app/`, etiqueta `[app]`, reglas de la app, se quita "panel fuera de alcance"), `docs/brief.md` (la app reemplaza al panel React) y el plan.
+
+**Decisiones confirmadas por Sebas (respuestas a las 16 preguntas del plan; detalle en `docs/plan-app-movil.md` §10)**
+- **Solo Android**, APK (no Play Store), nombre **SEIMA**, trato de **tú**. Usuario `luis`; la contraseña `123456` la pidió Sebas (en producción propongo otra, duda C). Sesión larga + huella opcional.
+- **Videos solo con Wi-Fi** (interruptor en Ajustes) y **subida en segundo plano** en el celular. Topes: comparador ≤ 15 s, galería ≤ 60 s, ≤ 50 MB; si se pasa, la app **obliga a recortar**. Cloudinary: plan gratuito por ahora.
+- **Comparador en la web:** vertical (foto o video) → **lado a lado**; horizontal → **deslizador**. Los videos también van en las galerías.
+- **Mínimo para publicar:** siempre comparación + al menos un archivo en antes, durante y después (+ portada).
+- **Portada = una foto de "antes" y una de "después", obligatoria, solo fotos; se descarta la rotación** (Sebas cambió su propio requerimiento: la tarjeta muestra "después" y "antes" al pasar el mouse).
+- **Ocultar proyectos:** visibles en la app con etiqueta "Oculto"; la web no los muestra ni renderiza.
+- **Cotizaciones dentro de la app + notificación push (Firebase)**, parte de los requisitos; credenciales de Firebase en `.env` de la API.
+- **La app nunca se conecta a la base de datos: todo por la API** (los archivos van directo a Cloudinary con firma de la API).
+- Renombrar `project_photos` → `project_media` y `fotos` → `medios`: aprobado.
+
+**Decisiones nuevas mías (a validar con Sebas)**
+- Recorte + compresión **en el celular** (Media3 Transformer vía Kotlin, posible por ser solo Android) en lugar de recorte no destructivo con offsets: sube menos datos y gasta menos del plan gratuito; el costo es que el recorte no se cambia después sin volver a elegir el video (duda B). Se descartan `inicio_ms`/`fin_ms`.
+- `projects.publicado` → `projects.estado` (`borrador` | `publicado` | `oculto`); `project_media.es_portada` (solo foto de antes/después) además de `es_principal` (comparador); `project_media.estado` (`subiendo` | `listo`); tablas `refresh_tokens` y `device_tokens`.
+- Subidas con **WorkManager** (restricción de red sin límite de datos para videos) y subida por partes de Cloudinary.
+
+**Decisiones previas (propuestas el mismo día, ya incorporadas al plan)**
+- **Luis (no Sebas) subirá los proyectos desde una app móvil Flutter + Riverpod**, con el diseño de la web y pensada para alguien sin conocimientos de tecnología. Esto cambia el alcance: el "panel" deja de estar fuera de alcance en lo que toca a proyectos (CLAUDE.md se actualiza al empezar la fase 0: carpeta `app/`, etiqueta de commit `[app]`).
+- **Pedido de Sebas:** fotos **y videos** por etapa; el antes/después principal puede ser foto o video (con recorte de video); restricción: los dos principales, ambos foto o ambos video, y ambos verticales u horizontales; comparador según caso (fotos: deslizador; videos verticales: lado a lado en escritorio y deslizador en celular; videos horizontales: deslizador); usuario y contraseña con huella opcional; **portadas múltiples que rotan** en el catálogo.
+- **Elegí yo (a validar):** (1) la orientación **se calcula** de ancho/alto (Cloudinary la devuelve), Luis no elige nada; (2) recorte de video **no destructivo** (`inicio_ms`/`fin_ms` + transformación de URL de Cloudinary, sin FFmpeg en el celular, porque `ffmpeg_kit` fue retirado); (3) el par del comparador se cambia con **una operación atómica** y la API valida la regla, no solo la app; (4) `project_photos` → `project_media` con `tipo foto|video`; (5) **`admin_users` ya existe**: se extiende con `usuario` y se agrega `refresh_tokens` (sesión larga; la huella desbloquea el token guardado en el teléfono, no va al servidor); (6) la pantalla central de la app es una lista de pasos con palomitas (Antes, Durante, Después, Comparación, Portada, Publicar), no un asistente rígido; (7) los proyectos nacen como borrador.
+
+**Cambios**
+- Creado `docs/plan-app-movil.md` (objetivo, requisitos, decisiones técnicas, modelo de datos, diseño de pantallas, cambios en la web, fases, pruebas, riesgos, respuestas de Sebas y 6 dudas extra) y actualizado con sus respuestas. Anotada la dirección del modelo en `docs/modelo-datos.md` §4. Sin código todavía.
 
 ### 2026-11-15
 

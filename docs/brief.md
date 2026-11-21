@@ -52,7 +52,7 @@ _por definir_
 | Parte | Stack | Por qué |
 |---|---|---|
 | Web pública | **Astro** + islas de React | Contenido casi todo estático: carga rápida en celular, SEO local y vista previa propia por proyecto al compartir por WhatsApp (Open Graph en el HTML). |
-| Panel administrativo | **React (Vite)**, proyecto aparte | Solo lo usa Luis; no necesita SEO ni vistas previas. Ahí sube proyectos y revisa cotizaciones. Fuera del alcance de la web. |
+| App de Luis (su "panel") | **Flutter + Riverpod**, solo Android, en `app/` | Luis (no Sebas) sube proyectos, fotos y videos y atiende las cotizaciones desde el celular, con notificación push. Muy simple de usar y con el diseño de la web. Plan en `docs/plan-app-movil.md`. _(Reemplaza al panel React previsto; decidido el 2026-11-21.)_ |
 | Backend | **Express** (Node) | Fácil de desplegar. Dueño de los datos: proyectos, categorías, fotos y cotizaciones. Lo consumen la web y el panel. |
 
 **Animación y UI (web pública):**
@@ -66,10 +66,11 @@ _por definir_
 **Datos y servicios:**
 - Base de datos: **PostgreSQL**.
 - Fotos: **Cloudinary**; la base de datos guarda solo los enlaces.
-- Sin login: es solo una web pública.
+- Sin login en la web pública. La app de Luis sí tiene login (usuario y contraseña, huella opcional).
+- La app no se conecta a la base de datos: todo por la API.
 - Hosting: lo maneja Sebastian; pruebas en **Render**.
 
-**Alcance de la etapa 1:** web pública (Astro) + backend Express con lo que la web necesita (leer proyectos/categorías, recibir cotizaciones). El **panel administrativo no se toca en esta etapa**; mientras tanto los proyectos se cargan con un script de seed.
+**Alcance de la etapa 1:** web pública (Astro) + backend Express con lo que la web necesita (leer proyectos/categorías, recibir cotizaciones). Los proyectos se cargaban con un script de seed; **la etapa siguiente es la app móvil de Luis** (`docs/plan-app-movil.md`): subida de fotos y videos por etapa, comparador antes/después (foto o video), portada (foto de antes + foto de después), ocultar proyectos y gestión de cotizaciones con push. Reglas de producto decididas: comparador vertical → lado a lado, horizontal → deslizador; el par principal es ambos fotos o ambos videos y ambos de la misma orientación; mínimo para publicar = comparación + archivo en antes, durante y después + portada.
 
 **Se decide al llegar al panel:** cómo se actualiza la web cuando Luis publica un proyecto (rebuild por webhook vs. páginas generadas al vuelo).
 
@@ -79,6 +80,7 @@ _por definir_
 - `docs/fuentes/tiktok-analisis.md` — revisión del TikTok (servicios, videos top, comentarios, precios mencionados)
 - `docs/fuentes/contexto-chat.md` — contexto del brainstorm (técnicas por sección, cotizador, Empresas, pendientes con Luis)
 - `docs/modelo-datos.md` — decisiones de base de datos (fotos por etapa, foto principal, galería)
+- `docs/plan-app-movil.md` — plan de la app móvil de Luis (requisitos, modelo, pantallas, fases)
 - `STATE.md` (raíz) — estado actual e historial de cambios y decisiones de la web
 
 ## 9. Pendientes

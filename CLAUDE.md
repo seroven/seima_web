@@ -24,7 +24,8 @@ seima_web/
 ├── STATE.md         # estado e historial vivo (se actualiza siempre)
 ├── docs/            # brief.md (fuente de verdad), modelo-datos.md + fuentes/
 ├── web/             # Astro (web pública)
-└── api/             # Express + TypeScript + TypeORM (backend; ver api/README.md)
+├── api/             # Express + TypeScript + TypeORM (backend; ver api/README.md)
+└── app/             # Flutter + Riverpod (app Android de Luis: proyectos y cotizaciones; ver docs/plan-app-movil.md)
 ```
 
 ## Versionamiento
@@ -35,21 +36,30 @@ Repo en GitHub (`origin` = seroven/seima_web). Ramas: `main` (estable) y **`stag
 
 **En inglés** y con esta estructura: `[proyecto] tipo: explicación`
 
-- **`[proyecto]`** — qué parte toca: `[web]`, `[api]`, `[docs]` (documentación, `STATE.md`, `CLAUDE.md`) o `[repo]` (cambios transversales: `.gitignore`, configuración raíz). Un commit toca **un solo proyecto**; si un cambio afecta a dos, son dos commits.
+- **`[proyecto]`** — qué parte toca: `[web]`, `[api]`, `[app]` (app móvil), `[docs]` (documentación, `STATE.md`, `CLAUDE.md`) o `[repo]` (cambios transversales: `.gitignore`, configuración raíz). Un commit toca **un solo proyecto**; si un cambio afecta a dos, son dos commits.
 - **`tipo`** — `feat` (funcionalidad nueva), `fix` (corrección de un error), `refactor` (reestructura sin cambiar el comportamiento), `perf`, `style` (solo formato o estilos visuales sin lógica), `test`, `docs`, `chore` (configuración, dependencias, mantenimiento), `build`, `ci`.
 - **`explicación`** — resumen en imperativo y en minúscula ("add", "fix", "remove"…), sin punto final, idealmente ≤ 72 caracteres en total. Qué se hizo, no cómo. Si hace falta el porqué, va en el cuerpo del commit (línea en blanco y párrafo).
 - Commits **pequeños y lógicos**: una idea por commit. Incluir el trailer de atribución indicado por el entorno.
 - Ejemplos: `[api] feat: add JWT login endpoint for the admin panel` · `[web] fix: keep focus ring from being clipped in quote steps` · `[docs] docs: record environment flags in STATE.md`.
 - Los commits anteriores a esta regla (en español) no se reescriben.
 
-El **panel administrativo es un proyecto aparte y está fuera de alcance** en esta etapa. No crear login ni rutas de administración.
+**No hay panel web de administración.** El "panel" de Luis es la **app móvil Android** (`app/`): sube y oculta proyectos, fotos y videos, y atiende las cotizaciones con notificación push. Plan completo, requisitos y decisiones en `docs/plan-app-movil.md`; la web pública sigue sin login.
+
+### Reglas de la app (`app/`)
+
+- **Flutter + Riverpod** (`flutter_riverpod`, `AsyncNotifier`), solo Android, paquete `pe.seima.app`, nombre **SEIMA**, trato de **tú**.
+- **La app nunca se conecta a la base de datos: todo pasa por la API.** Los archivos van directo a Cloudinary con firma que entrega la API.
+- Configuración (URL de la API y Firebase) solo en `app/.env` (con `app/.env.example` al día); nunca en el código ni en git.
+- Diseño igual a la web (colores, Archivo, controles sin borde) y **usabilidad para alguien sin conocimientos de tecnología**: una cosa por pantalla, botones ≥ 56 dp, palabras simples, sin gestos escondidos.
+- Videos: subida en segundo plano y solo con Wi-Fi por defecto; recorte y compresión en el celular.
 
 ## Stack
 
 - **web/** — Astro + islas de React solo donde hay interactividad real (cotizador, filtros del catálogo). Todo lo demás, componentes `.astro`.
 - **api/** — Express (Node) + **TypeScript** + **TypeORM** + PostgreSQL. Fotos en **Cloudinary**; la base de datos guarda solo public_ids. Arquitectura por módulos, migraciones automáticas y JWT para el panel (ver "API" más abajo y `api/README.md`).
+- **app/** — Flutter + Riverpod (Android). Firebase Cloud Messaging para las notificaciones (la API las envía con `firebase-admin`).
 - Hosting de pruebas: Render.
-- Sin autenticación.
+- La web pública no tiene autenticación; la app de Luis entra con usuario y contraseña (JWT con sesión larga) y huella opcional.
 
 ## API (reglas de arquitectura, obligatorias en `api/`)
 
