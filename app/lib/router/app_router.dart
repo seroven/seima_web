@@ -6,8 +6,12 @@ import '../auth/auth_controller.dart';
 import '../auth/auth_state.dart';
 import '../screens/ajustes_screen.dart';
 import '../screens/contrasena_screen.dart';
+import '../screens/datos_proyecto_screen.dart';
+import '../screens/etapa_screen.dart';
 import '../screens/listas_screen.dart';
 import '../screens/login_screen.dart';
+import '../screens/proyecto_screen.dart';
+import '../screens/proyectos_screen.dart';
 import '../screens/shell_screen.dart';
 import '../screens/splash_screen.dart';
 
@@ -34,6 +38,33 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/cargando', builder: (context, state) => const SplashScreen()),
       GoRoute(path: '/entrar', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/contrasena', builder: (context, state) => const ContrasenaScreen()),
+      GoRoute(path: '/proyecto/nuevo', builder: (context, state) => const DatosProyectoScreen()),
+      GoRoute(
+        path: '/proyecto/:id',
+        builder: (context, state) => ProyectoScreen(id: state.pathParameters['id']!),
+        routes: [
+          GoRoute(
+            path: 'datos',
+            builder: (context, state) => DatosProyectoScreen(id: state.pathParameters['id']),
+          ),
+          GoRoute(
+            path: 'publicar',
+            builder: (context, state) => PublicarScreen(id: state.pathParameters['id']!),
+          ),
+          GoRoute(
+            path: 'antes',
+            builder: (context, state) => EtapaScreen(id: state.pathParameters['id']!, etapa: 'antes'),
+          ),
+          GoRoute(
+            path: 'durante',
+            builder: (context, state) => EtapaScreen(id: state.pathParameters['id']!, etapa: 'durante'),
+          ),
+          GoRoute(
+            path: 'despues',
+            builder: (context, state) => EtapaScreen(id: state.pathParameters['id']!, etapa: 'despues'),
+          ),
+        ],
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => ShellScreen(shell: shell),
         branches: [

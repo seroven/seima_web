@@ -3,21 +3,6 @@ import 'package:flutter/material.dart';
 import '../theme/seima_colors.dart';
 import '../theme/seima_theme.dart';
 
-class ProyectosScreen extends StatelessWidget {
-  const ProyectosScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Proyectos')),
-      body: const _Vacio(
-        titulo: 'Todavía no hay obras aquí',
-        detalle: 'Desde esta pantalla vas a crear un proyecto, subir las fotos y publicarlo.',
-      ),
-    );
-  }
-}
-
 class CotizacionesScreen extends StatelessWidget {
   const CotizacionesScreen({super.key});
 

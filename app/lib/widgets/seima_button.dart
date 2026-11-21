@@ -19,7 +19,7 @@ class SeimaButton extends StatelessWidget {
           ? FilledButton.styleFrom(backgroundColor: SeimaColors.ink, foregroundColor: Colors.white)
           : null,
       child: busy
-          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5))
+          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
           : Text(label),
     );
   }

@@ -76,6 +76,7 @@ ThemeData seimaTheme() {
       ),
       errorStyle: archivo(16, 600, color: SeimaColors.redText, height: 1.3),
     ),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(color: SeimaColors.red),
     navigationBarTheme: NavigationBarThemeData(
       height: 76,
       backgroundColor: SeimaColors.paper,
@@ -83,6 +84,5 @@ ThemeData seimaTheme() {
       labelTextStyle: WidgetStatePropertyAll(archivo(14, 650, height: 1.1)),
       iconTheme: const WidgetStatePropertyAll(IconThemeData(size: 26)),
     ),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(color: Colors.white),
   );
 }
