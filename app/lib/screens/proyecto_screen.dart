@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../projects/proyecto.dart';
 import '../projects/proyectos_controller.dart';
+import '../projects/vista_reglas.dart';
 import '../theme/seima_colors.dart';
 import '../theme/seima_theme.dart';
 import '../widgets/seima_button.dart';
@@ -163,18 +165,28 @@ class PublicarScreen extends ConsumerWidget {
                     child: Text(frase, style: archivo(18, 550)),
                   ),
               if (!ya && faltan.isEmpty) Text('Todo listo.', style: archivo(18, 600)),
+              if (ya) Text('Ya está publicada. Puedes enviarla por WhatsApp.', style: archivo(18, 600)),
               const SizedBox(height: 24),
+              if (ya)
+                SeimaButton(
+                  label: 'Compartir por WhatsApp',
+                  onPressed: () async {
+                    final abrio = await launchUrl(enlaceWhatsapp(textoParaCompartir(dato.titulo)), mode: LaunchMode.externalApplication);
+                    if (!context.mounted || abrio) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('No se pudo abrir WhatsApp.', style: archivo(16, 600))));
+                  },
+                ),
+              if (ya) ...[
+                const SizedBox(height: 10),
+                SeimaButton(label: 'Volver', ink: true, onPressed: () => context.pop()),
+              ],
               if (!ya && faltan.isEmpty)
                 SeimaButton(
                   label: 'Publicar',
                   onPressed: () async {
                     final mensaje = await ref.read(proyectoProvider(id).notifier).cambiarEstado('publicado');
-                    if (!context.mounted) return;
-                    if (mensaje == null) {
-                      context.pop();
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
-                    }
+                    if (!context.mounted || mensaje == null) return;
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
                   },
                 ),
             ],

@@ -4,9 +4,12 @@ import 'package:go_router/go_router.dart';
 
 import '../projects/proyecto.dart';
 import '../projects/proyectos_controller.dart';
+import '../projects/vista_reglas.dart';
 import '../theme/seima_colors.dart';
 import '../theme/seima_theme.dart';
+import '../widgets/deslizador.dart';
 import '../widgets/seima_button.dart';
+import '../widgets/tarjeta_portada.dart';
 
 class ParScreen extends ConsumerStatefulWidget {
   const ParScreen.comparacion({super.key, required this.id}) : portada = false;
@@ -62,7 +65,20 @@ class _ParScreenState extends ConsumerState<ParScreen> {
                 Text('Te proponemos las fotos de la comparación.', style: archivo(16, 500, color: SeimaColors.muted)),
               ],
               const SizedBox(height: 20),
-              if (elegidoAntes != null && elegidoDespues != null) _Vista(antes: elegidoAntes, despues: elegidoDespues),
+              if (elegidoAntes != null && elegidoDespues != null)
+                _esPortada
+                    ? TarjetaPortada(
+                        antes: elegidoAntes.vista,
+                        despues: elegidoDespues.vista,
+                        proporcion: proporcionDe(elegidoDespues.ancho, elegidoDespues.alto),
+                      )
+                    : modoVista(elegidoAntes.ancho, elegidoAntes.alto) == 'deslizador' && porque == null
+                    ? Deslizador(
+                        antes: elegidoAntes.vista,
+                        despues: elegidoDespues.vista,
+                        proporcion: proporcionDe(elegidoDespues.ancho, elegidoDespues.alto),
+                      )
+                    : _Vista(antes: elegidoAntes, despues: elegidoDespues),
               if (porque != null) ...[
                 const SizedBox(height: 12),
                 Text(porque, style: archivo(18, 650, color: SeimaColors.redText, height: 1.3)),
