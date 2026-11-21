@@ -15,7 +15,7 @@
 **Stack real hoy**
 - `web/` — Astro **7.4.12**, GSAP + ScrollTrigger (+ Flip), Lenis, fuente Archivo variable (`@fontsource-variable/archivo/wdth.css`). **React 19 + `@astrojs/react` + Motion (`motion/react`) solo para el cotizador** (isla `client:load`). El resto sigue siendo Astro/GSAP.
 - `api/` — **creada (base)**: Node + Express 5 + **TypeScript + TypeORM** + PostgreSQL, por módulos, migraciones automáticas y JWT para el panel. Ver `api/README.md` y la sección "API" de abajo.
-- `app/` — **planeada, aún sin código**: Flutter + Riverpod, solo Android (`pe.seima.app`), app de Luis para proyectos y cotizaciones. Ver `docs/plan-app-movil.md`.
+- `app/` — **planeada, aún sin código**: Flutter + Riverpod, solo Android (`pe.seima.app`). La fase 1 (API) ya está. Sigue la fase 2 (proyecto Flutter, login y push). Ver `docs/plan-app-movil.md`.
 - Node **≥ 22.23.4** (Astro 7 lo exige). Con `nvm use 22.23.4`.
 - Correr: `cd web && npm run dev` → http://localhost:4321/ (si el `node` de la terminal es viejo: `nvm use 22.23.4`).
 
@@ -63,10 +63,10 @@
 | `styles/global.css` | Variables (colores/tipografía), botones, foto con tratamiento, scroll continuo, reduced-motion. |
 
 ### API (`api/`) — resumen (detalle completo en `api/README.md`)
-- **Stack:** Express 5, TypeScript 5.9, TypeORM 0.3 + PostgreSQL (`pg`), Zod 4 (validación y `.env`), JWT (`jsonwebtoken`, HS256) + bcryptjs, helmet, CORS con lista blanca, express-rate-limit, pino. Pruebas: Vitest + Supertest (172 pasan: 136 unitarias + 36 de integración).
-- **Estructura:** `src/config` (env) · `src/database` (data-source, entities, migrations, seeds) · `src/common` (errores, middlewares, utilidades) · `src/modules/{categories,projects,quotes,auth,health}` con capas entity → repository → service → controller → routes. Prefijo `/api/v1`.
-- **Endpoints públicos (sin JWT):** `GET /categories`, `GET /quote-form` (servicios y preguntas del cotizador), `GET /projects` (filtro, paginación, portada por proyecto), `GET /projects/:slug` (galería por etapa), `POST /quotes` (guarda y devuelve el mensaje de WhatsApp). **Auth del panel:** `POST /auth/login`, `GET /auth/me`; middleware `authenticate` + `requireRole` listos para las rutas del panel.
-- **Base de datos:** `categories`, `projects`, `project_photos` (principal por etapa), `quotes`, `admin_users`. Migración inicial generada desde las entidades. **Cotizador parametrizado:** `services`, `questions`, `question_options`, `question_services` (catálogo) y por cotización `quote_services`, `quote_answers` y `quote_photos`.
+- **Stack:** Express 5, TypeScript 5.9, TypeORM 0.3 + PostgreSQL (`pg`), Zod 4 (validación y `.env`), JWT (`jsonwebtoken`, HS256) + bcryptjs, helmet, CORS con lista blanca, express-rate-limit, pino. Pruebas: Vitest + Supertest (252 pasan: 190 unitarias + 62 de integración). Firebase Admin para los avisos.
+- **Estructura:** `src/config` (env) · `src/database` (data-source, entities, migrations, seeds) · `src/common` (errores, middlewares, utilidades) · `src/modules/{categories,projects,quotes,auth,devices,health}` con capas entity → repository → service → controller → routes. Prefijo `/api/v1`.
+- **Endpoints públicos (sin JWT):** `GET /categories`, `GET /quote-form`, `GET /projects` (solo `publicado`; portada = foto de antes + foto de después), `GET /projects/:slug` (`medios`, `comparador`, `portada`; oculto o borrador → 404), `POST /quotes`. **App de Luis (JWT):** login por usuario `luis` con refresh, CRUD de proyectos y medios, comparador, portada, publicar/ocultar, cotizaciones y dispositivos Firebase. Detalle en `api/README.md`.
+- **Base de datos:** `categories`, `projects` (`estado`: borrador | publicado | oculto), `project_media` (foto o video, comparador, portada), `quotes`, `admin_users` (`usuario`), `refresh_tokens`, `device_tokens`. **Cotizador parametrizado:** `services`, `questions`, `question_options`, `question_services` y por cotización `quote_services`, `quote_answers` y `quote_photos`.
 - **Comandos clave:** `npm run migration:generate -- src/database/migrations/Nombre`, `migration:run`, `seed:categories|admin|demo`, `dev`, `test`, `build`/`start`.
 
 ### Diseño y animación vigentes
@@ -119,18 +119,20 @@
 ## 3. Pendientes y próximos pasos
 
 **Decidido, sin construir**
-- **App móvil para Luis (Flutter + Riverpod)** para subir proyectos, fotos y videos: plan detallado y preguntas abiertas en `docs/plan-app-movil.md` (2026-11-21). **Plan aprobado** el 2026-11-21 (16 preguntas y dudas A–F resueltas; fase 0 hecha). Siguiente: **fase 1 (API)**. Sebas crea el proyecto de Firebase y llena las variables (guía en la sección 12 del plan). Incluye **cotizaciones en la app + notificaciones push (Firebase)**.
+- **App móvil para Luis (Flutter + Riverpod).** Plan aprobado el 2026-11-21. **Fase 1 (API) hecha.** Siguiente: **fase 2** (proyecto Flutter, tema, login, huella, Firebase y el registro del celular). Sebas crea el proyecto de Firebase y llena las variables (guía en la sección 12 del plan) antes de probar un push de verdad.
 - Modelo de datos de fotos (etapa, principal, galería) en la API → `docs/modelo-datos.md`. (La parte visual ya está en la web con datos de prueba.)
 
 **Pendiente tras el envío directo del cotizador**
 - ~~Subida real a Cloudinary~~ **hecha en dev (2026-11-16)**. Falta replicar `CLOUDINARY_*` en QA/PD (variables de Render) y definir `PUBLIC_API_URL` en el hosting de la web.
 - **Revisar el texto de `/privacidad`** (es un borrador con `[DATO REAL]`: contacto y plazo de conservación) antes de publicar.
-- El **panel** debe mostrar las solicitudes (`quotes`: estado, fotos de `quote_photos` (relación `fotos`), `mensaje`, botón para responder por WhatsApp al número del cliente).
+- ~~El panel debe mostrar las solicitudes~~ **la API ya las entrega** (`GET /quotes`, `GET /quotes/:id`, `PATCH /quotes/:id/estado`). La pantalla en la app es la fase 5.
 - Limpieza periódica de fotos subidas pero nunca enviadas (huérfanas en `seima/quotes`).
 
-**Por construir (orden acordado)**
-1. **API — siguientes pasos** (la base ya existe): conectar la web a la API (reemplazar `web/src/data/projects.ts` por `GET /projects` y apuntar `PUBLIC_API_URL`); endpoints del panel (CRUD de proyectos y fotos, marcar la principal, reordenar, revisar y cambiar el estado de las cotizaciones); subida de fotos a Cloudinary (proyectos y fotos del cliente); refresh tokens si se necesitan; desplegar en Render (base gestionada, `migration:run:prod`, variables de entorno).
-2. Calidad: Open Graph con imagen real, accesibilidad, prueba en celular real, despliegue en Render.
+**Por construir (orden del plan de la app)**
+1. **Fase 2 — app base:** proyecto Flutter, tema, login, huella, navegación y registro del dispositivo.
+2. Fases 3 a 5: medios, comparación, portada, publicar y cotizaciones en la app.
+3. **Fase 6 — web:** conectar el catálogo a `GET /projects` (hoy sigue en `web/src/data/projects.ts`) y el comparador con video.
+4. Desplegar la API en Render y aplicar `migration:run` en la base de Sebas (la migración `AppMovil` todavía no está aplicada ahí).
 
 **Bloqueado por Luis (contenido real):** número de WhatsApp, fotos de 8–12 proyectos (antes/durante/después), cifras, testimonios, precios referenciales sí/no, equipo/"Nosotros". Ver `docs/fuentes/contexto-chat.md` §7.
 
@@ -141,6 +143,13 @@
 ## 4. Historial (más reciente primero)
 
 ### 2026-11-21
+
+**Fase 1 de la app: API lista**
+- Migración `AppMovil` (conserva proyectos, fotos y el administrador): `project_photos` → `project_media`, `projects.publicado` → `estado`, `admin_users.usuario`, `refresh_tokens`, `device_tokens`. Las fotos que ya eran principales de antes/después quedan también como portada.
+- Login de Luis por usuario `luis`. En dev, qa y test la clave del seed es `123456`; en pd sale de `ADMIN_PASSWORD`. Refresh de 60 días con rotación y detección de reuso, logout y cambio de contraseña.
+- La app (rutas con JWT) crea borradores, reserva la subida firmada a `seima/projects/<id>`, confirma el archivo, arma el comparador y la portada, y publica solo si se cumple el mínimo. Un publicado no se borra: se oculta, y la web responde 404.
+- Cotizaciones del panel (`GET/PATCH /quotes`) y registro del celular. El push usa Firebase; si no está configurado o falla, la cotización igual se guarda.
+- Pruebas: 190 unitarias y 62 de integración, contra la base `seima_test` (schema `seima`). La base de trabajo de Sebas no se migró.
 
 **Dudas extra A–F resueltas por Sebas (plan §11)**
 - **A.** Vertical en celular → deslizador (fotos y videos). **B.** Recorte y compresión en el celular: aceptado. **C.** `123456` en dev y qa; en pd la contraseña sale de `ADMIN_PASSWORD` (elige Sebas). **D.** Con comparador de videos igual se exige una foto en antes y otra en después (portada). **E.** Paquete `pe.seima.app`; Sebas llena las variables de Firebase: en el `.env` de la API (cuenta de servicio: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`) y en **`app/.env`** (`FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_MESSAGING_SENDER_ID`, `FIREBASE_PROJECT_ID`, `API_URL`); la app inicia Firebase con esas opciones, sin `google-services.json`. **F.** Borradores se borran; publicados solo se ocultan.

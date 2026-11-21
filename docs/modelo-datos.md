@@ -104,12 +104,14 @@ Decisión de Sebas: lo que el cliente elige en el cotizador debe guardarse como 
 
 ~~Cuántas fotos de detalle por etapa~~ → resuelto: hasta ~10 (ver 1.2).
 
-## 4. Cambios decididos para la app móvil (2026-11-21, aún sin migrar)
+## 4. Cambios de la app móvil (2026-11-21, migrados)
+
+La migración `AppMovil` ya aplica esto. `admin_users` ya tenía `nombre`: lo nuevo es `usuario` (único) y que el correo sea opcional.
 
 Detalle y razones en `docs/plan-app-movil.md` §3.3. Resumen:
 
 - `project_photos` → **`project_media`**: + `tipo` (`foto`|`video`), `duracion_ms`, `estado` (`subiendo`|`listo`), `es_portada` (solo foto de antes/después, una por proyecto y etapa). `es_principal` pasa a significar **comparador** (antes/después; mismo `tipo` y misma orientación, validado por la API). La orientación **se calcula** de `ancho`/`alto`, no se guarda.
 - `projects.publicado` → **`projects.estado`** (`borrador`|`publicado`|`oculto`).
-- `admin_users` + `usuario` (único) y `nombre`; correo opcional. Tablas nuevas: **`refresh_tokens`** y **`device_tokens`** (Firebase).
+- `admin_users.usuario` (único; `luis`) y correo opcional (`nombre` ya existía). Tablas nuevas: **`refresh_tokens`** y **`device_tokens`** (Firebase).
 - La **portada** del catálogo es una pareja (foto de antes + foto de después); no hay rotación.
 - API pública: `fotos` → `medios`.
