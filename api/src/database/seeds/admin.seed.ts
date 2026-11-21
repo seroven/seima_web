@@ -3,13 +3,22 @@ import { env } from '../../config/env';
 import { AdminUsersRepository } from '../../modules/auth/admin-users.repository';
 import { AuthService } from '../../modules/auth/auth.service';
 
-/** Crea el administrador inicial con ADMIN_EMAIL / ADMIN_PASSWORD del .env (si ya existe, no hace nada). */
+/** Usuario con el que entra Luis. En dev, qa y test la clave es 123456; en producción sale de ADMIN_PASSWORD. */
+export const ADMIN_USUARIO = 'luis';
+const CLAVE_DE_PRUEBA = '123456';
+
 export async function seedAdmin(ds: DataSource): Promise<'creado' | 'existente'> {
-  if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD) {
-    throw new Error('Define ADMIN_EMAIL y ADMIN_PASSWORD (mín. 10 caracteres) en el .env para crear el administrador.');
-  }
+  const password = env.APP_ENV === 'pd' ? env.ADMIN_PASSWORD : CLAVE_DE_PRUEBA;
+  if (!password) throw new Error('En producción define ADMIN_PASSWORD (mínimo 10 caracteres) para crear al administrador.');
+  if (env.APP_ENV === 'pd' && password.length < 10) throw new Error('ADMIN_PASSWORD debe tener al menos 10 caracteres.');
+
   const repo = new AdminUsersRepository(ds);
-  if (await repo.findByEmail(env.ADMIN_EMAIL)) return 'existente';
-  await new AuthService(repo).createAdmin({ email: env.ADMIN_EMAIL, password: env.ADMIN_PASSWORD, nombre: env.ADMIN_NAME });
+  if (await repo.findByUsuario(ADMIN_USUARIO)) return 'existente';
+  await new AuthService(repo, null as never).createAdmin({
+    usuario: ADMIN_USUARIO,
+    email: env.ADMIN_EMAIL ?? null,
+    password,
+    nombre: env.ADMIN_NAME,
+  });
   return 'creado';
 }

@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import type { AppError } from '../../src/common/errors/app-error';
 import type { CategoriesRepository } from '../../src/modules/categories/categories.repository';
 import { CategoriesService } from '../../src/modules/categories/categories.service';
-import type { ProjectPhoto } from '../../src/modules/projects/project-photo.entity';
+import type { ProjectMedia } from '../../src/modules/projects/project-media.entity';
 import type { Project } from '../../src/modules/projects/project.entity';
-import { toCardDto, toDetailDto, toPhotoDto } from '../../src/modules/projects/projects.mapper';
+import { toCardDto, toDetailDto, toMedioDto } from '../../src/modules/projects/projects.mapper';
 import type { ProjectsRepository } from '../../src/modules/projects/projects.repository';
 import { listProjectsQuerySchema, projectSlugParamsSchema } from '../../src/modules/projects/projects.schemas';
 import { ProjectsService } from '../../src/modules/projects/projects.service';
@@ -13,36 +13,47 @@ import { rejected } from './fakes';
 function proyecto(p: Partial<Project> = {}): Project {
   return {
     id: 'p1', slug: 'cocina-x', titulo: 'Cocina X', descripcion: 'Desc', distrito: 'Comas', areaM2: 12, dias: 5,
-    servicios: ['cocina'], destacado: false, cliente: 'persona', publicado: true,
+    servicios: ['cocina'], destacado: false, cliente: 'persona', estado: 'publicado',
     categoria: { slug: 'cocinas', nombre: 'Cocinas' }, createdAt: new Date('2026-01-02T03:04:05Z'), ...p,
   } as Project;
 }
 
 let n = 0;
-function foto(f: Partial<ProjectPhoto> = {}): ProjectPhoto {
+function foto(f: Partial<ProjectMedia> = {}): ProjectMedia {
   n += 1;
-  return { id: `f${n}`, projectId: 'p1', etapa: 'despues', orden: n, esPrincipal: false, pie: null, ancho: null, alto: null, cloudinaryId: `obras/f${n}`, ...f } as ProjectPhoto;
+  return {
+    id: `f${n}`, projectId: 'p1', etapa: 'despues', tipo: 'foto', estado: 'listo', orden: n,
+    esPrincipal: false, esPortada: false, pie: null, ancho: null, alto: null, duracionMs: null,
+    cloudinaryId: `obras/f${n}`, ...f,
+  } as ProjectMedia;
 }
 
-describe('toPhotoDto', () => {
-  it('expone los campos públicos y arma la URL de Cloudinary', () => {
-    const dto = toPhotoDto(foto({ id: 'a', cloudinaryId: 'obras/a', pie: 'Mesada', ancho: 800, alto: 600, esPrincipal: true }));
+describe('toMedioDto', () => {
+  it('expone los campos públicos, la orientación y arma la URL de Cloudinary', () => {
+    const dto = toMedioDto(foto({ id: 'a', cloudinaryId: 'obras/a', pie: 'Mesada', ancho: 800, alto: 600, esPrincipal: true, esPortada: true }));
     expect(dto).toEqual({
-      id: 'a', etapa: 'despues', orden: expect.any(Number), esPrincipal: true, pie: 'Mesada', ancho: 800, alto: 600,
-      cloudinaryId: 'obras/a', url: 'https://res.cloudinary.com/demo-cloud/image/upload/f_auto,q_auto/obras/a',
+      id: 'a', etapa: 'despues', tipo: 'foto', orden: expect.any(Number), esPrincipal: true, esPortada: true,
+      pie: 'Mesada', ancho: 800, alto: 600, orientacion: 'horizontal', duracionMs: null,
+      cloudinaryId: 'obras/a', url: 'https://res.cloudinary.com/demo-cloud/image/upload/f_auto,q_auto/obras/a', poster: null,
     });
   });
+  it('un video vertical lleva póster y duración', () => {
+    const dto = toMedioDto(foto({ tipo: 'video', ancho: 1080, alto: 1920, duracionMs: 12000, cloudinaryId: 'obras/v' }));
+    expect(dto.orientacion).toBe('vertical');
+    expect(dto.poster).toBe('https://res.cloudinary.com/demo-cloud/video/upload/f_auto,q_auto,so_0/obras/v.jpg');
+    expect(dto.url).toContain('/video/upload/');
+  });
   it('fotos de prueba (demo/…): url null', () => {
-    expect(toPhotoDto(foto({ cloudinaryId: 'demo/x' })).url).toBeNull();
+    expect(toMedioDto(foto({ cloudinaryId: 'demo/x' })).url).toBeNull();
   });
 });
 
 describe('toCardDto', () => {
   it('trae la portada antes/después y no incluye la galería', () => {
-    const dto = toCardDto(proyecto(), [foto({ etapa: 'antes', id: 'A' }), foto({ etapa: 'despues', id: 'D' })]);
+    const dto = toCardDto(proyecto(), [foto({ etapa: 'antes', id: 'A', esPortada: true }), foto({ etapa: 'despues', id: 'D', esPortada: true })]);
     expect(dto.portada.antes?.id).toBe('A');
     expect(dto.portada.despues?.id).toBe('D');
-    expect(dto).not.toHaveProperty('fotos');
+    expect(dto).not.toHaveProperty('medios');
     expect(dto).not.toHaveProperty('descripcion');
     expect(dto.categoria).toEqual({ slug: 'cocinas', nombre: 'Cocinas' });
   });
@@ -52,24 +63,35 @@ describe('toCardDto', () => {
 });
 
 describe('toDetailDto', () => {
-  it('agrupa por etapa conservando el orden y deja vacías las etapas sin fotos', () => {
+  it('agrupa por etapa conservando el orden y deja vacías las etapas sin medios', () => {
     const dto = toDetailDto(proyecto(), [foto({ etapa: 'antes', id: 'a1' }), foto({ etapa: 'despues', id: 'd1' }), foto({ etapa: 'despues', id: 'd2' })]);
-    expect(dto.fotos.antes.map((f) => f.id)).toEqual(['a1']);
-    expect(dto.fotos.durante).toEqual([]);
-    expect(dto.fotos.despues.map((f) => f.id)).toEqual(['d1', 'd2']);
+    expect(dto.medios.antes.map((f) => f.id)).toEqual(['a1']);
+    expect(dto.medios.durante).toEqual([]);
+    expect(dto.medios.despues.map((f) => f.id)).toEqual(['d1', 'd2']);
     expect(dto.creadoEn).toBe('2026-01-02T03:04:05.000Z');
     expect(dto.descripcion).toBe('Desc');
   });
 
-  it('la portada es la principal marcada, aunque no sea la primera', () => {
-    const dto = toDetailDto(proyecto(), [foto({ etapa: 'despues', id: 'd1' }), foto({ etapa: 'despues', id: 'd2', esPrincipal: true })]);
-    expect(dto.portada.despues?.id).toBe('d2');
+  it('la portada es la foto marcada, y el comparador es el par principal', () => {
+    const dto = toDetailDto(proyecto(), [
+      foto({ etapa: 'despues', id: 'd1', esPortada: true }),
+      foto({ etapa: 'despues', id: 'd2', esPrincipal: true }),
+      foto({ etapa: 'antes', id: 'a1', esPrincipal: true }),
+    ]);
+    expect(dto.portada.despues?.id).toBe('d1');
+    expect(dto.comparador.despues?.id).toBe('d2');
+    expect(dto.comparador.antes?.id).toBe('a1');
   });
 
-  it('sin principal marcada, la portada es la primera de la etapa', () => {
+  it('sin portada marcada, la portada queda vacía', () => {
     const dto = toDetailDto(proyecto(), [foto({ etapa: 'antes', id: 'a1' }), foto({ etapa: 'antes', id: 'a2' })]);
-    expect(dto.portada.antes?.id).toBe('a1');
+    expect(dto.portada.antes).toBeNull();
     expect(dto.portada.despues).toBeNull();
+  });
+
+  it('no publica un archivo que todavía se está subiendo', () => {
+    const dto = toDetailDto(proyecto(), [foto({ etapa: 'antes', id: 'a1', estado: 'subiendo' })]);
+    expect(dto.medios.antes).toEqual([]);
   });
 });
 
@@ -98,20 +120,20 @@ describe('projectSlugParamsSchema', () => {
 });
 
 describe('ProjectsService', () => {
-  function repo(proyectos: Project[], total = proyectos.length, portadas: ProjectPhoto[] = []) {
+  function repo(proyectos: Project[], total = proyectos.length, portadas: ProjectMedia[] = []) {
     return {
       findPublishedPage: vi.fn().mockResolvedValue([proyectos, total]),
       findCoverPhotos: vi.fn().mockResolvedValue(portadas),
       findPublishedBySlug: vi.fn().mockResolvedValue(proyectos[0] ?? null),
-      findPhotos: vi.fn().mockResolvedValue(portadas),
+      findReadyMedia: vi.fn().mockResolvedValue(portadas),
     };
   }
   const svc = (r: ReturnType<typeof repo>) => new ProjectsService(r as unknown as ProjectsRepository);
 
   it('list: calcula skip/take, pide las portadas en UNA sola consulta y las reparte por proyecto', async () => {
     const r = repo([proyecto({ id: 'p1', slug: 'a' }), proyecto({ id: 'p2', slug: 'b' })], 23, [
-      foto({ projectId: 'p1', etapa: 'despues', id: 'x1' }),
-      foto({ projectId: 'p2', etapa: 'antes', id: 'x2' }),
+      foto({ projectId: 'p1', etapa: 'despues', id: 'x1', esPortada: true }),
+      foto({ projectId: 'p2', etapa: 'antes', id: 'x2', esPortada: true }),
     ]);
     const res = await svc(r).list({ page: 3, limit: 10, categoria: 'cocinas', destacado: true });
     expect(r.findPublishedPage).toHaveBeenCalledWith({ categoriaSlug: 'cocinas', destacado: true, skip: 20, take: 10 });
@@ -133,15 +155,15 @@ describe('ProjectsService', () => {
     const r = repo([proyecto()], 1, [foto({ etapa: 'antes', id: 'a1' })]);
     const dto = await svc(r).getBySlug('cocina-x');
     expect(r.findPublishedBySlug).toHaveBeenCalledWith('cocina-x');
-    expect(r.findPhotos).toHaveBeenCalledWith('p1');
-    expect(dto.fotos.antes).toHaveLength(1);
+    expect(r.findReadyMedia).toHaveBeenCalledWith('p1');
+    expect(dto.medios.antes).toHaveLength(1);
   });
 
-  it('getBySlug: 404 si no existe y ni consulta fotos', async () => {
+  it('getBySlug: 404 si no existe y ni consulta medios', async () => {
     const r = repo([]);
     const e = (await rejected(svc(r).getBySlug('nada'))) as AppError;
     expect(e.status).toBe(404);
-    expect(r.findPhotos).not.toHaveBeenCalled();
+    expect(r.findReadyMedia).not.toHaveBeenCalled();
   });
 });
 

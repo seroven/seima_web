@@ -30,9 +30,10 @@ describe('GET /projects (público)', () => {
     expect(res.status).toBe(200);
     expect(res.body.meta).toMatchObject({ page: 1, total: 7 });
     const cocina = res.body.data.find((p: { slug: string }) => p.slug === 'cocina-drywall-porcelanato');
-    expect(cocina.portada.despues.esPrincipal).toBe(true);
+    expect(cocina.portada.despues.esPortada).toBe(true);
+    expect(cocina.portada.despues.tipo).toBe('foto');
     expect(cocina.portada.antes.etapa).toBe('antes');
-    expect(cocina).not.toHaveProperty('fotos'); // la lista no manda toda la galería
+    expect(cocina).not.toHaveProperty('medios'); // la lista no manda toda la galería
   });
 
   it('pone los destacados primero', async () => {
@@ -65,26 +66,47 @@ describe('GET /projects (público)', () => {
 });
 
 describe('GET /projects/:slug (público)', () => {
-  it('devuelve la galería agrupada por etapa y ordenada, con una sola principal por etapa', async () => {
+  it('devuelve los medios agrupados por etapa y el comparador', async () => {
     const res = await agent().get(`${API}/projects/mini-departamento-drywall`);
     expect(res.status).toBe(200);
-    const { fotos } = res.body.data;
-    expect([fotos.antes.length, fotos.durante.length, fotos.despues.length]).toEqual([5, 8, 10]);
+    const { medios, comparador } = res.body.data;
+    expect([medios.antes.length, medios.durante.length, medios.despues.length]).toEqual([5, 8, 10]);
+    expect(medios.antes.filter((f: { esPrincipal: boolean }) => f.esPrincipal)).toHaveLength(1);
+    expect(medios.durante.filter((f: { esPrincipal: boolean }) => f.esPrincipal)).toHaveLength(0);
+    expect(medios.despues.filter((f: { esPrincipal: boolean }) => f.esPrincipal)).toHaveLength(1);
+    expect(comparador.antes.id).toBe(medios.antes[0].id);
+    expect(comparador.despues.id).toBe(medios.despues[0].id);
+    expect(res.body.data).not.toHaveProperty('fotos');
     for (const etapa of ['antes', 'durante', 'despues'] as const) {
-      expect(fotos[etapa].filter((f: { esPrincipal: boolean }) => f.esPrincipal)).toHaveLength(1);
-      expect(fotos[etapa].map((f: { orden: number }) => f.orden)).toEqual([...fotos[etapa].map((f: { orden: number }) => f.orden)].sort((x, y) => x - y));
+      expect(medios[etapa].map((f: { orden: number }) => f.orden)).toEqual([...medios[etapa].map((f: { orden: number }) => f.orden)].sort((x: number, y: number) => x - y));
     }
   });
 
-  it('tolera una etapa sin fotos', async () => {
+  it('tolera una etapa sin archivos', async () => {
     const res = await agent().get(`${API}/projects/falso-techo-drywall`);
-    expect(res.body.data.fotos.durante).toEqual([]);
+    expect(res.body.data.medios.durante).toEqual([]);
     expect(res.body.data.portada.despues).not.toBeNull();
   });
 
   it('no inventa URL para fotos de prueba (demo/…)', async () => {
     const res = await agent().get(`${API}/projects/closet-melamina`);
-    expect(res.body.data.fotos.antes[0].url).toBeNull();
+    expect(res.body.data.medios.antes[0].url).toBeNull();
+  });
+
+  it('un proyecto oculto no se lista y su ficha responde 404', async () => {
+    const { token } = (await agent().post(`${API}/auth/login`).send({ usuario: 'luis', password: '123456' })).body.data;
+    const lista = await agent().get(`${API}/projects/gestion`).set('Authorization', `Bearer ${token}`);
+    const elegido = lista.body.data.find((p: { slug: string }) => p.slug === 'mini-departamento-drywall');
+    const oculto = await agent().patch(`${API}/projects/${elegido.id}/estado`).set('Authorization', `Bearer ${token}`).send({ estado: 'oculto' });
+    expect(oculto.status).toBe(200);
+    try {
+      expect((await agent().get(`${API}/projects/mini-departamento-drywall`)).status).toBe(404);
+      const publicados = await agent().get(`${API}/projects`);
+      expect(publicados.body.data.find((p: { slug: string }) => p.slug === 'mini-departamento-drywall')).toBeUndefined();
+    } finally {
+      const volver = await agent().patch(`${API}/projects/${elegido.id}/estado`).set('Authorization', `Bearer ${token}`).send({ estado: 'publicado' });
+      expect(volver.status).toBe(200);
+    }
   });
 
   it('404 si no existe', async () => {

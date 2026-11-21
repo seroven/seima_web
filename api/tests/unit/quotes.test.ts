@@ -286,6 +286,22 @@ describe('QuotesService', () => {
     expect(t.guardado().fotos).toEqual([]);
   });
 
+  it('si el aviso push falla, la cotización igual queda guardada', async () => {
+    const quotes = { create: vi.fn(async (d: Record<string, unknown>) => ({ id: 'q-1', createdAt: new Date('2026-03-04T05:06:07Z'), ...d })) };
+    const projects = { findPublishedBySlug: vi.fn() };
+    const catalog = {
+      findActiveServicesBySlugs: vi.fn(async (slugs: string[]) => SERVICIOS.filter((s) => slugs.includes(s.slug))),
+      findActiveQuestions: vi.fn(async () => PREGUNTAS),
+    };
+    const avisar = vi.fn(async () => {
+      throw new Error('firebase caído');
+    });
+    const svc = new QuotesService(quotes as unknown as QuotesRepository, projects as unknown as ProjectsRepository, catalog as unknown as CatalogRepository, avisar);
+    const r = await svc.create(ok() as CreateQuoteInput);
+    expect(r.id).toBe('q-1');
+    expect(avisar).toHaveBeenCalledWith({ id: 'q-1', servicio: 'Cocina', distrito: 'Comas' });
+  });
+
   it('campo trampa lleno (robot): responde como si nada pero NO guarda ni consulta nada', async () => {
     const t = armar();
     const r = await t.crear({ website: 'http://spam.example' });

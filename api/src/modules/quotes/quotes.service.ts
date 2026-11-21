@@ -1,12 +1,16 @@
 import { randomUUID } from 'node:crypto';
-import { validationError } from '../../common/errors/app-error';
+import { logger } from '../../common/logger';
+import { imageUrl } from '../../common/utils/cloudinary';
+import { notFound, validationError } from '../../common/errors/app-error';
 import type { CatalogRepository } from '../catalog/catalog.repository';
 import type { Pregunta } from '../catalog/pregunta.entity';
 import type { ProjectsRepository } from '../projects/projects.repository';
 import { resolverRespuestas, type PreguntaCatalogo } from './quote-answers';
 import { buildQuoteMessage } from './quote-message';
+import type { EstadoCotizacion } from './quote.constants';
 import type { CreateQuoteInput } from './quotes.schemas';
-import type { QuotesRepository } from './quotes.repository';
+import type { QuoteFilters, QuotesRepository } from './quotes.repository';
+import type { AvisoCotizacion } from '../notifications/push';
 
 export interface CreatedQuoteDto {
   id: string;
@@ -25,11 +29,33 @@ const aCatalogo = (p: Pregunta): PreguntaCatalogo => ({
 });
 
 /** Lógica de negocio de cotizaciones: valida contra el catálogo, limpia lo recibido, arma el resumen y lo guarda en tablas. */
+export interface QuoteListItemDto {
+  id: string;
+  estado: EstadoCotizacion;
+  cliente: string;
+  nombre: string;
+  distrito: string;
+  servicios: { slug: string; nombre: string }[];
+  creadaEn: string;
+}
+
+export interface QuoteDetailDto extends QuoteListItemDto {
+  plazo: string;
+  notas: string | null;
+  whatsapp: string;
+  razonSocial: string | null;
+  ruc: string | null;
+  mensaje: string;
+  respuestas: { pregunta: string; preguntaEtiqueta: string; opcion: string; opcionEtiqueta: string; valor: string | null }[];
+  fotos: { id: string; orden: number; cloudinaryId: string; url: string | null }[];
+}
+
 export class QuotesService {
   constructor(
     private readonly repository: QuotesRepository,
     private readonly projects: ProjectsRepository,
     private readonly catalog: CatalogRepository,
+    private readonly avisar?: (aviso: AvisoCotizacion) => Promise<void>,
   ) {}
 
   async create(input: CreateQuoteInput): Promise<CreatedQuoteDto> {
@@ -89,6 +115,67 @@ export class QuotesService {
       proyectoId: proyecto?.id ?? null,
       mensaje,
     });
+    if (this.avisar) {
+      try {
+        await this.avisar({ id: guardada.id, servicio: porSlug.get(input.servicios[0])!.nombre, distrito: input.distrito });
+      } catch (err) {
+        logger.warn({ err, quoteId: guardada.id }, 'No se pudo avisar de la cotización');
+      }
+    }
     return { id: guardada.id, mensaje, creadaEn: guardada.createdAt.toISOString() };
+  }
+
+  async list(f: QuoteFilters): Promise<{ data: QuoteListItemDto[]; meta: { page: number; limit: number; total: number; totalPages: number } }> {
+    const page = f.page ?? 1;
+    const limit = f.limit ?? 50;
+    const [filas, total] = await this.repository.search({ ...f, page, limit });
+    return {
+      data: filas.map((q) => ({
+        id: q.id,
+        estado: q.estado,
+        cliente: q.cliente,
+        nombre: q.nombre,
+        distrito: q.distrito,
+        servicios: (q.servicios ?? []).map((s) => ({ slug: s.slug, nombre: s.nombre })),
+        creadaEn: q.createdAt.toISOString(),
+      })),
+      meta: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) },
+    };
+  }
+
+  async get(id: string): Promise<QuoteDetailDto> {
+    const q = await this.repository.findByIdFull(id);
+    if (!q) throw notFound('La cotización no existe');
+    return {
+      id: q.id,
+      estado: q.estado,
+      cliente: q.cliente,
+      nombre: q.nombre,
+      distrito: q.distrito,
+      plazo: q.plazo,
+      notas: q.notas,
+      whatsapp: q.whatsapp,
+      razonSocial: q.razonSocial,
+      ruc: q.ruc,
+      mensaje: q.mensaje,
+      servicios: (q.servicios ?? []).map((s) => ({ slug: s.slug, nombre: s.nombre })),
+      respuestas: (q.respuestas ?? []).map((r) => ({
+        pregunta: r.opcion.pregunta.slug,
+        preguntaEtiqueta: r.opcion.pregunta.etiqueta,
+        opcion: r.opcion.slug,
+        opcionEtiqueta: r.opcion.etiqueta,
+        valor: r.valor,
+      })),
+      fotos: [...(q.fotos ?? [])]
+        .sort((a, b) => a.orden - b.orden)
+        .map((f) => ({ id: f.id, orden: f.orden, cloudinaryId: f.cloudinaryId, url: imageUrl(f.cloudinaryId) })),
+      creadaEn: q.createdAt.toISOString(),
+    };
+  }
+
+  async setEstado(id: string, estado: EstadoCotizacion): Promise<{ id: string; estado: EstadoCotizacion }> {
+    const ok = await this.repository.updateEstado(id, estado);
+    if (!ok) throw notFound('La cotización no existe');
+    return { id, estado };
   }
 }

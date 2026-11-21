@@ -48,7 +48,14 @@ export class QuotesRepository {
   async search(f: QuoteFilters = {}): Promise<[Quote[], number]> {
     const page = f.page ?? 1;
     const limit = f.limit ?? 50;
-    const qb = this.repo.createQueryBuilder('q').leftJoinAndSelect('q.servicios', 's').orderBy('q.createdAt', 'DESC').skip((page - 1) * limit).take(limit);
+    const qb = this.repo
+      .createQueryBuilder('q')
+      .leftJoinAndSelect('q.servicios', 's')
+      .addSelect(`CASE WHEN q.estado = 'nueva' THEN 0 ELSE 1 END`, 'prioridad')
+      .orderBy('prioridad', 'ASC')
+      .addOrderBy('q.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
 
     if (f.estado) qb.andWhere('q.estado = :estado', { estado: f.estado });
 
@@ -69,5 +76,10 @@ export class QuotesRepository {
     });
 
     return qb.getManyAndCount();
+  }
+
+  async updateEstado(id: string, estado: EstadoCotizacion): Promise<boolean> {
+    const res = await this.repo.update(id, { estado });
+    return (res.affected ?? 0) > 0;
   }
 }

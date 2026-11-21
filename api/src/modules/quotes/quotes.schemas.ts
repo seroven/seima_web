@@ -73,3 +73,17 @@ export const createQuoteSchema = z
   });
 
 export type CreateQuoteInput = z.infer<typeof createQuoteSchema>;
+
+export const listQuotesQuerySchema = z.object({
+  estado: z.enum(['nueva', 'contactada', 'cerrada', 'descartada']).optional(),
+  servicio: slug.optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type ListQuotesQuery = z.infer<typeof listQuotesQuerySchema>;
+
+export const quoteIdParamsSchema = z.object({ id: z.uuid() });
+
+export const quoteEstadoSchema = z.object({
+  estado: z.enum(['nueva', 'contactada', 'cerrada', 'descartada']),
+});

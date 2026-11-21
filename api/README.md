@@ -15,7 +15,7 @@ createdb seima_dev            # o desde pgAdmin: una base vacía con el nombre d
 
 npm run migration:run         # crea TODA la estructura de la base a partir de las migraciones
 npm run seed:categories       # categorías del catálogo de proyectos
-npm run seed:admin            # usuario del panel (ADMIN_EMAIL / ADMIN_PASSWORD del .env)
+npm run seed:admin            # usuario `luis` (clave 123456 en dev/qa; en pd, ADMIN_PASSWORD)
 npm run seed:demo             # (opcional) 7 proyectos de PRUEBA con fotos ficticias
 
 npm run dev                   # http://localhost:4000/api/v1   (recarga al guardar)
@@ -118,7 +118,7 @@ src/
   server.ts                Conecta la base, abre el puerto, cierre ordenado
 ```
 
-Módulos: `categories`, `projects` (incluye `project_photos`), `quotes`, `auth` (usuarios del panel + JWT), `health`.
+Módulos: `categories`, `projects` (incluye `project_media`), `quotes`, `auth` (usuario `luis`, JWT y refresh), `devices` (tokens de Firebase), `health`.
 
 **Para crear un módulo nuevo:** copia la estructura de `categories` (el más simple), registra su `build…Module` en `app.ts` y, si tiene entidad, sigue el flujo de migraciones de arriba.
 
@@ -129,13 +129,13 @@ Módulos: `categories`, `projects` (incluye `project_photos`), `quotes`, `auth` 
 |---|---|
 | `GET /health` | Estado de la API y la base (también existe sin prefijo: `/health`) |
 | `GET /categories` | Categorías activas, en orden |
-| `GET /projects?categoria=&destacado=&page=&limit=` | Proyectos publicados, destacados primero. `category` también vale como alias. Cada uno trae su **portada** (`antes` y `despues`: la foto principal de la etapa). `limit` máx. 100 (por defecto 50) |
-| `GET /projects/:slug` | Ficha completa: `fotos` agrupadas por etapa (`antes`, `durante`, `despues`), cada etapa ordenada, más la `portada` |
+| `GET /projects?categoria=&destacado=&page=&limit=` | Solo proyectos `publicado`, destacados primero. `category` también vale como alias. Cada uno trae su **portada** (`antes` y `despues`: las fotos marcadas como portada). Un oculto no sale. `limit` máx. 100 (por defecto 50) |
+| `GET /projects/:slug` | Ficha: `medios` agrupados por etapa, el par `comparador` y la `portada`. Borrador u oculto → 404 |
 | `GET /quote-form` | **El formulario del cotizador:** los servicios activos y las preguntas de cada uno (con sus opciones). La web lo pide al cargar y arma el formulario con esto; ver "Cotizador parametrizado" |
 | `POST /quotes` | Guarda la cotización **como filas** (ver abajo) y devuelve `{ id, mensaje, creadaEn }` (`mensaje` = resumen en texto). Cuerpo: `servicios` (slugs), `respuestas` (`{ pregunta: [{ opcion, valor? }] }`, siempre una lista; `valor` solo si la opción pide un dato extra), `notas` (hasta 500 caracteres), `fotos` (public_id ya subidos, máx. 6), `consentimiento: true` obligatorio, `website` (campo trampa: si viene lleno se descarta en silencio). Servicios o respuestas que no existen en el catálogo → 422. Límite por IP (10/hora por defecto) |
 | `POST /uploads/quote-photos/signature` | Devuelve la firma para subir las fotos **directo a Cloudinary** (`uploadUrl`, `apiKey`, `timestamp`, `folder`, `allowedFormats`, `signature`…). El API secret nunca sale del servidor. 503 si faltan las credenciales de Cloudinary. Límite por IP (20/hora) |
 
-Cada foto: `{ id, etapa, orden, esPrincipal, pie, ancho, alto, cloudinaryId, url }`. `url` es la URL pública de Cloudinary (`f_auto,q_auto`) o `null` en los datos de prueba (ids `demo/…`).
+Cada medio: `{ id, etapa, tipo, orden, esPrincipal, esPortada, pie, ancho, alto, orientacion, duracionMs, cloudinaryId, url, poster }`. `orientacion` se calcula (`horizontal` si ancho ≥ alto). `url` es la URL pública (`f_auto,q_auto`) o `null` en los datos de prueba (ids `demo/…`). `poster` solo en videos.
 
 ### Cotizador parametrizado (servicios y preguntas en tablas)
 
@@ -160,11 +160,17 @@ Nada de lo que pregunta el cotizador está escrito en el código de la web: vive
 
 **Fotos del cotizador:** la web pide la firma, sube cada foto a Cloudinary (`multipart` a `uploadUrl` con `file`, `api_key`, `timestamp`, `folder`, `allowed_formats`, `signature`) y luego manda los `public_id` que devuelve Cloudinary en `POST /quotes`. Requiere `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` y `CLOUDINARY_API_SECRET` en el `.env` del entorno.
 
-### Autenticación del panel
-| Método y ruta | Descripción |
-|---|---|
-| `POST /auth/login` | `{ email, password }` → `{ token, tokenType: "Bearer", expiresIn, usuario }`. Límite contra fuerza bruta (10 cada 15 min) |
-| `GET /auth/me` | Requiere `Authorization: Bearer <token>`. Ejemplo de ruta protegida |
+### App de Luis (JWT + rol `admin`)
+
+**Sesión.** `POST /auth/login` con `{ usuario, password }` → `{ token, refreshToken, tokenType, expiresIn, usuario }`. El usuario del seed es `luis` (clave `123456` en dev y qa; en pd sale de `ADMIN_PASSWORD`). `POST /auth/refresh` rota el refresh: si se reutiliza uno ya usado, se cierran las sesiones de esa familia. `POST /auth/logout` cierra esa sesión. `PATCH /auth/password` (`passwordActual`, `passwordNueva`) y cierra las demás sesiones. `GET /auth/me` exige el token de acceso.
+
+**Proyectos.** `GET /projects/gestion`, `POST /projects` (nace en borrador; el slug sale del nombre), `GET /projects/gestion/:id`, `PATCH /projects/:id`, `DELETE /projects/:id` (solo borrador), `PATCH /projects/:id/estado` (`publicado` solo si hay comparación, un archivo listo en cada etapa y portada; `oculto` lo saca de la web). `PUT /projects/:id/comparador` y `PUT /projects/:id/portada` con `{ antesId, despuesId }` (una sola operación; la portada solo admite fotos). `POST /projects/:id/medios` reserva el archivo (`subiendo`) y devuelve la firma de Cloudinary; `POST .../confirmar` lo pasa a `listo`; `DELETE .../medios/:id` también lo borra de Cloudinary (no si es la comparación o la portada).
+
+**Cotizaciones.** `GET /quotes` (estado, servicio, paginado; las nuevas primero), `GET /quotes/:id`, `PATCH /quotes/:id/estado`. Al guardar una cotización pública se intenta el aviso push; si Firebase falla, la solicitud igual queda guardada.
+
+**Dispositivos.** `POST /devices` `{ token }` y `DELETE /devices/:token` (el token va codificado en la URL).
+
+Credenciales de Firebase (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`) solo en el `.env`. Sin ellas no se envía el aviso.
 
 **Proteger una ruta del panel:**
 ```ts
@@ -179,7 +185,7 @@ El JWT (HS256) lleva `sub` (id), `rol`, `iss` y `aud`; se verifica firma, vencim
 ## Seguridad
 - **Secretos solo en `.env`** (nunca en el código ni en git; `.env.example` es el modelo).
 - `helmet`, CORS con lista blanca (`CORS_ORIGINS`), cuerpo máx. 100 kB, límites de peticiones en `/quotes` y `/auth/login`.
-- Todo lo que llega se valida con Zod; las contraseñas se guardan con bcrypt; el login no revela si el correo existe; los logs ocultan tokens y contraseñas.
+- Todo lo que llega se valida con Zod; las contraseñas se guardan con bcrypt; el login no revela si el usuario existe; los logs ocultan tokens y contraseñas.
 - En producción los errores 500 no muestran detalles internos.
 
 ## Pruebas

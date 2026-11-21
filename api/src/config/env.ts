@@ -78,6 +78,8 @@ const schema = z
 
     JWT_SECRET: z.string().min(32, 'JWT_SECRET debe tener al menos 32 caracteres'),
     JWT_EXPIRES_IN: z.string().default('8h'),
+    /** Vida del refresh token de la app (ej. 60d, 12h). */
+    JWT_REFRESH_EXPIRES_IN: z.string().regex(/^\d+[dhm]$/, 'JWT_REFRESH_EXPIRES_IN debe ser como 60d, 12h o 30m').default('60d'),
     JWT_ISSUER: z.string().default('seima-api'),
     JWT_AUDIENCE: z.string().default('seima-panel'),
     BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
@@ -94,6 +96,16 @@ const schema = z
       .string()
       .regex(/^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/, 'CLOUDINARY_QUOTES_FOLDER inválida (ej. seima/quotes)')
       .default('seima/quotes'),
+    /** Carpeta de los proyectos. Cada proyecto queda en `<carpeta>/<id>`. */
+    CLOUDINARY_PROJECTS_FOLDER: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/, 'CLOUDINARY_PROJECTS_FOLDER inválida (ej. seima/projects)')
+      .default('seima/projects'),
+
+    // Cuenta de servicio de Firebase (push). Las tres juntas; si faltan, la cotización se guarda igual y no se avisa.
+    FIREBASE_PROJECT_ID: opcional(z.string()),
+    FIREBASE_CLIENT_EMAIL: opcional(z.string().email()),
+    FIREBASE_PRIVATE_KEY: opcional(z.string().min(1)),
 
     ADMIN_EMAIL: opcional(z.string().email()),
     ADMIN_PASSWORD: opcional(z.string().min(10, 'ADMIN_PASSWORD debe tener al menos 10 caracteres')),

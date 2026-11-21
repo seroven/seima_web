@@ -1,7 +1,7 @@
-import type { DataSource, Repository } from 'typeorm';
-import { ProjectPhoto } from './project-photo.entity';
+import { In, type DataSource, type Repository } from 'typeorm';
+import { ProjectMedia } from './project-media.entity';
 import { Project } from './project.entity';
-import type { Etapa } from './projects.types';
+import type { EstadoProyecto, Etapa } from './projects.types';
 
 export interface ProjectFilters {
   categoriaSlug?: string;
@@ -10,14 +10,20 @@ export interface ProjectFilters {
   take: number;
 }
 
-/** Único lugar que habla con la base para proyectos y sus fotos. */
+export interface GestionFilters {
+  estado?: EstadoProyecto;
+  skip: number;
+  take: number;
+}
+
+/** Único lugar que habla con la base para proyectos y sus medios. */
 export class ProjectsRepository {
   private readonly projects: Repository<Project>;
-  private readonly photos: Repository<ProjectPhoto>;
+  private readonly media: Repository<ProjectMedia>;
 
-  constructor(dataSource: DataSource) {
+  constructor(private readonly dataSource: DataSource) {
     this.projects = dataSource.getRepository(Project);
-    this.photos = dataSource.getRepository(ProjectPhoto);
+    this.media = dataSource.getRepository(ProjectMedia);
   }
 
   /** Proyectos publicados (con su categoría), los destacados primero y luego los más recientes. */
@@ -25,7 +31,7 @@ export class ProjectsRepository {
     const qb = this.projects
       .createQueryBuilder('p')
       .innerJoinAndSelect('p.categoria', 'c')
-      .where('p.publicado = true')
+      .where('p.estado = :estado', { estado: 'publicado' })
       .andWhere('c.activo = true');
     if (f.categoriaSlug) qb.andWhere('c.slug = :slug', { slug: f.categoriaSlug });
     if (f.destacado !== undefined) qb.andWhere('p.destacado = :destacado', { destacado: f.destacado });
@@ -33,29 +39,111 @@ export class ProjectsRepository {
   }
 
   findPublishedBySlug(slug: string): Promise<Project | null> {
-    return this.projects.findOne({ where: { slug, publicado: true, categoria: { activo: true } }, relations: { categoria: true } });
+    return this.projects.findOne({ where: { slug, estado: 'publicado', categoria: { activo: true } }, relations: { categoria: true } });
   }
 
-  /** Todas las fotos de un proyecto, ordenadas por etapa y orden. */
-  findPhotos(projectId: string): Promise<ProjectPhoto[]> {
-    return this.photos.find({ where: { projectId }, order: { etapa: 'ASC', orden: 'ASC' } });
+  findGestionPage(f: GestionFilters): Promise<[Project[], number]> {
+    const qb = this.projects.createQueryBuilder('p').innerJoinAndSelect('p.categoria', 'c');
+    if (f.estado) qb.where('p.estado = :estado', { estado: f.estado });
+    return qb.orderBy('p.updatedAt', 'DESC').skip(f.skip).take(f.take).getManyAndCount();
   }
 
-  /**
-   * Foto de portada por proyecto y etapa: la principal si existe; si no, la primera por orden.
-   * (DISTINCT ON deja una fila por (proyecto, etapa) respetando ese orden.)
-   */
-  findCoverPhotos(projectIds: string[], etapas: Etapa[]): Promise<ProjectPhoto[]> {
+  findById(id: string): Promise<Project | null> {
+    return this.projects.findOne({ where: { id }, relations: { categoria: true } });
+  }
+
+  slugTaken(slug: string): Promise<boolean> {
+    return this.projects.existsBy({ slug });
+  }
+
+  save(data: Partial<Project> & Pick<Project, 'slug' | 'titulo' | 'descripcion' | 'categoriaId'>): Promise<Project> {
+    return this.projects.save(this.projects.create(data));
+  }
+
+  async update(id: string, data: Partial<Project>): Promise<void> {
+    await this.projects.update(id, data);
+  }
+
+  async remove(id: string): Promise<void> {
+    await this.projects.delete(id);
+  }
+
+  /** Medios ya subidos, para la web. */
+  findReadyMedia(projectId: string): Promise<ProjectMedia[]> {
+    return this.media.find({ where: { projectId, estado: 'listo' }, order: { etapa: 'ASC', orden: 'ASC' } });
+  }
+
+  /** Todos, también los que se están subiendo. Para la app. */
+  findAllMedia(projectId: string): Promise<ProjectMedia[]> {
+    return this.media.find({ where: { projectId }, order: { etapa: 'ASC', orden: 'ASC' } });
+  }
+
+  findMediaById(id: string): Promise<ProjectMedia | null> {
+    return this.media.findOne({ where: { id } });
+  }
+
+  /** Fotos de portada (`es_portada`) de los proyectos indicados. */
+  findCoverPhotos(projectIds: string[], etapas: Etapa[]): Promise<ProjectMedia[]> {
     if (projectIds.length === 0) return Promise.resolve([]);
-    return this.photos
-      .createQueryBuilder('f')
-      .distinctOn(['f.projectId', 'f.etapa'])
-      .where('f.projectId IN (:...ids)', { ids: projectIds })
-      .andWhere('f.etapa IN (:...etapas)', { etapas })
-      .orderBy('f.projectId')
-      .addOrderBy('f.etapa')
-      .addOrderBy('f.esPrincipal', 'DESC')
-      .addOrderBy('f.orden', 'ASC')
-      .getMany();
+    return this.media.find({
+      where: { projectId: In(projectIds), etapa: In(etapas), esPortada: true, tipo: 'foto', estado: 'listo' },
+    });
+  }
+
+  async nextOrden(projectId: string, etapa: Etapa): Promise<number> {
+    const row = await this.media
+      .createQueryBuilder('m')
+      .select('COALESCE(MAX(m.orden), -1)', 'max')
+      .where('m.projectId = :projectId AND m.etapa = :etapa', { projectId, etapa })
+      .getRawOne<{ max: string }>();
+    return Number(row?.max ?? -1) + 1;
+  }
+
+  insertMedia(data: Partial<ProjectMedia> & Pick<ProjectMedia, 'id' | 'projectId' | 'etapa' | 'tipo' | 'cloudinaryId' | 'orden'>): Promise<ProjectMedia> {
+    return this.media.save(this.media.create(data));
+  }
+
+  async updateMedia(id: string, data: Partial<ProjectMedia>): Promise<void> {
+    await this.media.update(id, data);
+  }
+
+  async deleteMedia(id: string): Promise<void> {
+    await this.media.delete(id);
+  }
+
+  /** Quita el comparador anterior y marca el par nuevo, en una sola transacción. */
+  async setComparador(projectId: string, antesId: string, despuesId: string): Promise<void> {
+    await this.dataSource.transaction(async (m) => {
+      await m
+        .createQueryBuilder()
+        .update(ProjectMedia)
+        .set({ esPrincipal: false })
+        .where('project_id = :projectId AND etapa IN (:...etapas)', { projectId, etapas: ['antes', 'despues'] })
+        .execute();
+      await m.update(ProjectMedia, { id: antesId, projectId }, { esPrincipal: true });
+      await m.update(ProjectMedia, { id: despuesId, projectId }, { esPrincipal: true });
+    });
+  }
+
+  /** Quita la portada anterior y marca el par de fotos nuevo, en una sola transacción. */
+  async setPortada(projectId: string, antesId: string, despuesId: string): Promise<void> {
+    await this.dataSource.transaction(async (m) => {
+      await m
+        .createQueryBuilder()
+        .update(ProjectMedia)
+        .set({ esPortada: false })
+        .where('project_id = :projectId AND etapa IN (:...etapas)', { projectId, etapas: ['antes', 'despues'] })
+        .execute();
+      await m.update(ProjectMedia, { id: antesId, projectId }, { esPortada: true });
+      await m.update(ProjectMedia, { id: despuesId, projectId }, { esPortada: true });
+    });
+  }
+
+  async reordenar(projectId: string, etapa: Etapa, ids: string[]): Promise<void> {
+    await this.dataSource.transaction(async (m) => {
+      for (let orden = 0; orden < ids.length; orden++) {
+        await m.update(ProjectMedia, { id: ids[orden], projectId, etapa }, { orden });
+      }
+    });
   }
 }

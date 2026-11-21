@@ -68,15 +68,45 @@ describe('token JWT', () => {
 });
 
 function usuario(parcial: Partial<AdminUser> = {}): AdminUser {
-  return { id: ID, email: 'luis@seima.pe', nombre: 'Luis', rol: 'admin', activo: true, passwordHash: '', ...parcial } as AdminUser;
+  return { id: ID, usuario: 'luis', email: 'luis@seima.pe', nombre: 'Luis', rol: 'admin', activo: true, passwordHash: '', ...parcial } as AdminUser;
 }
 
 function repoFalso(user: AdminUser | null) {
   return {
-    findByEmail: vi.fn().mockResolvedValue(user),
+    findByUsuario: vi.fn().mockResolvedValue(user),
     findById: vi.fn().mockResolvedValue(user),
     touchLastLogin: vi.fn().mockResolvedValue(undefined),
+    updatePassword: vi.fn().mockResolvedValue(undefined),
     create: vi.fn(async (d: Partial<AdminUser>) => usuario(d)),
+  };
+}
+
+function sesionesFalsas() {
+  const filas: { id: string; tokenHash: string; userId: string; familia: string; dispositivo: string | null; vence: Date; revocado: boolean }[] = [];
+  return {
+    filas,
+    findByHash: vi.fn(async (tokenHash: string) => filas.find((f) => f.tokenHash === tokenHash) ?? null),
+    insert: vi.fn(async (d: { tokenHash: string; userId: string; familia?: string; dispositivo: string | null; vence: Date }) => {
+      const fila = { id: `r${filas.length + 1}`, revocado: false, familia: d.familia ?? 'fam', dispositivo: d.dispositivo, tokenHash: d.tokenHash, userId: d.userId, vence: d.vence };
+      filas.push(fila);
+      return fila;
+    }),
+    revokeIfActive: vi.fn(async (id: string) => {
+      const fila = filas.find((f) => f.id === id && !f.revocado);
+      if (!fila) return false;
+      fila.revocado = true;
+      return true;
+    }),
+    revokeById: vi.fn(async (id: string) => {
+      const fila = filas.find((f) => f.id === id);
+      if (fila) fila.revocado = true;
+    }),
+    revokeFamily: vi.fn(async (familia: string) => {
+      for (const fila of filas) if (fila.familia === familia) fila.revocado = true;
+    }),
+    revokeUser: vi.fn(async () => {
+      for (const fila of filas) fila.revocado = true;
+    }),
   };
 }
 
@@ -85,14 +115,16 @@ describe('AuthService', () => {
   beforeEach(async () => {
     hash = await hashPassword('Correcta-123');
   });
-  const servicio = (repo: ReturnType<typeof repoFalso>) => new AuthService(repo as unknown as AdminUsersRepository);
+  const servicio = (repo: ReturnType<typeof repoFalso>, sesiones = sesionesFalsas()) =>
+    new AuthService(repo as unknown as AdminUsersRepository, sesiones as never);
 
   it('login correcto: token, expiresIn, usuario sin hash, y registra el último acceso', async () => {
     const repo = repoFalso(usuario({ passwordHash: hash }));
-    const r = await servicio(repo).login('luis@seima.pe', 'Correcta-123');
+    const r = await servicio(repo).login('luis', 'Correcta-123');
     expect(r.tokenType).toBe('Bearer');
     expect(r.expiresIn).toBe(3600);
-    expect(r.usuario).toEqual({ id: ID, email: 'luis@seima.pe', nombre: 'Luis', rol: 'admin' });
+    expect(r.refreshToken.length).toBeGreaterThan(20);
+    expect(r.usuario).toEqual({ id: ID, usuario: 'luis', email: 'luis@seima.pe', nombre: 'Luis', rol: 'admin' });
     expect(JSON.stringify(r)).not.toContain(hash);
     expect(verifyAccessToken(r.token).userId).toBe(ID);
     expect(repo.touchLastLogin).toHaveBeenCalledWith(ID);
@@ -100,20 +132,20 @@ describe('AuthService', () => {
 
   it.each([
     ['contraseña incorrecta', usuario({ passwordHash: '' }), 'mala'],
-    ['correo inexistente', null, 'Correcta-123'],
+    ['usuario inexistente', null, 'Correcta-123'],
     ['usuario desactivado', usuario({ activo: false }), 'Correcta-123'],
   ])('login falla con 401 y el mismo mensaje: %s', async (_c, user, pass) => {
     const u = user && user.passwordHash === '' ? { ...user, passwordHash: hash } : user;
     const repo = repoFalso(u);
-    const err = (await rejected(servicio(repo).login('x@y.pe', pass))) as AppError;
+    const err = (await rejected(servicio(repo).login('luis', pass))) as AppError;
     expect(err.status).toBe(401);
-    expect(err.message).toBe('Correo o contraseña incorrectos');
+    expect(err.message).toBe('Usuario o contraseña incorrectos');
     expect(repo.touchLastLogin).not.toHaveBeenCalled();
   });
 
   it('desactivado con contraseña correcta tampoco entra', async () => {
     const repo = repoFalso(usuario({ passwordHash: hash, activo: false }));
-    expect(((await rejected(servicio(repo).login('a@b.pe', 'Correcta-123'))) as AppError).status).toBe(401);
+    expect(((await rejected(servicio(repo).login('luis', 'Correcta-123'))) as AppError).status).toBe(401);
   });
 
   it('authenticate devuelve al usuario; falla si no existe o está desactivado', async () => {
@@ -125,13 +157,13 @@ describe('AuthService', () => {
   });
 
   it('me devuelve el DTO; falla si el usuario ya no está activo', async () => {
-    expect(await servicio(repoFalso(usuario())).me(ID)).toEqual({ id: ID, email: 'luis@seima.pe', nombre: 'Luis', rol: 'admin' });
+    expect(await servicio(repoFalso(usuario())).me(ID)).toEqual({ id: ID, usuario: 'luis', email: 'luis@seima.pe', nombre: 'Luis', rol: 'admin' });
     expect(((await rejected(servicio(repoFalso(usuario({ activo: false }))).me(ID))) as AppError).status).toBe(401);
   });
 
   it('createAdmin guarda un hash (nunca la contraseña) con rol admin', async () => {
     const repo = repoFalso(null);
-    await servicio(repo).createAdmin({ email: 'a@b.pe', password: 'Secreta-12345', nombre: 'A' });
+    await servicio(repo).createAdmin({ usuario: 'luis', email: 'a@b.pe', password: 'Secreta-12345', nombre: 'A' });
     const guardado = repo.create.mock.calls[0][0];
     expect(guardado.rol).toBe('admin');
     expect(guardado.passwordHash).not.toBe('Secreta-12345');
@@ -181,10 +213,26 @@ describe('middleware authenticate / requireRole', () => {
 });
 
 describe('loginSchema', () => {
-  it('normaliza el correo (trim + minúsculas)', () => {
-    expect(loginSchema.parse({ email: '  LUIS@Seima.PE ', password: 'x' }).email).toBe('luis@seima.pe');
+  it('normaliza el usuario (trim + minúsculas)', () => {
+    expect(loginSchema.parse({ usuario: '  Luis ', password: 'x' }).usuario).toBe('luis');
   });
-  it.each([[{ email: 'no-es-correo', password: 'x' }], [{ email: 'a@b.pe', password: '' }], [{ email: 'a@b.pe' }], [{ password: 'x' }], [{ email: 'a@b.pe', password: 'x'.repeat(201) }]])('rechaza %j', (v) => {
+  it.each([[{ usuario: 'Lu', password: 'x' }], [{ usuario: 'luis', password: '' }], [{ usuario: 'luis' }], [{ password: 'x' }], [{ usuario: 'luis', password: 'x'.repeat(201) }], [{ usuario: 'lu is', password: 'x' }]])('rechaza %j', (v) => {
     expect(loginSchema.safeParse(v).success).toBe(false);
+  });
+});
+
+describe('refresh con rotación', () => {
+  it('un token ya usado revoca toda la familia', async () => {
+    const hash = await hashPassword('Correcta-123');
+    const repo = repoFalso(usuario({ passwordHash: hash }));
+    const sesiones = sesionesFalsas();
+    const svc = new AuthService(repo as unknown as AdminUsersRepository, sesiones as never);
+    const primera = await svc.login('luis', 'Correcta-123');
+    const segunda = await svc.refresh(primera.refreshToken);
+    expect(segunda.refreshToken).not.toBe(primera.refreshToken);
+    const reuso = (await rejected(svc.refresh(primera.refreshToken))) as AppError;
+    expect(reuso.status).toBe(401);
+    const seguida = (await rejected(svc.refresh(segunda.refreshToken))) as AppError;
+    expect(seguida.status).toBe(401);
   });
 });

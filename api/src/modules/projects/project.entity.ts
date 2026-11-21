@@ -1,12 +1,12 @@
 import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, type Relation, UpdateDateColumn } from 'typeorm';
 import { Category } from '../categories/category.entity';
-import { TIPOS_CLIENTE, type TipoCliente } from './projects.types';
+import { ESTADOS_PROYECTO, TIPOS_CLIENTE, type EstadoProyecto, type TipoCliente } from './projects.types';
 
 const aNumero = { to: (v?: number | null) => v ?? null, from: (v: string | null) => (v === null ? null : Number(v)) };
 
-/** Proyecto del portafolio. Sus fotos están en `project_photos`. */
+/** Proyecto del portafolio. Sus fotos y videos están en `project_media`. */
 @Entity('projects')
-@Index('idx_projects_publicado_destacado', ['publicado', 'destacado'])
+@Index('idx_projects_estado_destacado', ['estado', 'destacado'])
 export class Project {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -47,9 +47,11 @@ export class Project {
   @Column({ type: 'enum', enum: TIPOS_CLIENTE, enumName: 'tipo_cliente', default: 'persona' })
   cliente!: TipoCliente;
 
-  /** Si es false no aparece en la web (el panel podrá despublicar sin borrar). */
-  @Column({ type: 'boolean', default: true })
-  publicado!: boolean;
+  /**
+   * `borrador` no se publica; `publicado` sale en la web; `oculto` sigue en la app y la web responde 404.
+   */
+  @Column({ type: 'enum', enum: ESTADOS_PROYECTO, enumName: 'estado_proyecto', default: 'borrador' })
+  estado!: EstadoProyecto;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

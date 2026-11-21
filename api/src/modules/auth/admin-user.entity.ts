@@ -9,9 +9,13 @@ export class AdminUser {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  /** Siempre en minúsculas. */
-  @Column({ type: 'varchar', length: 255, unique: true })
-  email!: string;
+  /** Con qué entra Luis (`luis`). Siempre en minúsculas. */
+  @Column({ type: 'varchar', length: 40, unique: true })
+  usuario!: string;
+
+  /** Opcional. Siempre en minúsculas cuando existe. */
+  @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
+  email!: string | null;
 
   /** Hash bcrypt: la contraseña real nunca se guarda. */
   @Column({ type: 'varchar', length: 100 })

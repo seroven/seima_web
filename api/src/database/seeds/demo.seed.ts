@@ -1,6 +1,6 @@
 import type { DataSource } from 'typeorm';
 import { Category } from '../../modules/categories/category.entity';
-import { ProjectPhoto } from '../../modules/projects/project-photo.entity';
+import { ProjectMedia } from '../../modules/projects/project-media.entity';
 import { Project } from '../../modules/projects/project.entity';
 import { ETAPAS, type Etapa, type TipoCliente } from '../../modules/projects/projects.types';
 
@@ -38,30 +38,34 @@ export async function seedDemo(ds: DataSource): Promise<number> {
 
   await ds.transaction(async (tx) => {
     const projects = tx.getRepository(Project);
-    const photos = tx.getRepository(ProjectPhoto);
+    const photos = tx.getRepository(ProjectMedia);
 
     for (const d of DEMOS) {
       const categoriaId = porSlug.get(d.categoria);
       if (!categoriaId) throw new Error(`Falta la categoría "${d.categoria}": corre primero "npm run seed:categories".`);
 
       await projects.upsert(
-        { slug: d.slug, titulo: d.titulo, descripcion: d.descripcion, categoriaId, distrito: null, areaM2: null, dias: null, servicios: d.servicios, destacado: d.destacado, cliente: d.cliente, publicado: true },
+        { slug: d.slug, titulo: d.titulo, descripcion: d.descripcion, categoriaId, distrito: null, areaM2: null, dias: null, servicios: d.servicios, destacado: d.destacado, cliente: d.cliente, estado: 'publicado' as const },
         ['slug'],
       );
       const { id } = await projects.findOneByOrFail({ slug: d.slug });
 
-      // Se regeneran las fotos de prueba de este proyecto (la primera de cada etapa es la principal)
+      // Se regeneran los medios de prueba. La primera foto de antes y de después es el comparador y la portada.
       await photos.delete({ projectId: id });
       const filas = ETAPAS.flatMap((etapa) =>
         Array.from({ length: d.fotos[etapa] }, (_, i) => ({
           projectId: id,
           etapa,
+          tipo: 'foto' as const,
+          estado: 'listo' as const,
           cloudinaryId: `demo/${d.slug}-${etapa}-${i + 1}`,
           orden: i,
-          esPrincipal: i === 0,
+          esPrincipal: i === 0 && etapa !== 'durante',
+          esPortada: i === 0 && etapa !== 'durante',
           pie: null,
-          ancho: null,
-          alto: null,
+          ancho: 1600,
+          alto: 1200,
+          duracionMs: null,
         })),
       );
       if (filas.length) await photos.insert(filas);

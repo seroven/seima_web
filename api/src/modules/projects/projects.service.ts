@@ -38,7 +38,7 @@ export class ProjectsService {
   async getBySlug(slug: string): Promise<ProjectDetailDto> {
     const proyecto = await this.repository.findPublishedBySlug(slug);
     if (!proyecto) throw notFound('El proyecto no existe');
-    const fotos = await this.repository.findPhotos(proyecto.id);
-    return toDetailDto(proyecto, fotos);
+    const medios = await this.repository.findReadyMedia(proyecto.id);
+    return toDetailDto(proyecto, medios);
   }
 }
