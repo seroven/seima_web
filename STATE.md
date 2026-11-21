@@ -15,7 +15,7 @@
 **Stack real hoy**
 - `web/` — Astro **7.4.12**, GSAP + ScrollTrigger (+ Flip), Lenis, fuente Archivo variable (`@fontsource-variable/archivo/wdth.css`). **React 19 + `@astrojs/react` + Motion (`motion/react`) solo para el cotizador** (isla `client:load`). El resto sigue siendo Astro/GSAP.
 - `api/` — **creada (base)**: Node + Express 5 + **TypeScript + TypeORM** + PostgreSQL, por módulos, migraciones automáticas y JWT para el panel. Ver `api/README.md` y la sección "API" de abajo.
-- `app/` — **fase 2 en curso**: Flutter 3.44 + Riverpod, solo Android, paquete `pe.seima.app`, nombre SEIMA. Tema, login, huella, navegación y registro del celular ya están en el código. Falta probarlo en un Android real (y las claves de Firebase para el aviso). Ver `docs/plan-app-movil.md` y `app/README.md`.
+- `app/` — **fase 3 en curso**: Flutter 3.44 + Riverpod, solo Android, paquete `pe.seima.app`, nombre SEIMA. Ya entra, y desde el celular se listan las obras, se crea un borrador y se suben fotos a Antes, Durante y Después. Faltan los videos, la subida con la app cerrada, la comparación y la portada. Ver `docs/plan-app-movil.md` y `app/README.md`.
 - Node **≥ 22.23.4** (Astro 7 lo exige). Con `nvm use 22.23.4`.
 - Correr: `cd web && npm run dev` → http://localhost:4321/ (si el `node` de la terminal es viejo: `nvm use 22.23.4`).
 
@@ -119,7 +119,7 @@
 ## 3. Pendientes y próximos pasos
 
 **Decidido, sin construir**
-- **App móvil para Luis (Flutter + Riverpod).** Plan aprobado el 2026-11-21. **Fase 1 (API) hecha y migrada en la base local.** **Fase 2 en curso** (el proyecto ya entra, con huella y el registro del celular). Falta correrla en un Android real. Sebas crea el proyecto de Firebase y llena las variables (guía en la sección 12 del plan) antes de probar un push de verdad.
+- **App móvil para Luis (Flutter + Riverpod).** Plan aprobado el 2026-11-21. **Fase 1 (API) hecha y migrada en la base local.** **Fase 2 (entrar, huella, avisos) en el código.** **Fase 3 en curso:** lista de obras, borrador y fotos por etapa. Faltan videos, subida en segundo plano, comparación y portada. Sigue sin probarse en un Android real.
 - Modelo de datos de fotos (etapa, principal, galería) en la API → `docs/modelo-datos.md`. (La parte visual ya está en la web con datos de prueba.)
 
 **Pendiente tras el envío directo del cotizador**
@@ -129,20 +129,27 @@
 - Limpieza periódica de fotos subidas pero nunca enviadas (huérfanas en `seima/quotes`).
 
 **Por construir (orden del plan de la app)**
-1. **Fase 2 — app base:** el código está (tema, login, huella, navegación, Firebase). Falta `flutter run` en un Android real: entrar con usuario o huella y, con Firebase lleno, recibir un aviso de prueba.
-2. Fases 3 a 5: medios, comparación, portada, publicar y cotizaciones en la app.
-3. **Fase 6 — web:** conectar el catálogo a `GET /projects` (hoy sigue en `web/src/data/projects.ts`) y el comparador con video.
-4. Desplegar la API en Render y aplicar `migration:run` allí. En la base local de Sebas (`localhost:5432/postgres`, schema `seima`) la migración `AppMovil` ya corrió el 2026-11-21.
+1. **Fase 2 — app base:** el código está. Falta `flutter run` en un Android real (entrar, huella y, con Firebase lleno, un aviso).
+2. **Fase 3 — en curso:** ya se crea el borrador y se suben fotos. Faltan los videos, recortarlos, la subida con la app cerrada (solo Wi-Fi para videos), la comparación y la portada.
+3. Fases 4 y 5: publicar desde el celular y atender cotizaciones.
+4. **Fase 6 — web:** conectar el catálogo a `GET /projects` (hoy sigue en `web/src/data/projects.ts`) y el comparador con video.
+5. Desplegar la API en Render y aplicar `migration:run` allí. En la base local de Sebas (`localhost:5432/postgres`, schema `seima`) la migración `AppMovil` ya corrió el 2026-11-21.
 
 **Bloqueado por Luis (contenido real):** número de WhatsApp, fotos de 8–12 proyectos (antes/durante/después), cifras, testimonios, precios referenciales sí/no, equipo/"Nosotros". Ver `docs/fuentes/contexto-chat.md` §7.
 
-**Git:** `staging` tiene los commits de la fase 1 sin push (`42f42e9`, `a3a311b`). La fase 2 (`app/`) todavía no está en un commit. `main` sigue en el commit inicial.
+**Git:** `staging` tiene los commits de la fase 1 y de la base de la app sin push. La fase 3 (obras y fotos) entra en el commit de la app de esta fecha. `main` sigue en el commit inicial.
 
 ---
 
 ## 4. Historial (más reciente primero)
 
 ### 2026-11-21
+
+**Fase 3 empezada: obras y fotos**
+- La lista lee `GET /projects/gestion`. "+ Nuevo proyecto" crea un borrador (nombre, tipo de trabajo, distrito, persona o empresa, área, días, servicios y descripción).
+- La ficha muestra los seis pasos. Antes, Durante y Después aceptan fotos de la galería o de la cámara (se achican a unos 2000 px), las suben directo a Cloudinary con la firma de la API y se pueden ordenar o quitar.
+- Comparación y portada se ven en la ficha, pero todavía no se eligen. Publicar solo se habilita cuando la API ya no pediría nada más.
+- Los videos y la subida con la app cerrada quedan para seguir la fase 3. `flutter analyze` limpio; 11 pruebas.
 
 **Commits de la fase 1 y migración en la base local**
 - `42f42e9` — `[api] feat: add mobile endpoints for projects, media and quotes`

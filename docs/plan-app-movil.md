@@ -1,6 +1,6 @@
 # Plan — App móvil para Luis (proyectos y cotizaciones)
 
-> Estado: **plan aprobado el 2026-11-21** (secciones 10 y 11 resueltas). Fases 0 y 1 (API) hechas; la migración ya corrió en la base local. La fase 2 (app base) está en código y falta probarla en un Android.
+> Estado: **plan aprobado el 2026-11-21** (secciones 10 y 11 resueltas). Fases 0 y 1 (API) hechas; la migración ya corrió en la base local. La fase 2 está en código. La fase 3 empezó: borradores y fotos; faltan videos y la subida en segundo plano.
 > Es la parte importante: Luis (no Sebas) sube los proyectos, fotos y videos, y atiende las cotizaciones. Reemplaza al "panel administrativo" que el brief dejaba fuera de alcance (la app **es** el panel de Luis).
 > Lo decidido ya está reflejado en `docs/brief.md`, `docs/modelo-datos.md` §4 y `CLAUDE.md` (alcance, carpeta `app/`, etiqueta de commit `[app]`).
 
@@ -145,8 +145,8 @@ Se hacen junto con **conectar la web a la API** (pendiente de antes): reemplazar
 |---|---|---|---|
 | 0 | Decisiones | **Hecha (2026-11-21):** dudas resueltas; `CLAUDE.md`, `brief.md` y `modelo-datos.md` actualizados; guía de Firebase en la sección 12 | Documentos al día |
 | 1 | **API** | **Hecha (2026-11-21).** Migraciones, auth móvil, CRUD de medios, reglas, cotizaciones, dispositivos y push. La migración ya corrió en la base local. Falta Firebase y el deploy | `npm test` verde en `seima_test` |
-| 2 | **App — base** | **En curso (2026-11-21).** Proyecto Flutter, tema, `go_router`, `dio` con refresh, login, huella, navegación y registro del dispositivo. Falta el celular | Entra con usuario/huella en un Android real y recibe una notificación de prueba |
-| 3 | **App — proyecto y medios** | Datos, medios por etapa, subida en segundo plano con WorkManager (Wi-Fi para videos), recorte+compresión nativos | Sube fotos y videos reales a Cloudinary con la app cerrada |
+| 2 | **App — base** | **En código (2026-11-21).** Proyecto Flutter, tema, `go_router`, `dio` con refresh, login, huella, navegación y registro del dispositivo. Falta el celular | Entra con usuario/huella en un Android real y recibe una notificación de prueba |
+| 3 | **App — proyecto y medios** | **En curso (2026-11-21).** Lista, borrador y fotos por etapa, subidas en primer plano. Faltan videos, recorte y WorkManager | Sube fotos y videos reales a Cloudinary con la app cerrada |
 | 4 | **App — comparación, portada y publicar** | Selección con reglas y mensajes, vista previa, portada, ocultar, publicar, compartir | Publica un proyecto completo |
 | 5 | **App — cotizaciones** | Lista, detalle, estados, WhatsApp/llamar, push que abre el detalle | Llega una cotización desde la web y Luis la atiende desde la notificación |
 | 6 | **Web** (en paralelo con 3–5) | Conectar a la API; comparador (lado a lado / deslizador); mosaico y visor con video; portada antes/después; ocultos; OG | Lo publicado en la app se ve bien en celular y escritorio |
