@@ -21,10 +21,10 @@
 
 **Git:** remoto `origin` = https://github.com/seroven/seima_web.git. Ramas: `main` (estable) y **`staging` (donde se trabaja)**. Commits se hacen cuando Sebas lo pide. El push no es automático.
 
-**Rutas que existen:** `/` (landing), `/proyectos` (catálogo), `/proyectos/[slug]` (ficha, 7 proyectos de prueba), `/cotizador` (cotizador de 6 pasos; se **envía** a la API, ya no por WhatsApp), `/privacidad` (cómo tratamos los datos: **borrador**), `/empresas` (página para empresas), `404` (página de error).
-**Rutas que faltan:** ninguna en la web. La API existe en `api/` pero la web todavía **no está conectada** (sigue usando los datos de prueba locales).
+**Rutas que existen:** `/` (landing), `/proyectos` (catálogo), `/proyectos/[slug]` (ficha), `/cotizador`, `/privacidad` (borrador), `/empresas`, `404`.
+**Catálogo:** inicio, proyectos, ficha y empresas leen `GET /projects` y `GET /categories` (`web/src/lib/proyectos-publicos.ts`). Si no hay ninguna obra publicada, siguen los 7 proyectos de prueba y el catálogo lo dice. Un video se muestra con su póster. La web sigue estática: en `astro dev` se actualiza; en producción, al volver a construir.
 
-**Datos:** `web/src/data/projects.ts` — 7 proyectos **de prueba** (todo `[DATO REAL]` / `[FOTO REAL]`). Se reemplaza por `GET /projects`.
+**Datos:** si la API tiene obras publicadas, el catálogo muestra esas. Si no, `web/src/data/projects.ts` (7 proyectos de prueba, `[DATO REAL]` / `[FOTO REAL]`).
 **Entorno:** `PUBLIC_WHATSAPP_NUMBER` sin configurar → los botones de WhatsApp salen como placeholder punteado "[NÚMERO PENDIENTE]". `PUBLIC_API_URL` sin configurar → el cotizador no guarda la solicitud (la API existe en `api/`; la URL debe incluir el prefijo, p. ej. `http://localhost:4000/api/v1`) pero igual arma el mensaje. Ver `web/.env.example`.
 
 ### Mapa del código (`web/src/`)
@@ -133,7 +133,7 @@
 2. **Fase 3 — en curso:** fotos y videos de Antes, Durante y Después. El video de más de 1 minuto o de más de 50 MB no se sube. Con el ajuste activo, el video pide Wi-Fi. Faltan el recorte en el celular y la subida con la app cerrada.
 3. **Fase 4:** par horizontal con deslizador; vertical, lado a lado. La portada muestra el después y, al mantener, el antes. Al publicar se comparte el título por WhatsApp. El enlace de la obra espera a que la web esté conectada.
 4. **Fase 5 — en curso:** lista con filtro, detalle, WhatsApp, llamar y cambiar el estado. Si el aviso trae el id, abre esa cotización. Falta probarlo con Firebase en un celular.
-5. **Fase 6 — web:** conectar el catálogo a `GET /projects` (hoy sigue en `web/src/data/projects.ts`) y el comparador con video.
+5. **Fase 6 — en curso:** el catálogo ya lee `GET /projects`. Si no hay obras publicadas, se ven las de prueba. Faltan el comparador con video (hoy el video se ve como póster) y el lado a lado cuando el par es vertical.
 6. Desplegar la API en Render y aplicar `migration:run` allí. En la base local de Sebas (`localhost:5432/postgres`, schema `seima`) la migración `AppMovil` ya corrió el 2026-11-21.
 
 **Bloqueado por Luis (contenido real):** número de WhatsApp, fotos de 8–12 proyectos (antes/durante/después), cifras, testimonios, precios referenciales sí/no, equipo/"Nosotros". Ver `docs/fuentes/contexto-chat.md` §7.
@@ -145,6 +145,11 @@
 ## 4. Historial (más reciente primero)
 
 ### 2026-11-21
+
+**El catálogo lee la API**
+- Inicio, proyectos, ficha y empresas piden `GET /projects`. La base local no tiene obras publicadas, así que el catálogo sigue mostrando las 7 de prueba y lo dice: «Aún no hay obras publicadas: estas son de prueba».
+- En cuanto haya una publicada, el catálogo muestra solo esas. Un video entra como su póster. El cotizador acepta el enlace «Cotizar algo así» de cualquier obra publicada y busca su título.
+- Probado en el navegador: el filtro Cocinas deja 1 de 7 y la ficha de la cocina abre. Falta el video en el comparador.
 
 **Cotizaciones en la app**
 - La pestaña Cotizaciones lee `GET /quotes` (las nuevas quedan marcadas en rojo y en la barra). Se filtra por estado. El detalle muestra lo que pidió el cliente, sus fotos, «Escribir por WhatsApp» y «Llamar», y los botones «Ya la contacté», «Cerrada» y «Descartar».
