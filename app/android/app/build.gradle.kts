@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "pe.seima.app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37 // flutter_local_notifications y androidx.core 1.19 exigen compilar contra Android 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
