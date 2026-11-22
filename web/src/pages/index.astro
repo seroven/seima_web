@@ -199,6 +199,10 @@ const stats = [
   .is-scrub .svc { position: absolute; inset: 0 auto auto 0; width: 100%; }
   .is-scrub .rail { display: flex; }
   .scene--layers.is-solo { height: calc(100svh - var(--header)); display: grid; align-items: center; overflow: hidden; }
+  /* Celular: los textos se apilan en la misma celda, así la caja mide lo que el texto más alto y no sobra espacio (antes: 17rem fijos) */
+  .is-solo .svc-list { display: grid; min-height: 0; }
+  .is-solo .svc { position: static; grid-area: 1 / 1; align-content: start; }
+  .is-solo .layers__grid { gap: 1.2rem; }
 
   /* ---------- Marquesina ---------- */
   .marquee { overflow: hidden; border-block: 1px solid #262626; padding-block: 1.2rem; position: relative; z-index: 1; }
@@ -226,7 +230,7 @@ const stats = [
   .gcard { flex: 0 0 min(78vw, 22rem); scroll-snap-align: start; }
   .gallery.is-pinned { height: calc(100svh - var(--header)); display: flex; flex-direction: column; justify-content: center; padding-block: 1rem; }
   .gallery.is-pinned .gallery__view { overflow: hidden; scroll-snap-type: none; }
-  .gallery.is-pinned .gcard { flex-basis: min(24rem, 40svh); }
+  .gallery.is-pinned .gcard { flex-basis: min(24rem, 40svh, 78vw); }
   .gallery.is-pinned .sec-title { font-size: clamp(1.8rem, 4vw, 2.8rem); }
 
   /* ---------- Cifras (fijas mientras la zona clara sube) ---------- */

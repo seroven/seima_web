@@ -374,7 +374,7 @@ function proceso(gsap: any, ScrollTrigger: any) {
   });
 }
 
-/* ---------- Galería horizontal: el scroll vertical la desplaza (solo escritorio) ---------- */
+/* ---------- Galería horizontal: el scroll vertical la desplaza (escritorio y celular) ---------- */
 function gallery(gsap: any) {
   const section = $('[data-gallery]');
   const view = $('[data-gallery-view]');
@@ -396,7 +396,8 @@ function gallery(gsap: any) {
   );
 
   const mm = gsap.matchMedia();
-  mm.add('(min-width: 900px)', () => {
+  // Escritorio y celular: la galería se queda fija y se desplaza de lado mientras se baja; al llegar a la última, sigue la página.
+  mm.add('(min-width: 0px)', () => {
     section.classList.add('is-pinned');
     const dist = () => Math.max(0, track.scrollWidth - view.clientWidth);
     gsap.to(track, {
