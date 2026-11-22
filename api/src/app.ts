@@ -10,6 +10,7 @@ import { env } from './config/env';
 import { buildAuthModule } from './modules/auth';
 import { buildCatalogModule } from './modules/catalog';
 import { buildCategoriesModule } from './modules/categories';
+import { WebRebuildService } from './modules/web-rebuild/web-rebuild.service';
 import { buildDevicesModule } from './modules/devices';
 import { healthRoutes } from './modules/health/health.routes';
 import { enviarAvisoCotizacion } from './modules/notifications/push';
@@ -37,8 +38,10 @@ export function createApp(dataSource: DataSource) {
 
   // Módulos (cada uno: repositorio → servicio → controlador → rutas)
   const auth = buildAuthModule(dataSource);
-  const categories = buildCategoriesModule(dataSource, auth.authenticate);
-  const projects = buildProjectsModule(dataSource, auth.authenticate);
+  // Avisa a Render que reconstruya la web cuando cambia algo que ella muestra (solo si hay WEB_DEPLOY_HOOK_URL).
+  const webRebuild = new WebRebuildService(env.WEB_DEPLOY_HOOK_URL);
+  const categories = buildCategoriesModule(dataSource, auth.authenticate, webRebuild);
+  const projects = buildProjectsModule(dataSource, auth.authenticate, webRebuild);
   const catalog = buildCatalogModule(dataSource, auth.authenticate);
   const devices = buildDevicesModule(dataSource, auth.authenticate);
   const quotes = buildQuotesModule(dataSource, projects.repository, catalog.repository, auth.authenticate, async (aviso) => {

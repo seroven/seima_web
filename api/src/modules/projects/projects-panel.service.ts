@@ -5,6 +5,7 @@ import type { CategoriesRepository } from '../categories/categories.repository';
 import type { Category } from '../categories/category.entity';
 import { borrarDeCloudinary } from '../uploads/cloudinary-destroy';
 import type { UploadsService } from '../uploads/uploads.service';
+import { sinAviso, type AvisoReconstruccion } from '../web-rebuild/web-rebuild.service';
 import { faltantesParaPublicar, mensajeIncompatible, type MedioRegla } from './project-rules';
 import type { ProjectMedia } from './project-media.entity';
 import { toGestionDto, type ProjectGestionDto } from './projects.mapper';
@@ -36,6 +37,7 @@ export class PanelProjectsService {
     private readonly repository: ProjectsRepository,
     private readonly categories: CategoriesRepository,
     private readonly uploads: UploadsService,
+    private readonly rebuild: AvisoReconstruccion = sinAviso,
   ) {}
 
   async list(q: { estado?: EstadoProyecto; page: number; limit: number }): Promise<Paged<ProjectGestionDto>> {
@@ -93,6 +95,7 @@ export class PanelProjectsService {
     const categorias = input.categorias === undefined ? undefined : await this.categoriasPedidas(input.categorias);
     if (Object.keys(cambios).length) await this.repository.update(proyecto.id, cambios);
     if (categorias) await this.repository.setCategorias(proyecto.id, categorias);
+    this.avisarSiPublicada(proyecto.estado, 'obra editada');
     return this.get(id);
   }
 
@@ -124,21 +127,25 @@ export class PanelProjectsService {
       if (faltan.length) throw validationError(faltan.map((mensaje) => ({ campo: 'estado', mensaje })));
     }
     await this.repository.update(id, { estado });
+    // Se ve en la web si pasa a publicada o si deja de estarlo.
+    if (estado === 'publicado') this.rebuild.solicitar('obra publicada');
+    else if (proyecto.estado === 'publicado') this.rebuild.solicitar('obra oculta');
     return this.get(id);
   }
 
   async setComparador(id: string, input: SetPairInput): Promise<ProjectGestionDto> {
-    await this.proyecto(id);
+    const proyecto = await this.proyecto(id);
     const antes = await this.medioDelProyecto(id, input.antesId, 'antes');
     const despues = await this.medioDelProyecto(id, input.despuesId, 'despues');
     const porque = mensajeIncompatible(aRegla(antes), aRegla(despues));
     if (porque) throw validationError([{ campo: 'comparador', mensaje: porque }]);
     await this.repository.setComparador(id, antes.id, despues.id);
+    this.avisarSiPublicada(proyecto.estado, 'comparación cambiada');
     return this.get(id);
   }
 
   async setPortada(id: string, input: SetPairInput): Promise<ProjectGestionDto> {
-    await this.proyecto(id);
+    const proyecto = await this.proyecto(id);
     const antes = await this.medioDelProyecto(id, input.antesId, 'antes');
     const despues = await this.medioDelProyecto(id, input.despuesId, 'despues');
     for (const medio of [antes, despues]) {
@@ -146,6 +153,7 @@ export class PanelProjectsService {
       if (medio.estado !== 'listo') throw validationError([{ campo: 'portada', mensaje: 'Espera a que terminen de subirse.' }]);
     }
     await this.repository.setPortada(id, antes.id, despues.id);
+    this.avisarSiPublicada(proyecto.estado, 'portada cambiada');
     return this.get(id);
   }
 
@@ -174,6 +182,7 @@ export class PanelProjectsService {
   }
 
   async confirmarMedio(projectId: string, medioId: string, input: ConfirmMediaInput): Promise<ProjectGestionDto> {
+    const proyecto = await this.proyecto(projectId);
     const medio = await this.medioDelProyecto(projectId, medioId);
     if (input.cloudinaryId !== medio.cloudinaryId) {
       throw validationError([{ campo: 'cloudinaryId', mensaje: 'El archivo no está en la carpeta de este proyecto.' }]);
@@ -189,11 +198,13 @@ export class PanelProjectsService {
         alto: input.alto,
         duracionMs: medio.tipo === 'video' ? input.duracionMs! : null,
       });
+      this.avisarSiPublicada(proyecto.estado, 'archivo agregado');
     }
     return this.get(projectId);
   }
 
   async borrarMedio(projectId: string, medioId: string): Promise<ProjectGestionDto> {
+    const proyecto = await this.proyecto(projectId);
     const medio = await this.medioDelProyecto(projectId, medioId);
     if (medio.esPrincipal || medio.esPortada) {
       const cual = [medio.esPrincipal ? 'la comparación' : null, medio.esPortada ? 'la portada' : null].filter(Boolean).join(' y ');
@@ -201,18 +212,25 @@ export class PanelProjectsService {
     }
     await borrarDeCloudinary(medio.cloudinaryId, medio.tipo);
     await this.repository.deleteMedia(medio.id);
+    this.avisarSiPublicada(proyecto.estado, 'archivo quitado');
     return this.get(projectId);
   }
 
   async reordenar(projectId: string, input: ReorderMediaInput): Promise<ProjectGestionDto> {
-    await this.proyecto(projectId);
+    const proyecto = await this.proyecto(projectId);
     const actuales = (await this.repository.findAllMedia(projectId)).filter((m) => m.etapa === input.etapa);
     const esperados = new Set(actuales.map((m) => m.id));
     const recibidos = new Set(input.ids);
     const mismos = esperados.size === recibidos.size && [...esperados].every((id) => recibidos.has(id));
     if (!mismos) throw validationError([{ campo: 'ids', mensaje: 'El orden tiene que incluir todos los archivos de esa etapa.' }]);
     await this.repository.reordenar(projectId, input.etapa, input.ids);
+    this.avisarSiPublicada(proyecto.estado, 'archivos reordenados');
     return this.get(projectId);
+  }
+
+  /** Solo importa si la obra ya se ve en la web: un borrador o una obra oculta no cambia lo que muestra. */
+  private avisarSiPublicada(estado: EstadoProyecto, motivo: string): void {
+    if (estado === 'publicado') this.rebuild.solicitar(motivo);
   }
 
   private async proyecto(id: string) {

@@ -107,6 +107,9 @@ const schema = z
     FIREBASE_CLIENT_EMAIL: opcional(z.string().email()),
     FIREBASE_PRIVATE_KEY: opcional(z.string().min(1)),
 
+    // «Deploy hook» de Render de la web (URL secreta). Si falta, no se pide reconstruir la web (desarrollo).
+    WEB_DEPLOY_HOOK_URL: opcional(z.url()),
+
     ADMIN_EMAIL: opcional(z.string().email()),
     ADMIN_PASSWORD: opcional(z.string().min(10, 'ADMIN_PASSWORD debe tener al menos 10 caracteres')),
     ADMIN_NAME: z.string().default('Administrador'),
