@@ -159,6 +159,13 @@
 
 ### 2026-11-22
 
+**Video vertical en el visor de la web: se salía de la pantalla y sin controles a la vista — corregido**
+- **Reporte de Sebas:** en la ficha «Cocina» (QA), el primer video de «Antes» (vertical, 1080×1920, 26 s) se veía distorsionado, ocupando todo el ancho, y no se veían los controles (pausa, volumen…).
+- **Causa:** en el visor (`components/Presentation.astro`) el `<video>` es hijo de un `grid` y tomaba su **alto natural**: 1744 px de ancho × **3100 px** de alto dentro de una ventana de 789 px. Con eso el video se cortaba y su barra de controles quedaba fuera de la pantalla (los controles sí existían: `controls` estaba puesto). Las fotos no tenían el problema porque `.photo--fill` ya limitaba el alto.
+- **Arreglo (solo CSS del visor):** la celda del grid pasa a `grid-template: minmax(0, 1fr) / minmax(0, 1fr)` y el video lleva `min-width/min-height: 0` y `max-width/max-height: 100%` con `object-fit: contain`. Medido: caja de 1744×789 (escritorio) y 374×588 (celular de 390×700), proporción original conservada (0,563), controles dentro de la pantalla.
+- **Aclaración:** ese video en concreto es un clip **horizontal metido en un lienzo vertical de 1080×1920** (tiene franjas negras arriba y abajo en el propio archivo), por eso al verlo completo la parte útil se ve más chica. No es un defecto de la web ni de la app (la app no recodifica ni rellena el video; las medidas vienen de Cloudinary). Si se quiere evitar, hay que subir el clip sin franjas.
+- **Cómo se probó:** web local con la API local apuntando a la base de QA; hizo falta reiniciar `npm run dev` de la web para que conociera la obra nueva «Cocina» (lección 45: `getStaticPaths` se calcula una vez).
+
 **Botón de volver que no respondía en la app — corregido (pantallas «superpuestas»)**
 - **Reporte de Sebas:** en Proyectos, tipos de trabajo, servicios, etc., el botón de volver no funcionaba bien; sospechaba un error recurrente de las pantallas encima de otras.
 - **Causa encontrada:** `context.pop()` solo vuelve si hay una pantalla **debajo**. Dos caminos abrían una pantalla de detalle con `context.go(...)`, que **reemplaza toda la pila**: (1) al **guardar una obra nueva** (`datos_proyecto_screen`: `go('/proyecto/<id>')`) y (2) al **tocar el aviso de una cotización** (`app.dart`: `go('/cotizacion/<id>')`). En esos casos «volver» no tenía a dónde ir y no hacía nada (en debug da un error de aserción; en release, silencio). Además, `ProyectoScreen` no tenía ningún botón de volver mientras cargaba o si fallaba.
