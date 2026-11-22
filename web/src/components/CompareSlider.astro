@@ -1,40 +1,91 @@
 ---
-// Comparador antes/después. El <input type="range"> cubre toda el área: funciona con mouse, dedo y teclado.
-import Photo from './Photo.astro';
-import { principal, type Project } from '../data/projects';
+// Comparador antes/después.
+// Horizontal (o sin medidas): deslizador. Vertical: lado a lado en escritorio y deslizador en celular.
+// Si los dos son videos, se reproducen mudos, en bucle y al mismo tiempo.
+import CompareCapa from './CompareCapa.astro';
+import { parVertical, principal, type Project } from '../data/projects';
 interface Props { project: Project }
 const { project: p } = Astro.props;
 const before = principal(p, 'antes') ?? p.fotos[0];
 const after = principal(p, 'despues') ?? p.fotos[p.fotos.length - 1];
+const vertical = parVertical(before, after);
+const ancho = after?.ancho && after.ancho > 0 ? after.ancho : 3;
+const alto = after?.alto && after.alto > 0 ? after.alto : 4;
 ---
-<div class="cmp" data-compare data-cursor="Arrastra" style="--p:50">
-  <div class="cmp__layer"><Photo src={after.src} alt={after.alt} tone={p.tono} fill label="[FOTO REAL · DESPUÉS]" plain /></div>
-  <div class="cmp__layer cmp__before"><Photo src={before.src} alt={before.alt} tone={(p.tono + 3) % 6} fill label="[FOTO REAL · ANTES]" plain /></div>
-  <div class="cmp__handle" aria-hidden="true"><span class="cmp__knob"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M9 6 3 12l6 6M15 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span></div>
-  <span class="cmp__tag cmp__tag--l" aria-hidden="true">Antes</span>
-  <span class="cmp__tag cmp__tag--r" aria-hidden="true">Después</span>
-  <input class="cmp__range" type="range" min="0" max="100" value="50" aria-label="Comparar antes y después: desliza para ver cada foto" />
+<div
+  class:list={['cmp', vertical && 'cmp--vertical']}
+  data-compare
+  data-cursor={vertical ? 'Compara' : 'Arrastra'}
+  style={`--p:50; --w:${ancho}; --h:${alto}`}
+>
+  <div class="cmp__slider">
+    <div class="cmp__layer"><CompareCapa foto={after} tone={p.tono} label="[FOTO REAL · DESPUÉS]" /></div>
+    <div class="cmp__layer cmp__before"><CompareCapa foto={before} tone={(p.tono + 3) % 6} label="[FOTO REAL · ANTES]" /></div>
+    <div class="cmp__handle" aria-hidden="true"><span class="cmp__knob"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M9 6 3 12l6 6M15 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg></span></div>
+    <span class="cmp__tag cmp__tag--l" aria-hidden="true">Antes</span>
+    <span class="cmp__tag cmp__tag--r" aria-hidden="true">Después</span>
+    <input class="cmp__range" type="range" min="0" max="100" value="50" aria-label="Comparar antes y después: desliza para ver cada lado" />
+  </div>
+  {vertical && before && after && (
+    <div class="cmp__lado">
+      <figure>
+        <CompareCapa foto={before} tone={(p.tono + 3) % 6} label="[FOTO REAL · ANTES]" />
+        <span class="cmp__tag cmp__tag--l">Antes</span>
+      </figure>
+      <figure>
+        <CompareCapa foto={after} tone={p.tono} label="[FOTO REAL · DESPUÉS]" />
+        <span class="cmp__tag cmp__tag--r">Después</span>
+      </figure>
+    </div>
+  )}
 </div>
 
 <script>
   function setup() {
     document.querySelectorAll<HTMLElement>('[data-compare]').forEach((el) => {
-      const input = el.querySelector<HTMLInputElement>('.cmp__range');
-      if (!input || el.dataset.ready) return;
+      if (el.dataset.ready) return;
       el.dataset.ready = '1';
-      input.addEventListener('input', () => {
-        (el as any)._intro?.kill(); // si la persona toma el control, se corta la animación de bienvenida
+      const input = el.querySelector<HTMLInputElement>('.cmp__range');
+      input?.addEventListener('input', () => {
+        (el as HTMLElement & { _intro?: { kill: () => void } })._intro?.kill();
         el.style.setProperty('--p', input.value);
       });
+      const visibles = () => [...el.querySelectorAll('video')].filter((v) => v.getClientRects().length > 0);
+      const reproducir = () => {
+        const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const activos = visibles();
+        for (const video of el.querySelectorAll('video')) {
+          if (quieto || !activos.includes(video)) video.pause();
+        }
+        if (quieto) return;
+        for (const video of activos) video.play().catch(() => {});
+      };
+      el.addEventListener(
+        'timeupdate',
+        (evento) => {
+          const maestro = evento.target;
+          if (!(maestro instanceof HTMLVideoElement) || !visibles().includes(maestro)) return;
+          for (const otro of visibles()) {
+            if (otro !== maestro && Math.abs(otro.currentTime - maestro.currentTime) > 0.35) otro.currentTime = maestro.currentTime;
+          }
+        },
+        true,
+      );
+      reproducir();
+      const alCambiar = () => reproducir();
+      window.addEventListener('resize', alCambiar);
+      document.addEventListener('astro:before-swap', () => window.removeEventListener('resize', alCambiar), { once: true });
     });
   }
   document.addEventListener('astro:page-load', setup);
+  setup();
 </script>
 
 <style>
   .cmp { position: relative; container-type: inline-size; height: clamp(18rem, 62vh, 36rem); border-radius: 24px; overflow: hidden; background: var(--ink-3); isolation: isolate; }
+  .cmp__slider { position: absolute; inset: 0; }
   .cmp__layer { position: absolute; inset: 0; }
-  .cmp__layer :global(.photo) { border-radius: 0; }
+  .cmp__layer :global(.photo), .cmp video { width: 100%; height: 100%; object-fit: cover; border-radius: 0; display: block; }
   .cmp__before { clip-path: inset(0 calc(100% - var(--p) * 1%) 0 0); }
   .cmp__handle { position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: #fff; z-index: 3; translate: calc(var(--p) * 1cqw - 1.5px) 0; pointer-events: none; }
   .cmp__knob {
@@ -47,4 +98,13 @@ const after = principal(p, 'despues') ?? p.fotos[p.fotos.length - 1];
   .cmp__range { position: absolute; inset: 0; z-index: 5; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; touch-action: pan-y; appearance: none; -webkit-appearance: none; }
   .cmp__range::-webkit-slider-thumb { appearance: none; -webkit-appearance: none; width: 48px; height: 100vh; }
   .cmp:has(.cmp__range:focus-visible) { outline: 3px solid #fff; outline-offset: 3px; }
+  .cmp__lado { display: none; }
+  .cmp--vertical { height: auto; aspect-ratio: var(--w) / var(--h); max-height: 82vh; }
+  .cmp__lado figure { position: relative; margin: 0; min-height: 0; overflow: hidden; }
+  .cmp__lado :global(.photo), .cmp__lado video { width: 100%; height: 100%; object-fit: cover; }
+  @media (min-width: 720px) {
+    .cmp--vertical { aspect-ratio: calc(var(--w) * 2) / var(--h); }
+    .cmp--vertical .cmp__slider { display: none; }
+    .cmp--vertical .cmp__lado { display: grid; position: absolute; inset: 0; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  }
 </style>

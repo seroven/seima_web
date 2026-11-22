@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { ladoDe, parVertical } from '../data/projects.ts';
 import { detalleAProyecto, tarjetaAProyecto } from './proyectos-publicos.ts';
 
 const tarjeta = tarjetaAProyecto({
@@ -39,6 +40,25 @@ const detalle = detalleAProyecto({
 assert.equal(detalle?.descripcion, 'Enchape de piso a techo.');
 assert.equal(detalle?.cliente, 'empresa');
 assert.equal(detalle?.fotos.find((f) => f.etapa === 'despues')?.src, 'https://img.test/poster.jpg');
+assert.equal(detalle?.fotos.find((f) => f.etapa === 'despues')?.video, 'https://img.test/v.mp4');
+assert.equal(detalle?.fotos.find((f) => f.etapa === 'despues')?.tipo, 'video');
 assert.equal(tarjetaAProyecto({ titulo: 'sin slug' }), null);
+assert.equal(ladoDe(1600, 900), 'horizontal');
+assert.equal(ladoDe(900, 1600), 'vertical');
+assert.equal(ladoDe(1000, 1000), 'horizontal');
+assert.equal(
+  parVertical(
+    { etapa: 'antes', src: null, alt: '', principal: true, orden: 0, ancho: 900, alto: 1600 },
+    { etapa: 'despues', src: null, alt: '', principal: true, orden: 0, ancho: 800, alto: 1400 },
+  ),
+  true,
+);
+assert.equal(
+  parVertical(
+    { etapa: 'antes', src: null, alt: '', principal: true, orden: 0, ancho: 1600, alto: 900 },
+    { etapa: 'despues', src: null, alt: '', principal: true, orden: 0, ancho: 1600, alto: 900 },
+  ),
+  false,
+);
 
 console.log('ok');

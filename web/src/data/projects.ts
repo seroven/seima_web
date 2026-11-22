@@ -32,6 +32,11 @@ export interface Foto {
   principal: boolean;
   orden: number;
   pie?: string;
+  tipo?: 'foto' | 'video';
+  /** Archivo del video. `src` queda como la imagen o el póster. */
+  video?: string | null;
+  ancho?: number | null;
+  alto?: number | null;
 }
 
 export const PLACEHOLDER = '[DATO REAL]';
@@ -74,6 +79,16 @@ export const fotosDe = (p: Project, etapa: Etapa): Foto[] =>
 /** Foto principal de una etapa (si no está marcada, la primera por orden). */
 export const principal = (p: Project, etapa: Etapa): Foto | undefined =>
   p.fotos.find((f) => f.etapa === etapa && f.principal) ?? fotosDe(p, etapa)[0];
+
+/** Cuadrada cuenta como horizontal, igual que en la app. */
+export const ladoDe = (ancho?: number | null, alto?: number | null) => {
+  if (ancho == null || alto == null || ancho <= 0 || alto <= 0) return null;
+  return ancho >= alto ? 'horizontal' : 'vertical';
+};
+
+/** En escritorio el par vertical va lado a lado. En celular, el CSS lo vuelve deslizador. */
+export const parVertical = (antes?: Foto, despues?: Foto) =>
+  !!antes && !!despues && ladoDe(antes.ancho, antes.alto) === 'vertical' && ladoDe(despues.ancho, despues.alto) === 'vertical';
 
 /** Todas las fotos ordenadas por etapa y orden (modo presentación / visor). */
 export const fotosOrdenadas = (p: Project): Foto[] => etapas.flatMap((e) => fotosDe(p, e));

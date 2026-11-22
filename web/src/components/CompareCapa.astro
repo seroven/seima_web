@@ -1,0 +1,13 @@
+---
+import Photo from './Photo.astro';
+import type { Foto } from '../data/projects';
+interface Props { foto?: Foto; tone: number; label: string }
+const { foto, tone, label } = Astro.props;
+---
+{foto?.tipo === 'video' && foto.video ? (
+  <video class="cmpv" poster={foto.src ?? undefined} muted loop playsinline preload="none" aria-label={foto.alt}>
+    <source src={foto.video} />
+  </video>
+) : (
+  <Photo src={foto?.src} alt={foto?.alt ?? ''} tone={tone} fill plain label={label} />
+)}

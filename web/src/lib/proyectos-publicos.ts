@@ -129,6 +129,10 @@ function fotoDe(medio: unknown, etapa: Etapa, titulo: string, forzarPrincipal = 
     principal: forzarPrincipal || m.esPrincipal === true,
     orden: typeof m.orden === 'number' ? m.orden : 0,
     pie: texto(m.pie) || undefined,
+    tipo: video ? 'video' : 'foto',
+    video: video ? textoOpcional(m.url) : null,
+    ancho: numero(m.ancho),
+    alto: numero(m.alto),
   };
 }
 
