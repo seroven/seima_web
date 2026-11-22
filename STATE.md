@@ -159,6 +159,11 @@
 
 ### 2026-11-22
 
+**Visor de fotos de la web: las fotos se ven completas (verticales sin recortar)**
+- Pedido de Sebas: en la vista completa de las imágenes de una obra, las verticales se estiraban/recortaban para ocupar todo el ancho; deben verse **completas**, aunque no ocupen el 100 % del ancho. **Causa:** el visor (`components/Presentation.astro`) usa el componente `Photo`, cuya imagen lleva `object-fit: cover` (recorta para llenar); los videos del mismo visor ya usaban `contain`.
+- **Arreglo (solo web, solo CSS del visor):** `object-fit: contain` para las fotos del visor, fondo transparente (las franjas sobrantes quedan negras, como el fondo del visor) y **sin el zoom al pasar el mouse** (volvería a recortar). **Decisión mía:** aplicarlo a **todas** las fotos del visor, no solo a las verticales: un visor debe mostrar la imagen entera y así una horizontal que no cuadre con la pantalla tampoco se recorta. No cambia el mosaico de la ficha, las tarjetas ni el comparador (ahí el recorte es parte del diseño).
+- Verificado en Chrome con la ficha de «Proyecto X»: la foto vertical (1126×2000) se ve entera con franjas negras a los lados (`object-fit: contain`, sin transformación) y una foto horizontal ancha también se ve entera. `npm run build` correcto. **No se probó en ancho de celular.**
+
 **La web se reconstruye sola cuando cambia algo visible (decisión B) — API**
 - **Decisión de Sebas:** opción **B** de la pregunta anterior: la web sigue **estática** en Render y la API le pide a Render que la **reconstruya** (deploy hook) cuando cambia algo que ella muestra. Descartada la A (páginas al vuelo con `@astrojs/node`) por costo: el plan gratuito de un servicio Node se duerme.
 - **Qué avisa:** publicar y ocultar una obra; editar una obra **publicada** (datos, tipos de trabajo, fotos, comparación, portada, orden, quitar o terminar de subir un archivo); crear, renombrar, ordenar o desactivar un tipo de trabajo. **No** avisa por borradores, obras ocultas ni al crear la reserva de una subida. Junta cambios seguidos (espera 1 min de calma, tope 5 min), nunca rompe la acción original si Render falla, y **no escribe la URL en los logs** (es un secreto). Sin `WEB_DEPLOY_HOOK_URL` no hace nada (desarrollo).
