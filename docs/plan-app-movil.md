@@ -149,7 +149,7 @@ Se hacen junto con **conectar la web a la API** (pendiente de antes): reemplazar
 | 3 | **App — proyecto y medios** | **En curso (2026-11-21).** Lista, borrador, fotos y videos por etapa (tope 1 min y 50 MB; Wi-Fi si el ajuste está activo). Faltan recorte y WorkManager | Sube fotos y videos reales a Cloudinary con la app cerrada |
 | 4 | **App — comparación, portada y publicar** | **En curso (2026-11-21).** Par horizontal con deslizador; vertical lado a lado. La portada muestra el después y, al mantener, el antes. Al publicar se comparte el título por WhatsApp (el enlace público espera a la web) | Publica un proyecto completo |
 | 5 | **App — cotizaciones** | **En curso (2026-11-21).** Lista, filtro, detalle, WhatsApp, llamar y estados. El aviso abre la ficha si trae el id. Falta probarlo con Firebase en un celular | Llega una cotización desde la web y Luis la atiende desde la notificación |
-| 6 | **Web** (en paralelo con 3–5) | **En curso (2026-11-21).** El catálogo lee la API. El comparador es deslizador; el par vertical va lado a lado en escritorio. Los videos del par se reproducen juntos. Falta el visor con sonido | Lo publicado en la app se ve bien en celular y escritorio |
+| 6 | **Web** (en paralelo con 3–5) | **En código (2026-11-21).** Catálogo desde la API, comparador según orientación y visor con sonido. Falta un par vertical real para ver el lado a lado | Lo publicado en la app se ve bien en celular y escritorio |
 | 7 | **Prueba con Luis** y pulido | Prueba observada, ajustes, entrega del APK | Luis publica y atiende solo |
 
 Orden: **API primero**; luego app y web en paralelo.

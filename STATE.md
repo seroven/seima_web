@@ -22,7 +22,7 @@
 **Git:** remoto `origin` = https://github.com/seroven/seima_web.git. Ramas: `main` (estable) y **`staging` (donde se trabaja)**. Commits se hacen cuando Sebas lo pide. El push no es automático.
 
 **Rutas que existen:** `/` (landing), `/proyectos` (catálogo), `/proyectos/[slug]` (ficha), `/cotizador`, `/privacidad` (borrador), `/empresas`, `404`.
-**Catálogo:** inicio, proyectos, ficha y empresas leen `GET /projects` y `GET /categories` (`web/src/lib/proyectos-publicos.ts`). Si no hay ninguna obra publicada, siguen los 7 proyectos de prueba y el catálogo lo dice. El comparador es deslizador; si el par es vertical, en escritorio va lado a lado y en celular sigue el deslizador. Si los dos son videos, se reproducen mudos y juntos. La web sigue estática: en `astro dev` se actualiza; en producción, al volver a construir.
+**Catálogo:** inicio, proyectos, ficha y empresas leen `GET /projects` y `GET /categories` (`web/src/lib/proyectos-publicos.ts`). Si no hay ninguna obra publicada, siguen los 7 proyectos de prueba y el catálogo lo dice. El comparador es deslizador; si el par es vertical, en escritorio va lado a lado y en celular sigue el deslizador. Si los dos son videos, se reproducen mudos y juntos. En el visor, el video suena. La web sigue estática: en `astro dev` se actualiza; en producción, al volver a construir.
 
 **Datos:** si la API tiene obras publicadas, el catálogo muestra esas. Si no, `web/src/data/projects.ts` (7 proyectos de prueba, `[DATO REAL]` / `[FOTO REAL]`).
 **Entorno:** `PUBLIC_WHATSAPP_NUMBER` sin configurar → los botones de WhatsApp salen como placeholder punteado "[NÚMERO PENDIENTE]". `PUBLIC_API_URL` sin configurar → el cotizador no guarda la solicitud (la API existe en `api/`; la URL debe incluir el prefijo, p. ej. `http://localhost:4000/api/v1`) pero igual arma el mensaje. Ver `web/.env.example`.
@@ -50,7 +50,7 @@
 | `components/quote/Summary.tsx`, `quote.css` | Resumen en vivo (columna fija en escritorio, barra inferior desplegable en celular) y estilos propios del cotizador (rejilla, tarjeta, resumen, chat). |
 | `components/ui/*` | **Kit de componentes compartidos (React)** — importar desde `../ui`: `Combobox` (dropdown), `Field`, `TextInput` (con prefijo), `Chip`/`Chips`, `OptionCard`/`OptionGrid`, `Stepper`, `Collapse`, `Icon`. Estilos en `ui/ui.css` (clases `ui-*`, variable `--ring`). Reutilizar estos en cualquier formulario nuevo; no duplicar controles. |
 | `lib/quote.ts` | Lógica pura del cotizador: tipos, opciones, validación, `buildMessage` (texto de WhatsApp), `waHref`, `submitQuote` (POST /quotes). |
-| `components/Presentation.astro` | Visor a pantalla completa (`<dialog>`): todas las fotos ordenadas por etapa. Flechas laterales, arrastre (pointer events), teclado, animación de entrada/salida. Lo abren el botón "Modo presentación" y cualquier foto de la galería (`[data-shot]`, desde esa foto). Un solo listener global. |
+| `components/Presentation.astro` | Visor a pantalla completa (`<dialog>`): fotos y videos ordenados por etapa. Un video suena, con controles, y se pausa al cambiar o cerrar. Flechas, arrastre, teclado. Lo abren "Modo presentación" y cualquier foto (`[data-shot]`). |
 | `components/BackButton.astro` | Botón "Volver" de la ficha (texto según origen). |
 | `components/Cta.astro` | Botón de WhatsApp; sin número → placeholder. |
 | `components/Header.astro` | Cabecera fija. En escritorio: enlaces + "Cotizar". En celular (≤720 px): logo + "Cotizar" + botón de menú que abre un **menú a pantalla completa** (`<dialog>`): círculo que crece desde el botón (`clip-path`), enlaces numerados que suben escalonados, página actual en rojo, "Arma tu cotización" y TikTok; cierra con X, Esc o al elegir un enlace, con animación inversa. |
@@ -133,7 +133,7 @@
 2. **Fase 3 — en curso:** fotos y videos de Antes, Durante y Después. El video de más de 1 minuto o de más de 50 MB no se sube. Con el ajuste activo, el video pide Wi-Fi. Faltan el recorte en el celular y la subida con la app cerrada.
 3. **Fase 4:** par horizontal con deslizador; vertical, lado a lado. La portada muestra el después y, al mantener, el antes. Al publicar se comparte el título por WhatsApp. El enlace de la obra espera a que la web esté conectada.
 4. **Fase 5 — en curso:** lista con filtro, detalle, WhatsApp, llamar y cambiar el estado. Si el aviso trae el id, abre esa cotización. Falta probarlo con Firebase en un celular.
-5. **Fase 6 — en curso:** el catálogo lee `GET /projects` y el comparador ya distingue horizontal (deslizador) y vertical (lado a lado en escritorio). Los dos videos del par se reproducen juntos. Falta que el visor de la ficha reproduzca el video con sonido.
+5. **Fase 6:** el catálogo lee la API, el comparador distingue el par vertical y el visor reproduce el video con sonido. Falta ver un par vertical real en el navegador.
 6. Desplegar la API en Render y aplicar `migration:run` allí. En la base local de Sebas (`localhost:5432/postgres`, schema `seima`) la migración `AppMovil` ya corrió el 2026-11-21.
 
 **Bloqueado por Luis (contenido real):** número de WhatsApp, fotos de 8–12 proyectos (antes/durante/después), cifras, testimonios, precios referenciales sí/no, equipo/"Nosotros". Ver `docs/fuentes/contexto-chat.md` §7.
@@ -146,9 +146,13 @@
 
 ### 2026-11-21
 
+**Visor con sonido**
+- En el modo presentación, un video se abre con controles y con sonido. Al pasar de foto, el video se pausa. Al cerrar el visor, también.
+- Probado en la ficha de prueba: el visor abre, pasa a la segunda foto y cierra. Esa ficha no tiene videos.
+
 **Comparador de la ficha**
 - Si el par es horizontal, o no tiene medidas, sigue el deslizador. Si es vertical, en escritorio se ve lado a lado y en celular vuelve al deslizador.
-- Si los dos son videos, se reproducen mudos, en bucle y sincronizados. En la galería, el video lleva la etiqueta «Video»; el visor todavía abre el póster.
+- Si los dos son videos, se reproducen mudos, en bucle y sincronizados. En la galería, el video lleva la etiqueta «Video». En ese momento el visor todavía abría el póster.
 - Probado en la ficha de prueba: el deslizador se mueve. No hay un par vertical publicado para ver el lado a lado en el navegador.
 
 **El catálogo lee la API**
