@@ -54,15 +54,31 @@ class _ParScreenState extends ConsumerState<ParScreen> {
               ? mensajeIncompatible(elegidoAntes, elegidoDespues)
               : null;
           return ListView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
             children: [
-              Text(
-                _esPortada ? 'La foto que se ve en el catálogo.' : 'Elige uno de Antes y uno de Después.',
-                style: archivo(22, 800, width: 118, height: 1.15),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  _esPortada ? 'La foto que se ve en el catálogo' : 'Elige uno de Antes y uno de Después',
+                  style: archivo(26, 850, width: 118, height: 1.08),
+                ),
               ),
               if (_esPortada && _propuesta(dato)) ...[
-                const SizedBox(height: 8),
-                Text('Te proponemos las fotos de la comparación.', style: archivo(16, 500, color: SeimaColors.muted)),
+                const SizedBox(height: 10),
+                DecoratedBox(
+                  decoration: BoxDecoration(color: SeimaColors.paper2, borderRadius: BorderRadius.circular(16)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.lightbulb_outline),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text('Te proponemos las mismas fotos de la comparación. Cámbialas si quieres.', style: archivo(16, 550, height: 1.3))),
+                      ],
+                    ),
+                  ),
+                ),
               ],
               const SizedBox(height: 20),
               if (elegidoAntes != null && elegidoDespues != null)
@@ -99,18 +115,38 @@ class _ParScreenState extends ConsumerState<ParScreen> {
                 vacio: _esPortada ? 'No hay fotos listas en Después.' : 'Primero sube algo en Después.',
                 onElegir: (id) => setState(() => _despues = id),
               ),
-              const SizedBox(height: 20),
-              Aviso(_error),
-              SeimaButton(
-                label: _esPortada ? 'Guardar portada' : 'Guardar comparación',
-                busy: _guardando,
-                onPressed: _antes == null || _despues == null || porque != null ? null : _guardar,
-              ),
             ],
           );
         },
       ),
+      bottomNavigationBar: proyecto.hasValue
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Aviso(_error),
+                    SeimaButton(
+                      label: _esPortada ? 'Guardar portada' : 'Guardar comparación',
+                      icono: Icons.check,
+                      busy: _guardando,
+                      onPressed: _antes == null || _despues == null || _incompatible(proyecto.value!) ? null : _guardar,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
     );
+  }
+
+  bool _incompatible(Proyecto dato) {
+    if (_esPortada) return false;
+    final a = _buscar(dato, 'antes', _antes);
+    final d = _buscar(dato, 'despues', _despues);
+    return a != null && d != null && mensajeIncompatible(a, d) != null;
   }
 
   void _iniciar(Proyecto dato) {
@@ -189,22 +225,33 @@ class _Grupo extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(titulo, style: archivo(20, 800, width: 112, height: 1.1)),
-        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.only(left: 8, bottom: 10),
+          child: Text(titulo.toUpperCase(), style: archivo(14, 800, width: 112, height: 1.1, color: SeimaColors.muted).copyWith(letterSpacing: 1.2)),
+        ),
         if (medios.isEmpty)
-          Text(vacio, style: archivo(16, 500, color: SeimaColors.muted))
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(vacio, style: archivo(17, 550, height: 1.3, color: SeimaColors.muted)),
+          )
         else
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final medio in medios)
-                _Mini(
-                  medio: medio,
-                  activo: medio.id == elegido,
-                  onTap: () => onElegir(medio.id),
-                ),
-            ],
+          LayoutBuilder(
+            builder: (context, caja) {
+              final lado = (caja.maxWidth - 20) / 3;
+              return Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final medio in medios)
+                    _Mini(
+                      lado: lado,
+                      medio: medio,
+                      activo: medio.id == elegido,
+                      onTap: () => onElegir(medio.id),
+                    ),
+                ],
+              );
+            },
           ),
       ],
     );
@@ -212,36 +259,60 @@ class _Grupo extends StatelessWidget {
 }
 
 class _Mini extends StatelessWidget {
-  const _Mini({required this.medio, required this.activo, required this.onTap});
+  const _Mini({required this.lado, required this.medio, required this.activo, required this.onTap});
 
+  final double lado;
   final Medio medio;
   final bool activo;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: activo ? SeimaColors.ink : SeimaColors.paper2,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+    return Semantics(
+      button: true,
+      selected: activo,
+      label: medio.tipo == 'video' ? 'Video' : 'Foto',
+      child: GestureDetector(
         onTap: onTap,
-        child: SizedBox(
-          width: 104,
-          height: 104,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: medio.vista.isEmpty
-                    ? const ColoredBox(color: SeimaColors.paper2)
-                    : Image.network(medio.vista, fit: BoxFit.cover, errorBuilder: (_, _, _) => const ColoredBox(color: SeimaColors.paper2)),
-              ),
-              if (medio.tipo == 'video')
-                const Align(alignment: Alignment.bottomLeft, child: Padding(padding: EdgeInsets.all(6), child: Icon(Icons.play_arrow, color: Colors.white))),
-              if (activo) const Align(alignment: Alignment.topRight, child: Padding(padding: EdgeInsets.all(6), child: Icon(Icons.check_circle, color: Colors.white))),
-            ],
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: lado,
+          height: lado,
+          // El marco rojo solo aparece en la elegida.
+          padding: EdgeInsets.all(activo ? 4 : 0),
+          decoration: BoxDecoration(color: activo ? SeimaColors.red : Colors.transparent, borderRadius: BorderRadius.circular(18)),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(activo ? 14 : 18),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                medio.vista.isEmpty
+                    ? const ColoredBox(color: SeimaColors.ink3)
+                    : Image.network(medio.vista, fit: BoxFit.cover, errorBuilder: (_, _, _) => const ColoredBox(color: SeimaColors.ink3)),
+                if (medio.tipo == 'video')
+                  const Align(
+                    alignment: Alignment.bottomLeft,
+                    child: Padding(
+                      padding: EdgeInsets.all(6),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(color: Color(0x990E0E0E), shape: BoxShape.circle),
+                        child: Padding(padding: EdgeInsets.all(3), child: Icon(Icons.play_arrow, color: Colors.white, size: 22)),
+                      ),
+                    ),
+                  ),
+                if (activo)
+                  const Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: EdgeInsets.all(6),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(color: SeimaColors.red, shape: BoxShape.circle),
+                        child: Padding(padding: EdgeInsets.all(3), child: Icon(Icons.check, color: Colors.white, size: 20)),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

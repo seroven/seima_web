@@ -35,6 +35,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
     return Scaffold(
       body: widget.shell,
       bottomNavigationBar: NavigationBar(
+        indicatorColor: SeimaColors.red,
         selectedIndex: widget.shell.currentIndex,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         onDestinationSelected: (index) => widget.shell.goBranch(index, initialLocation: index == widget.shell.currentIndex),
@@ -84,7 +85,8 @@ class _Bandeja extends StatelessWidget {
   Widget build(BuildContext context) {
     return Badge(
       isLabelVisible: nuevas > 0,
-      backgroundColor: SeimaColors.red,
+      backgroundColor: seleccionado ? Colors.white : SeimaColors.red,
+      textColor: seleccionado ? SeimaColors.red : Colors.white,
       label: Text(insigniaNuevas(nuevas)),
       child: Icon(seleccionado ? Icons.inbox : Icons.inbox_outlined),
     );

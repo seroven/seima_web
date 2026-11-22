@@ -7,7 +7,11 @@ import '../auth/auth_state.dart';
 import '../settings/ajustes_locales.dart';
 import '../theme/seima_colors.dart';
 import '../theme/seima_theme.dart';
+import '../widgets/cabecera_seima.dart';
 import '../widgets/seima_button.dart';
+import '../widgets/toque.dart';
+import 'listas_screen.dart';
+import 'proyectos_screen.dart';
 
 class AjustesScreen extends ConsumerWidget {
   const AjustesScreen({super.key});
@@ -15,7 +19,7 @@ class AjustesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider).value;
-    final nombre = auth is AuthSignedIn ? auth.nombre : '';
+    final nombre = auth is AuthSignedIn ? primerNombre(auth.nombre) : '';
     final huella = ref.watch(huellaActivaProvider);
     final disponible = ref.watch(biometriaDisponibleProvider);
     final wifi = ref.watch(videosWifiProvider);
@@ -23,64 +27,168 @@ class AjustesScreen extends ConsumerWidget {
     final hayHuella = disponible.value ?? false;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ajustes')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(8, 8, 8, 32),
-        children: [
-          if (nombre.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Text(nombre, style: archivo(28, 800, width: 118, height: 1.1)),
-            ),
-          if (hayHuella)
-            SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              title: Text('Huella', style: archivo(18, 650)),
-              subtitle: Text('Entra sin escribir la contraseña', style: archivo(16, 500, color: SeimaColors.muted)),
-              value: huella.value ?? false,
-              activeTrackColor: SeimaColors.red,
-              onChanged: huella.isLoading
-                  ? null
-                  : (on) async {
-                      final mensaje = await ref.read(authProvider.notifier).usarHuella(on);
-                      if (mensaje != null && context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
-                      }
-                    },
-            ),
-          SwitchListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            title: Text('Subir videos solo con Wi-Fi', style: archivo(18, 650)),
-            subtitle: Text(
-              'Las fotos se suben con cualquier conexión',
-              style: archivo(16, 500, color: SeimaColors.muted),
-            ),
-            value: wifi.value ?? true,
-            activeTrackColor: SeimaColors.red,
-            onChanged: wifi.isLoading ? null : (on) => ref.read(videosWifiProvider.notifier).setVideosSoloWifi(on),
+      body: CustomScrollView(
+        slivers: [
+          SliverCabeceraSeima(
+            titulo: 'Ajustes',
+            alturaExpandida: 160,
+            hijo: nombre.isEmpty
+                ? null
+                : Row(
+                    children: [
+                      InicialCircular(nombre: nombre, resaltada: true, tamano: 48),
+                      const SizedBox(width: 14),
+                      Text(nombre, style: archivo(20, 750, height: 1.1, color: Colors.white)),
+                    ],
+                  ),
           ),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            title: Text('Notificaciones', style: archivo(18, 650)),
-            subtitle: Text(
-              aviso.isEmpty ? 'Se preparan al entrar.' : aviso,
-              style: archivo(16, 500, color: SeimaColors.muted),
+          SliverToBoxAdapter(
+            child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _Grupo('Seguridad'),
+                if (hayHuella) ...[
+                  _FilaInterruptor(
+                    icono: Icons.fingerprint,
+                    titulo: 'Huella',
+                    detalle: 'Entra sin escribir la contraseña',
+                    valor: huella.value ?? false,
+                    onChanged: huella.isLoading
+                        ? null
+                        : (on) async {
+                            final mensaje = await ref.read(authProvider.notifier).usarHuella(on);
+                            if (mensaje != null && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
+                            }
+                          },
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                _FilaToque(
+                  icono: Icons.lock_outline,
+                  titulo: 'Cambiar contraseña',
+                  onTap: () => context.push('/contrasena'),
+                ),
+                const SizedBox(height: 24),
+                const _Grupo('Subidas'),
+                _FilaInterruptor(
+                  icono: Icons.wifi,
+                  titulo: 'Subir videos solo con Wi-Fi',
+                  detalle: 'Las fotos se suben con cualquier conexión',
+                  valor: wifi.value ?? true,
+                  onChanged: wifi.isLoading ? null : (on) => ref.read(videosWifiProvider.notifier).setVideosSoloWifi(on),
+                ),
+                const SizedBox(height: 24),
+                const _Grupo('Avisos'),
+                _Fila(
+                  icono: Icons.notifications_none,
+                  titulo: 'Notificaciones',
+                  detalle: aviso.isEmpty ? 'Se preparan al entrar.' : aviso,
+                ),
+                const SizedBox(height: 32),
+                SeimaButton(label: 'Cerrar sesión', ink: true, onPressed: () => ref.read(authProvider.notifier).salir()),
+              ],
             ),
-            minVerticalPadding: 16,
-          ),
-          ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            title: Text('Cambiar contraseña', style: archivo(18, 650)),
-            minVerticalPadding: 20,
-            onTap: () => context.push('/contrasena'),
-          ),
-          const SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SeimaButton(label: 'Cerrar sesión', ink: true, onPressed: () => ref.read(authProvider.notifier).salir()),
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _Grupo extends StatelessWidget {
+  const _Grupo(this.texto);
+
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 10),
+      child: Text(texto.toUpperCase(), style: archivo(14, 800, width: 112, height: 1.1, color: SeimaColors.muted).copyWith(letterSpacing: 1.2)),
+    );
+  }
+}
+
+class _Fila extends StatelessWidget {
+  const _Fila({required this.icono, required this.titulo, this.detalle, this.extremo});
+
+  final IconData icono;
+  final String titulo;
+  final String? detalle;
+  final Widget? extremo;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(color: SeimaColors.paper2, borderRadius: BorderRadius.circular(18)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 76),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(color: SeimaColors.ink, borderRadius: BorderRadius.circular(14)),
+                child: SizedBox(width: 48, height: 48, child: Icon(icono, color: Colors.white, size: 26)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(titulo, style: archivo(18, 750, height: 1.15)),
+                    if (detalle != null) Text(detalle!, style: archivo(15, 500, height: 1.25, color: SeimaColors.muted)),
+                  ],
+                ),
+              ),
+              if (extremo != null) ...[const SizedBox(width: 8), extremo!],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilaInterruptor extends StatelessWidget {
+  const _FilaInterruptor({required this.icono, required this.titulo, required this.detalle, required this.valor, required this.onChanged});
+
+  final IconData icono;
+  final String titulo;
+  final String detalle;
+  final bool valor;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TarjetaToque(
+      onTap: onChanged == null ? null : () => onChanged!(!valor),
+      child: _Fila(
+        icono: icono,
+        titulo: titulo,
+        detalle: detalle,
+        extremo: Switch(value: valor, onChanged: onChanged),
+      ),
+    );
+  }
+}
+
+class _FilaToque extends StatelessWidget {
+  const _FilaToque({required this.icono, required this.titulo, required this.onTap});
+
+  final IconData icono;
+  final String titulo;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return TarjetaToque(
+      onTap: onTap,
+      child: _Fila(icono: icono, titulo: titulo, extremo: const Icon(Icons.chevron_right, color: SeimaColors.muted)),
     );
   }
 }

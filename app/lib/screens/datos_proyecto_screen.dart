@@ -9,6 +9,7 @@ import '../projects/proyectos_api.dart';
 import '../projects/proyectos_controller.dart';
 import '../theme/seima_colors.dart';
 import '../theme/seima_theme.dart';
+import '../widgets/elecciones.dart';
 import '../widgets/seima_button.dart';
 
 class DatosProyectoScreen extends ConsumerStatefulWidget {
@@ -54,107 +55,160 @@ class _DatosProyectoScreenState extends ConsumerState<DatosProyectoScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(_editando ? 'Datos' : 'Nuevo proyecto')),
+      appBar: AppBar(title: Text(_editando ? 'Datos del proyecto' : 'Nuevo proyecto')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+        padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         children: [
-          Text('¿Cómo se llama la obra?', style: archivo(22, 800, width: 118, height: 1.15)),
-          const SizedBox(height: 12),
-          TextField(controller: _titulo, style: archivo(18, 550), textCapitalization: TextCapitalization.sentences, decoration: const InputDecoration(hintText: 'Nombre')),
-          const SizedBox(height: 28),
-          Text('Tipo de trabajo', style: archivo(22, 800, width: 118, height: 1.15)),
-          const SizedBox(height: 12),
-          categorias.when(
-            loading: () => const LinearProgressIndicator(color: SeimaColors.red),
-            error: (error, _) => Text(error.toString(), style: archivo(16, 600, color: SeimaColors.redText)),
-            data: (opciones) => Wrap(
-              spacing: 8,
-              runSpacing: 8,
+          SeccionForm(
+            titulo: '¿Cómo se llama la obra?',
+            ayuda: 'Por ejemplo: Cocina en Miraflores',
+            hijo: TextField(
+              controller: _titulo,
+              style: archivo(18, 550),
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(hintText: 'Nombre de la obra', prefixIcon: Icon(Icons.edit_outlined)),
+            ),
+          ),
+          SeccionForm(
+            titulo: 'Tipo de trabajo',
+            ayuda: 'Elige uno',
+            hijo: categorias.when(
+              loading: () => const LinearProgressIndicator(color: SeimaColors.red),
+              error: (error, _) => Text(error.toString(), style: archivo(16, 600, color: SeimaColors.redText)),
+              data: (opciones) => opciones.isEmpty
+                  ? Text('Todavía no hay tipos de trabajo cargados.', style: archivo(17, 600, color: SeimaColors.redText))
+                  : LayoutBuilder(
+                      builder: (context, caja) {
+                        final ancho = (caja.maxWidth - 10) / 2;
+                        return Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            for (final opcion in opciones)
+                              SizedBox(
+                                width: ancho,
+                                child: TarjetaEleccion(
+                                  texto: opcion.nombre,
+                                  icono: iconoDeCategoria(opcion.slug),
+                                  activo: _categoria == opcion.slug,
+                                  onTap: () => setState(() => _categoria = opcion.slug),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+            ),
+          ),
+          SeccionForm(
+            titulo: '¿Dónde queda?',
+            hijo: TextField(
+              controller: _distrito,
+              style: archivo(18, 550),
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(hintText: 'Distrito', prefixIcon: Icon(Icons.place_outlined)),
+            ),
+          ),
+          SeccionForm(
+            titulo: '¿Para quién es?',
+            hijo: Row(
               children: [
-                for (final opcion in opciones)
-                  _Eleccion(
-                    texto: opcion.nombre,
-                    activo: _categoria == opcion.slug,
-                    onTap: () => setState(() => _categoria = opcion.slug),
+                Expanded(
+                  child: TarjetaEleccion(
+                    texto: 'Persona',
+                    icono: Icons.person_outline,
+                    activo: _cliente == 'persona',
+                    onTap: () => setState(() => _cliente = 'persona'),
                   ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TarjetaEleccion(
+                    texto: 'Empresa',
+                    icono: Icons.business,
+                    activo: _cliente == 'empresa',
+                    onTap: () => setState(() => _cliente = 'empresa'),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 28),
-          Text('¿Dónde queda?', style: archivo(22, 800, width: 118, height: 1.15)),
-          const SizedBox(height: 12),
-          TextField(controller: _distrito, style: archivo(18, 550), textCapitalization: TextCapitalization.words, decoration: const InputDecoration(hintText: 'Distrito')),
-          const SizedBox(height: 28),
-          Text('¿Para quién es?', style: archivo(22, 800, width: 118, height: 1.15)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _Eleccion(texto: 'Persona', activo: _cliente == 'persona', onTap: () => setState(() => _cliente = 'persona'))),
-              const SizedBox(width: 8),
-              Expanded(child: _Eleccion(texto: 'Empresa', activo: _cliente == 'empresa', onTap: () => setState(() => _cliente = 'empresa'))),
-            ],
-          ),
-          const SizedBox(height: 28),
-          Text('Medidas, si las tienes', style: archivo(22, 800, width: 118, height: 1.15)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _area,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: archivo(18, 550),
-                  decoration: const InputDecoration(hintText: 'Área m²'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _dias,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  style: archivo(18, 550),
-                  decoration: const InputDecoration(hintText: 'Días'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 28),
-          Text('Servicios', style: archivo(22, 800, width: 118, height: 1.15)),
-          const SizedBox(height: 12),
-          servicios.when(
-            loading: () => const SizedBox.shrink(),
-            error: (_, _) => const SizedBox.shrink(),
-            data: (opciones) => Wrap(
-              spacing: 8,
-              runSpacing: 8,
+          SeccionForm(
+            titulo: 'Medidas',
+            ayuda: 'Si las tienes. Puedes dejarlo en blanco.',
+            hijo: Row(
               children: [
-                for (final opcion in opciones)
-                  _Eleccion(
-                    texto: opcion.nombre,
-                    activo: _servicios.contains(opcion.nombre),
-                    onTap: () => setState(() {
-                      if (!_servicios.add(opcion.nombre)) _servicios.remove(opcion.nombre);
-                    }),
+                Expanded(
+                  child: TextField(
+                    controller: _area,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: archivo(18, 550),
+                    decoration: const InputDecoration(hintText: 'Área m²'),
                   ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _dias,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    style: archivo(18, 550),
+                    decoration: const InputDecoration(hintText: 'Días de obra'),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 28),
-          Text('Cuéntala en pocas líneas', style: archivo(22, 800, width: 118, height: 1.15)),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _descripcion,
-            minLines: 3,
-            maxLines: 6,
-            style: archivo(18, 500),
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(hintText: 'Descripción'),
+          servicios.maybeWhen(
+            data: (opciones) => opciones.isEmpty
+                ? const SizedBox.shrink()
+                : SeccionForm(
+                    titulo: 'Servicios',
+                    ayuda: 'Marca todos los que hiciste',
+                    hijo: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final opcion in opciones)
+                          ChipEleccion(
+                            texto: opcion.nombre,
+                            activo: _servicios.contains(opcion.nombre),
+                            onTap: () => setState(() {
+                              if (!_servicios.add(opcion.nombre)) _servicios.remove(opcion.nombre);
+                            }),
+                          ),
+                      ],
+                    ),
+                  ),
+            orElse: () => const SizedBox.shrink(),
           ),
-          const SizedBox(height: 20),
-          Aviso(_error),
-          SeimaButton(label: _editando ? 'Guardar' : 'Crear borrador', busy: _enviando, onPressed: _enviar),
+          SeccionForm(
+            titulo: 'Cuéntala en pocas líneas',
+            ayuda: 'Qué se hizo y cómo quedó. Puedes dictarlo con el micrófono del teclado.',
+            hijo: TextField(
+              controller: _descripcion,
+              minLines: 4,
+              maxLines: 8,
+              style: archivo(18, 500),
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(hintText: 'Descripción'),
+            ),
+          ),
         ],
+      ),
+      // El botón siempre a la vista: no hay que bajar hasta el final para guardar.
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Aviso(_error),
+              SeimaButton(label: _editando ? 'Guardar' : 'Crear borrador', busy: _enviando, onPressed: _enviar),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -240,29 +294,3 @@ class _DatosProyectoScreenState extends ConsumerState<DatosProyectoScreen> {
   }
 }
 
-class _Eleccion extends StatelessWidget {
-  const _Eleccion({required this.texto, required this.activo, required this.onTap});
-
-  final String texto;
-  final bool activo;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: activo ? SeimaColors.ink : SeimaColors.paper2,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 56),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Text(texto, style: archivo(18, 650, color: activo ? Colors.white : SeimaColors.ink)),
-          ),
-        ),
-      ),
-    );
-  }
-}

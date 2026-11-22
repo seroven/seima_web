@@ -16,6 +16,7 @@ import 'recorte_screen.dart';
 import '../settings/ajustes_locales.dart';
 import '../theme/seima_colors.dart';
 import '../theme/seima_theme.dart';
+import '../widgets/capas_marca.dart';
 import '../widgets/seima_button.dart';
 
 class EtapaScreen extends ConsumerStatefulWidget {
@@ -60,53 +61,85 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
           final progreso = textoProgreso(mios);
           final soloWifi = ref.watch(videosWifiProvider).value ?? true;
           return ListView(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
             children: [
-              Text('Fotos y videos de ${nombreEtapa(widget.etapa)}', style: archivo(28, 800, width: 118, height: 1.05)),
-              const SizedBox(height: 8),
-              Text('Si el video dura más de 1 minuto, eliges el tramo. Por defecto solo se sube con Wi-Fi.', style: archivo(16, 500, color: SeimaColors.muted)),
-              const SizedBox(height: 16),
-              if (ocupado)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text('Subiendo $_subiendo de $_total', style: archivo(18, 700, color: SeimaColors.redText)),
-                ),
-              if (progreso != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(progreso, style: archivo(18, 700, color: SeimaColors.redText)),
-                ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text('Fotos y videos del ${nombreEtapa(widget.etapa)}', style: archivo(28, 850, width: 118, height: 1.06)),
+              ),
+              const SizedBox(height: 14),
+              _Consejo(soloWifi: soloWifi),
+              const SizedBox(height: 18),
+              if (ocupado) _Progreso(texto: 'Subiendo $_subiendo de $_total', valor: _total == 0 ? null : (_subiendo - 1) / _total),
+              if (progreso != null) _Progreso(texto: progreso),
               Aviso(_error),
-              SeimaButton(label: 'Elegir de la galería', busy: ocupado, onPressed: ocupado ? null : _galeria),
+              SeimaButton(label: 'Elegir de la galería', icono: Icons.photo_library_outlined, busy: ocupado, onPressed: ocupado ? null : _galeria),
               const SizedBox(height: 10),
-              SeimaButton(label: 'Tomar ahora', ink: true, onPressed: ocupado ? null : _camara),
-              const SizedBox(height: 10),
-              SeimaButton(label: 'Elegir un video', onPressed: ocupado ? null : _video),
-              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(child: BotonSuave(icono: Icons.photo_camera_outlined, label: 'Tomar una foto', onPressed: ocupado ? null : _camara)),
+                  const SizedBox(width: 10),
+                  Expanded(child: BotonSuave(icono: Icons.videocam_outlined, label: 'Elegir un video', onPressed: ocupado ? null : _video)),
+                ],
+              ),
+              const SizedBox(height: 24),
               for (final item in mios)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      Expanded(child: Text(textoPendiente(item, hayWifi: _hayWifi, soloWifi: soloWifi), style: archivo(18, 650))),
-                      if (item.estado == 'fallo')
-                        TextButton(
-                          style: TextButton.styleFrom(minimumSize: const Size(56, 56)),
-                          onPressed: () => ref.read(colaProvider.notifier).reintentar(item.id),
-                          child: Text('Reintentar', style: archivo(16, 700, color: SeimaColors.redText)),
-                        ),
-                    ],
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(color: item.estado == 'fallo' ? SeimaColors.redSoft : SeimaColors.paper2, borderRadius: BorderRadius.circular(16)),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+                      child: Row(
+                        children: [
+                          Icon(item.estado == 'fallo' ? Icons.error_outline : Icons.movie_outlined, color: item.estado == 'fallo' ? SeimaColors.redText : SeimaColors.ink),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(textoPendiente(item, hayWifi: _hayWifi, soloWifi: soloWifi), style: archivo(17, 650, height: 1.25))),
+                          if (item.estado == 'fallo')
+                            TextButton(
+                              onPressed: () => ref.read(colaProvider.notifier).reintentar(item.id),
+                              child: Text('Reintentar', style: archivo(16, 800, color: SeimaColors.redText)),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              for (var i = 0; i < medios.length; i++)
-                _FilaMedio(
-                  medio: medios[i],
-                  puedeSubir: i > 0,
-                  puedeBajar: i < medios.length - 1,
-                  onQuitar: () => _quitar(medios[i].id),
-                  onSubir: () => _mover(medios, i, -1),
-                  onBajar: () => _mover(medios, i, 1),
+              if (medios.isEmpty && mios.isEmpty)
+                const _SinMedios()
+              else if (medios.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+                  child: Text(
+                    '${medios.length} ${medios.length == 1 ? 'archivo' : 'archivos'}',
+                    style: archivo(14, 800, width: 112, height: 1.1, color: SeimaColors.muted).copyWith(letterSpacing: 1.2),
+                  ),
                 ),
+                LayoutBuilder(
+                  builder: (context, caja) {
+                    final ancho = (caja.maxWidth - 12) / 2;
+                    return Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        for (var i = 0; i < medios.length; i++)
+                          SizedBox(
+                            width: ancho,
+                            child: _TarjetaMedio(
+                              numero: i + 1,
+                              medio: medios[i],
+                              puedeSubir: i > 0,
+                              puedeBajar: i < medios.length - 1,
+                              onQuitar: () => _quitar(medios[i].id),
+                              onSubir: () => _mover(medios, i, -1),
+                              onBajar: () => _mover(medios, i, 1),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ],
             ],
           );
         },
@@ -229,8 +262,10 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
   }
 }
 
-class _FilaMedio extends StatelessWidget {
-  const _FilaMedio({
+/// Una foto o un video ya subido: miniatura con su estado y tres botones grandes.
+class _TarjetaMedio extends StatelessWidget {
+  const _TarjetaMedio({
+    required this.numero,
     required this.medio,
     required this.puedeSubir,
     required this.puedeBajar,
@@ -239,6 +274,7 @@ class _FilaMedio extends StatelessWidget {
     required this.onBajar,
   });
 
+  final int numero;
   final Medio medio;
   final bool puedeSubir;
   final bool puedeBajar;
@@ -248,30 +284,186 @@ class _FilaMedio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final esVideo = medio.tipo == 'video';
     final estado = medio.estado == 'subiendo'
-        ? 'Subiendo'
+        ? 'Subiendo…'
         : medio.listo
-        ? (medio.tipo == 'video' && medio.duracionMs != null ? 'Listo · ${textoDuracion(medio.duracionMs!)}' : 'Listo')
+        ? (esVideo && medio.duracionMs != null ? textoDuracion(medio.duracionMs!) : 'Listo')
         : 'No se pudo';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: SizedBox(
-              width: 72,
-              height: 72,
-              child: medio.vista.isEmpty
-                  ? const ColoredBox(color: SeimaColors.paper2)
-                  : Image.network(medio.vista, fit: BoxFit.cover, errorBuilder: (_, _, _) => const ColoredBox(color: SeimaColors.paper2)),
+    final mal = !medio.listo && medio.estado != 'subiendo';
+    return DecoratedBox(
+      decoration: BoxDecoration(color: SeimaColors.paper2, borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    medio.vista.isEmpty
+                        ? const ColoredBox(color: SeimaColors.ink3)
+                        : Image.network(medio.vista, fit: BoxFit.cover, errorBuilder: (_, _, _) => const ColoredBox(color: SeimaColors.ink3)),
+                    if (esVideo) const Center(child: _Play()),
+                    Positioned(
+                      left: 8,
+                      top: 8,
+                      child: DecoratedBox(
+                        decoration: const BoxDecoration(color: SeimaColors.ink, shape: BoxShape.circle),
+                        child: SizedBox(width: 30, height: 30, child: Center(child: Text('$numero', style: archivo(15, 850, height: 1, color: Colors.white)))),
+                      ),
+                    ),
+                    Positioned(
+                      left: 8,
+                      bottom: 8,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(color: mal ? SeimaColors.red : SeimaColors.ink, borderRadius: BorderRadius.circular(99)),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          child: Text(estado, style: archivo(13, 750, height: 1.1, color: Colors.white)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(child: _Mini(icono: Icons.arrow_upward, tooltip: 'Subir', onPressed: puedeSubir ? onSubir : null)),
+                const SizedBox(width: 6),
+                Expanded(child: _Mini(icono: Icons.arrow_downward, tooltip: 'Bajar', onPressed: puedeBajar ? onBajar : null)),
+                const SizedBox(width: 6),
+                Expanded(child: _Mini(icono: Icons.delete_outline, tooltip: 'Quitar', onPressed: onQuitar)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Mini extends StatelessWidget {
+  const _Mini({required this.icono, required this.tooltip, required this.onPressed});
+
+  final IconData icono;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: onPressed == null ? Colors.transparent : SeimaColors.tint2,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onPressed,
+          child: SizedBox(
+            height: 48,
+            child: Icon(icono, size: 24, color: onPressed == null ? SeimaColors.tint2 : SeimaColors.ink),
           ),
-          const SizedBox(width: 12),
-          Expanded(child: Text(estado, style: archivo(18, 650))),
-          IconButton(tooltip: 'Subir', onPressed: puedeSubir ? onSubir : null, icon: const Icon(Icons.arrow_upward)),
-          IconButton(tooltip: 'Bajar', onPressed: puedeBajar ? onBajar : null, icon: const Icon(Icons.arrow_downward)),
-          IconButton(tooltip: 'Quitar', onPressed: onQuitar, icon: const Icon(Icons.close)),
+        ),
+      ),
+    );
+  }
+}
+
+class _Play extends StatelessWidget {
+  const _Play();
+
+  @override
+  Widget build(BuildContext context) {
+    return const DecoratedBox(
+      decoration: BoxDecoration(color: Color(0x990E0E0E), shape: BoxShape.circle),
+      child: SizedBox(width: 48, height: 48, child: Icon(Icons.play_arrow, color: Colors.white, size: 30)),
+    );
+  }
+}
+
+/// Una línea de ayuda, siempre visible, sin letra chica escondida.
+class _Consejo extends StatelessWidget {
+  const _Consejo({required this.soloWifi});
+
+  final bool soloWifi;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(color: SeimaColors.paper2, borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.lightbulb_outline, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                soloWifi
+                    ? 'Los videos de más de 1 minuto se recortan. Se suben cuando haya Wi-Fi.'
+                    : 'Los videos de más de 1 minuto se recortan antes de subirse.',
+                style: archivo(16, 550, height: 1.3),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Progreso extends StatelessWidget {
+  const _Progreso({required this.texto, this.valor});
+
+  final String texto;
+  final double? valor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: SeimaColors.redSoft, borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(texto, style: archivo(17, 750, height: 1.2, color: SeimaColors.redText)),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(value: valor, minHeight: 8, color: SeimaColors.red, backgroundColor: SeimaColors.redSoft),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SinMedios extends StatelessWidget {
+  const _SinMedios();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        children: [
+          const CapasMarca(ancho: 110, claro: true),
+          const SizedBox(height: 16),
+          Text('Todavía no hay nada aquí', style: archivo(20, 800, width: 112, height: 1.15)),
+          const SizedBox(height: 4),
+          Text('Elige fotos o videos con los botones de arriba.', textAlign: TextAlign.center, style: archivo(16, 500, height: 1.3, color: SeimaColors.muted)),
         ],
       ),
     );

@@ -33,6 +33,15 @@ class _Enrutador extends ConsumerWidget {
       theme: seimaTheme(),
       themeMode: ThemeMode.light,
       routerConfig: ref.watch(routerProvider),
+      builder: (context, child) {
+        final datos = MediaQuery.of(context);
+        // Letra más chica en toda la app, respetando el ajuste de letra del teléfono.
+        final delSistema = datos.textScaler.scale(16) / 16;
+        return MediaQuery(
+          data: datos.copyWith(textScaler: TextScaler.linear(delSistema * escalaTexto)),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

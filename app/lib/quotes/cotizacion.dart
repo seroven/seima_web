@@ -104,6 +104,16 @@ int contarNuevas(Iterable<CotizacionResumen> lista) => lista.where((c) => c.esta
 
 String insigniaNuevas(int total) => total > 9 ? '9+' : '$total';
 
+/// «RODRIGUEZ VENTURA» → «Rodriguez Ventura». Si ya trae minúsculas, se respeta tal cual.
+String nombreLegible(String nombre) {
+  final limpio = nombre.trim().replaceAll(RegExp(r'\s+'), ' ');
+  if (limpio.isEmpty || limpio != limpio.toUpperCase()) return limpio;
+  return limpio
+      .split(' ')
+      .map((palabra) => palabra.isEmpty ? palabra : palabra[0] + palabra.substring(1).toLowerCase())
+      .join(' ');
+}
+
 String fechaCorta(String iso) {
   final fecha = DateTime.tryParse(iso)?.toLocal();
   if (fecha == null) return '';
