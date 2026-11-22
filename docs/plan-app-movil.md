@@ -1,6 +1,6 @@
 # Plan — App móvil para Luis (proyectos y cotizaciones)
 
-> Estado: **plan aprobado el 2026-11-21** (secciones 10 y 11 resueltas). Fases 0 y 1 (API) hechas; la migración ya corrió en la base local. En la app ya hay login, obras, cotizaciones y recorte de un video de más de 1 minuto. La web lee las obras publicadas, distingue el par vertical y el visor suena. Faltan la subida en segundo plano y el aviso en un celular.
+> Estado: **plan aprobado el 2026-11-21** (secciones 10 y 11 resueltas). Fases 0 y 1 (API) hechas; la migración ya corrió en la base local. En la app ya hay login, obras, cotizaciones, recorte y una cola de videos con WorkManager. La web lee las obras publicadas, distingue el par vertical y el visor suena. Falta probar en un celular la subida con la app cerrada y el aviso.
 > Es la parte importante: Luis (no Sebas) sube los proyectos, fotos y videos, y atiende las cotizaciones. Reemplaza al "panel administrativo" que el brief dejaba fuera de alcance (la app **es** el panel de Luis).
 > Lo decidido ya está reflejado en `docs/brief.md`, `docs/modelo-datos.md` §4 y `CLAUDE.md` (alcance, carpeta `app/`, etiqueta de commit `[app]`).
 
@@ -146,7 +146,7 @@ Se hacen junto con **conectar la web a la API** (pendiente de antes): reemplazar
 | 0 | Decisiones | **Hecha (2026-11-21):** dudas resueltas; `CLAUDE.md`, `brief.md` y `modelo-datos.md` actualizados; guía de Firebase en la sección 12 | Documentos al día |
 | 1 | **API** | **Hecha (2026-11-21).** Migraciones, auth móvil, CRUD de medios, reglas, cotizaciones, dispositivos y push. La migración ya corrió en la base local. Falta Firebase y el deploy | `npm test` verde en `seima_test` |
 | 2 | **App — base** | **En código (2026-11-21).** Proyecto Flutter, tema, `go_router`, `dio` con refresh, login, huella, navegación y registro del dispositivo. Falta el celular | Entra con usuario/huella en un Android real y recibe una notificación de prueba |
-| 3 | **App — proyecto y medios** | **En curso (2026-11-21).** Lista, borrador, fotos y videos. Un video de más de 1 minuto pide el tramo y se recorta en el celular. Falta WorkManager, y no se probó en un teléfono | Sube fotos y videos reales a Cloudinary con la app cerrada |
+| 3 | **App — proyecto y medios** | **En código (2026-11-21).** Lista, borrador, fotos, recorte y cola de videos con WorkManager. Falta probarla con la app cerrada. La subida por partes y el recorte de 15 s del comparador siguen pendientes | Sube fotos y videos reales a Cloudinary con la app cerrada |
 | 4 | **App — comparación, portada y publicar** | **En curso (2026-11-21).** Par horizontal con deslizador; vertical lado a lado. La portada muestra el después y, al mantener, el antes. Al publicar se comparte el título por WhatsApp (el enlace público espera a la web) | Publica un proyecto completo |
 | 5 | **App — cotizaciones** | **En curso (2026-11-21).** Lista, filtro, detalle, WhatsApp, llamar y estados. El aviso abre la ficha si trae el id. Falta probarlo con Firebase en un celular | Llega una cotización desde la web y Luis la atiende desde la notificación |
 | 6 | **Web** (en paralelo con 3–5) | **En código (2026-11-21).** Catálogo desde la API, comparador según orientación y visor con sonido. Falta un par vertical real para ver el lado a lado | Lo publicado en la app se ve bien en celular y escritorio |
