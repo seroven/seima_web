@@ -34,7 +34,8 @@ class SliverCabeceraSeima extends StatelessWidget {
   final Widget? pie;
   final double alturaPie;
 
-  /// Alto del encabezado grande, sin contar la barra de estado ni el `pie`.
+  /// Alto del bloque de texto del encabezado grande (título, subtítulo y lo que lleve debajo), sin contar la barra de
+  /// estado, el `pie` ni la fila del botón de volver: esas se suman solas.
   final double alturaExpandida;
 
   /// Si viene, se muestra el botón de volver.
@@ -47,12 +48,14 @@ class SliverCabeceraSeima extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final conBotones = alVolver != null || acciones.isNotEmpty;
+    // La fila de botones (volver, acciones) ocupa 64 dp arriba del título.
+    final alto = alturaExpandida + (conBotones ? 64.0 : 0.0);
     return SliverAppBar(
       pinned: true,
       automaticallyImplyLeading: false,
       toolbarHeight: _barra,
       collapsedHeight: _barra + alturaPie,
-      expandedHeight: alturaExpandida + alturaPie,
+      expandedHeight: alto + alturaPie,
       backgroundColor: SeimaColors.ink,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
@@ -63,7 +66,7 @@ class SliverCabeceraSeima extends StatelessWidget {
       flexibleSpace: LayoutBuilder(
         builder: (context, caja) {
           final top = MediaQuery.paddingOf(context).top;
-          final maximo = alturaExpandida + alturaPie + top;
+          final maximo = alto + alturaPie + top;
           final minimo = _barra + alturaPie + top;
           // 0 = grande, 1 = contraído.
           final t = maximo <= minimo ? 1.0 : ((maximo - caja.maxHeight) / (maximo - minimo)).clamp(0.0, 1.0);
@@ -72,16 +75,19 @@ class SliverCabeceraSeima extends StatelessWidget {
           return Stack(
             clipBehavior: Clip.hardEdge,
             children: [
-              Positioned(
-                right: -14,
-                top: top + 6,
-                child: Opacity(opacity: 1 - t, child: const CapasMarca(ancho: 112)),
-              ),
+              // Con botones de acción arriba a la derecha las capas estorban: se omiten.
+              if (acciones.isEmpty)
+                Positioned(
+                  right: -14,
+                  top: top + 6,
+                  child: Opacity(opacity: 1 - t, child: const CapasMarca(ancho: 112)),
+                ),
               Positioned(
                 left: 0,
                 right: 0,
                 top: 0,
-                height: maximo,
+                // Más alto que el encabezado a propósito: lo que sobre se recorta, no se desborda con franjas amarillas.
+                height: maximo + 160,
                 child: IgnorePointer(
                   ignoring: t > 0.5,
                   child: Opacity(

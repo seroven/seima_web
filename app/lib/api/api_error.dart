@@ -24,11 +24,20 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-/// Lee `{ error: { message } }` y, si no está, devuelve una frase genérica.
+/// Lee `{ error: { message, details } }`. Si hay un motivo concreto de validación («El nombre es muy corto»), lo usa;
+/// si no, usa el mensaje, y si tampoco está, devuelve una frase genérica.
 String mensajeDesde(Object? data) {
   if (data is Map) {
     final error = data['error'];
     if (error is Map) {
+      final detalles = error['details'];
+      if (detalles is List && detalles.isNotEmpty) {
+        final primero = detalles.first;
+        if (primero is Map) {
+          final motivo = primero['mensaje'];
+          if (motivo is String && motivo.trim().isNotEmpty) return motivo.trim();
+        }
+      }
       final message = error['message'];
       if (message is String && message.trim().isNotEmpty) return message.trim();
     }

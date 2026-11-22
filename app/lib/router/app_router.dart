@@ -5,6 +5,11 @@ import 'package:go_router/go_router.dart';
 import '../auth/auth_controller.dart';
 import '../auth/auth_state.dart';
 import '../screens/ajustes_screen.dart';
+import '../screens/catalogo_opcion_screen.dart';
+import '../screens/catalogo_pregunta_screen.dart';
+import '../screens/catalogo_servicio_screen.dart';
+import '../screens/catalogo_servicios_screen.dart';
+import '../screens/catalogo_tipos_screen.dart';
 import '../screens/contrasena_screen.dart';
 import '../screens/cotizacion_screen.dart';
 import '../screens/datos_proyecto_screen.dart';
@@ -40,6 +45,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/cargando', builder: (context, state) => const SplashScreen()),
       GoRoute(path: '/entrar', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/contrasena', builder: (context, state) => const ContrasenaScreen()),
+      // Gestión de lo que ofreces: tipos de trabajo, servicios del cotizador, sus preguntas y opciones.
+      GoRoute(path: '/catalogo/tipos', builder: (context, state) => const TiposTrabajoScreen()),
+      GoRoute(path: '/catalogo/servicios', builder: (context, state) => const ServiciosScreen()),
+      GoRoute(path: '/catalogo/servicios/:id', builder: (context, state) => ServicioScreen(id: state.pathParameters['id']!)),
+      GoRoute(path: '/catalogo/preguntas/:id', builder: (context, state) => PreguntaScreen(id: state.pathParameters['id']!)),
+      GoRoute(path: '/catalogo/preguntas/:id/opcion', builder: (context, state) => OpcionScreen(preguntaId: state.pathParameters['id']!)),
+      GoRoute(
+        path: '/catalogo/preguntas/:id/opcion/:opcionId',
+        builder: (context, state) => OpcionScreen(preguntaId: state.pathParameters['id']!, opcionId: state.pathParameters['opcionId']),
+      ),
       GoRoute(path: '/cotizacion/:id', builder: (context, state) => CotizacionScreen(id: state.pathParameters['id']!)),
       GoRoute(path: '/proyecto/nuevo', builder: (context, state) => const DatosProyectoScreen()),
       GoRoute(

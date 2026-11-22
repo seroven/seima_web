@@ -63,7 +63,7 @@ class _Cuerpo extends ConsumerWidget {
       slivers: [
         SliverCabeceraSeima(
           alVolver: () => context.pop(),
-          alturaExpandida: 244,
+          alturaExpandida: 190,
           titulo: nombreLegible(dato.nombre),
           subtitulo: [
             if (numero != null) celularVisible(dato.whatsapp),

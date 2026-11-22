@@ -48,6 +48,21 @@ class AjustesScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const _Grupo('Lo que ofreces'),
+                _FilaToque(
+                  icono: Icons.category_outlined,
+                  titulo: 'Tipos de trabajo',
+                  detalle: 'Cocinas, Baños… lo que eliges al crear una obra',
+                  onTap: () => context.push('/catalogo/tipos'),
+                ),
+                const SizedBox(height: 10),
+                _FilaToque(
+                  icono: Icons.checklist,
+                  titulo: 'Servicios y preguntas del cotizador',
+                  detalle: 'Lo que el cliente elige y responde al cotizar',
+                  onTap: () => context.push('/catalogo/servicios'),
+                ),
+                const SizedBox(height: 24),
                 const _Grupo('Seguridad'),
                 if (hayHuella) ...[
                   _FilaInterruptor(
@@ -178,17 +193,18 @@ class _FilaInterruptor extends StatelessWidget {
 }
 
 class _FilaToque extends StatelessWidget {
-  const _FilaToque({required this.icono, required this.titulo, required this.onTap});
+  const _FilaToque({required this.icono, required this.titulo, required this.onTap, this.detalle});
 
   final IconData icono;
   final String titulo;
+  final String? detalle;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return TarjetaToque(
       onTap: onTap,
-      child: _Fila(icono: icono, titulo: titulo, extremo: const Icon(Icons.chevron_right, color: SeimaColors.muted)),
+      child: _Fila(icono: icono, titulo: titulo, detalle: detalle, extremo: const Icon(Icons.chevron_right, color: SeimaColors.muted)),
     );
   }
 }
