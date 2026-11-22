@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../catalogo/catalogo.dart';
 import '../catalogo/catalogo_controller.dart';
 import '../theme/seima_colors.dart';
+import '../router/volver.dart';
 import '../theme/seima_theme.dart';
 import '../widgets/cabecera_seima.dart';
 import '../widgets/elecciones.dart';
@@ -26,7 +27,7 @@ class ServicioScreen extends ConsumerWidget {
 
     if (servicio == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Servicio')),
+        appBar: AppBar(leading: BackButton(onPressed: () => context.volver('/ajustes')), title: const Text('Servicio')),
         body: servicioAsync.isLoading || preguntasAsync.isLoading
             ? const Center(child: CircularProgressIndicator(color: SeimaColors.red))
             : Padding(
@@ -53,7 +54,7 @@ class ServicioScreen extends ConsumerWidget {
               titulo: servicio.nombre,
               subtitulo: 'Preguntas que se hacen con este servicio',
               alturaExpandida: 150,
-              alVolver: () => context.pop(),
+              alVolver: () => context.volver('/ajustes'),
               acciones: [BotonRedondo(icono: Icons.edit_outlined, tooltip: 'Cambiar nombre o ícono', onPressed: () => _editar(context, ref, servicio))],
             ),
             SliverPadding(

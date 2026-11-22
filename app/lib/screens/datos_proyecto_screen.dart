@@ -8,6 +8,7 @@ import '../projects/proyecto.dart';
 import '../projects/proyectos_api.dart';
 import '../projects/proyectos_controller.dart';
 import '../theme/seima_colors.dart';
+import '../router/volver.dart';
 import '../theme/seima_theme.dart';
 import '../widgets/elecciones.dart';
 import '../widgets/seima_button.dart';
@@ -56,7 +57,7 @@ class _DatosProyectoScreenState extends ConsumerState<DatosProyectoScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(_editando ? 'Datos del proyecto' : 'Nuevo proyecto')),
+      appBar: AppBar(leading: BackButton(onPressed: () => context.volver('/proyectos')), title: Text(_editando ? 'Datos del proyecto' : 'Nuevo proyecto')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         children: [
@@ -288,9 +289,10 @@ class _DatosProyectoScreenState extends ConsumerState<DatosProyectoScreen> {
       if (_editando) ref.invalidate(proyectoProvider(widget.id!));
       if (!mounted) return;
       if (_editando) {
-        context.pop();
+        context.volver('/proyecto/${widget.id}');
       } else {
-        context.go('/proyecto/${proyecto.id}');
+        // Reemplaza esta pantalla por la ficha de la obra: la lista de proyectos queda debajo y «volver» regresa a ella.
+        context.pushReplacement('/proyecto/${proyecto.id}');
       }
     } on ApiException catch (error) {
       if (mounted) setState(() => _error = error.message);

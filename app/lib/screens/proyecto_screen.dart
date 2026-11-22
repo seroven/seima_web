@@ -8,6 +8,7 @@ import '../projects/proyecto.dart';
 import '../projects/proyectos_controller.dart';
 import '../projects/vista_reglas.dart';
 import '../theme/seima_colors.dart';
+import '../router/volver.dart';
 import '../theme/seima_theme.dart';
 import '../widgets/cabecera_seima.dart';
 import '../widgets/capas_marca.dart';
@@ -25,6 +26,8 @@ class ProyectoScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final proyecto = ref.watch(proyectoProvider(id));
     return Scaffold(
+      // Mientras carga o si falla no hay encabezado con flecha: sin esto no habría cómo volver.
+      appBar: proyecto.hasValue ? null : AppBar(leading: BackButton(onPressed: () => context.volver('/proyectos'))),
       body: proyecto.when(
         loading: () => const Center(child: CircularProgressIndicator(color: SeimaColors.red)),
         error: (error, _) => SafeArea(
@@ -104,7 +107,7 @@ class _Cuerpo extends ConsumerWidget {
           leadingWidth: 72,
           leading: Padding(
             padding: const EdgeInsets.only(left: 16),
-            child: Center(child: BotonRedondo(icono: Icons.arrow_back, tooltip: 'Volver', onPressed: () => context.pop())),
+            child: Center(child: BotonRedondo(icono: Icons.arrow_back, tooltip: 'Volver', onPressed: () => context.volver('/proyectos'))),
           ),
           actions: [
             Padding(
@@ -490,7 +493,7 @@ class PublicarScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final proyecto = ref.watch(proyectoProvider(id));
     return Scaffold(
-      appBar: AppBar(title: const Text('Publicar')),
+      appBar: AppBar(leading: BackButton(onPressed: () => context.volver('/proyectos')), title: const Text('Publicar')),
       body: proyecto.when(
         loading: () => const Center(child: CircularProgressIndicator(color: SeimaColors.red)),
         error: (error, _) => _CuerpoMensaje(titulo: 'No se pudo abrir', detalle: error.toString()),
@@ -552,7 +555,7 @@ class PublicarScreen extends ConsumerWidget {
                 ),
               if (ya) ...[
                 const SizedBox(height: 10),
-                SeimaButton(label: 'Volver', ink: true, onPressed: () => context.pop()),
+                SeimaButton(label: 'Volver', ink: true, onPressed: () => context.volver('/proyectos')),
               ],
               if (listo)
                 SeimaButton(

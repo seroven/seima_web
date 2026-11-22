@@ -7,6 +7,7 @@ import 'auth/auth_state.dart';
 import 'devices/push_service.dart';
 import 'quotes/cotizaciones_controller.dart';
 import 'router/app_router.dart';
+import 'router/volver.dart';
 import 'theme/seima_theme.dart';
 
 class SeimaApp extends ConsumerWidget {
@@ -78,7 +79,7 @@ class _EscuchaAvisosState extends ConsumerState<EscuchaAvisos> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || ref.read(avisoAbiertoProvider) != id) return;
       ref.read(avisoAbiertoProvider.notifier).consumir();
-      ref.read(routerProvider).go('/cotizacion/$id');
+      abrirCotizacion(ref.read(routerProvider), id); // con las cotizaciones debajo, para poder volver
     });
   }
 }

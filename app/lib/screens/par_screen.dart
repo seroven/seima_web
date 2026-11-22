@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../projects/proyecto.dart';
 import '../projects/proyectos_controller.dart';
 import '../projects/vista_reglas.dart';
 import '../theme/seima_colors.dart';
+import '../router/volver.dart';
 import '../theme/seima_theme.dart';
 import '../widgets/deslizador.dart';
 import '../widgets/seima_button.dart';
@@ -37,7 +37,7 @@ class _ParScreenState extends ConsumerState<ParScreen> {
   Widget build(BuildContext context) {
     final proyecto = ref.watch(proyectoProvider(_proyectoId));
     return Scaffold(
-      appBar: AppBar(title: Text(_esPortada ? 'Portada' : 'Comparación')),
+      appBar: AppBar(leading: BackButton(onPressed: () => context.volver('/proyectos')), title: Text(_esPortada ? 'Portada' : 'Comparación')),
       body: proyecto.when(
         loading: () => const Center(child: CircularProgressIndicator(color: SeimaColors.red)),
         error: (error, _) => ListView(
@@ -195,7 +195,7 @@ class _ParScreenState extends ConsumerState<ParScreen> {
     final mensaje = _esPortada ? await notifier.guardarPortada(antes, despues) : await notifier.guardarComparador(antes, despues);
     if (!mounted) return;
     if (mensaje == null) {
-      context.pop();
+      context.volver('/proyectos');
       return;
     }
     setState(() {

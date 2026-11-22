@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../catalogo/catalogo_controller.dart';
 import '../theme/seima_colors.dart';
+import '../router/volver.dart';
 import '../theme/seima_theme.dart';
 import '../widgets/elecciones.dart';
 import '../widgets/seima_button.dart';
@@ -68,7 +68,7 @@ class _OpcionScreenState extends ConsumerState<OpcionScreen> {
         : await notifier.crearOpcion(widget.preguntaId, etiqueta: etiqueta, descripcion: descripcion, tipoEntrada: _entrada, entradaAyuda: ayuda);
     if (!mounted) return;
     if (error == null) {
-      context.pop();
+      context.volver('/ajustes');
       return;
     }
     setState(() {
@@ -80,7 +80,7 @@ class _OpcionScreenState extends ConsumerState<OpcionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_editando ? 'Editar opción' : 'Nueva opción')),
+      appBar: AppBar(leading: BackButton(onPressed: () => context.volver('/ajustes')), title: Text(_editando ? 'Editar opción' : 'Nueva opción')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
         children: [

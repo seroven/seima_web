@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../catalogo/catalogo.dart';
 import '../catalogo/catalogo_controller.dart';
 import '../theme/seima_colors.dart';
+import '../router/volver.dart';
 import '../theme/seima_theme.dart';
 import '../widgets/cabecera_seima.dart';
 import '../widgets/elecciones.dart';
@@ -25,7 +26,7 @@ class PreguntaScreen extends ConsumerWidget {
 
     if (pregunta == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Pregunta')),
+        appBar: AppBar(leading: BackButton(onPressed: () => context.volver('/ajustes')), title: const Text('Pregunta')),
         body: asincrona.isLoading
             ? const Center(child: CircularProgressIndicator(color: SeimaColors.red))
             : Padding(padding: const EdgeInsets.all(24), child: Text(asincrona.hasError ? asincrona.error.toString() : 'Esa pregunta ya no existe.', style: archivo(18, 500))),
@@ -44,7 +45,7 @@ class PreguntaScreen extends ConsumerWidget {
               titulo: pregunta.etiqueta,
               subtitulo: pregunta.visible ? 'Así se ve en el cotizador' : (pregunta.opcionesActivas == 0 ? 'Todavía no se muestra: falta una opción' : 'Ahora no se muestra al cliente'),
               alturaExpandida: 130,
-              alVolver: () => context.pop(),
+              alVolver: () => context.volver('/ajustes'),
             ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 22, 16, 0),

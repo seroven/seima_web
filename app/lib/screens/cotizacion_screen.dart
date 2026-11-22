@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../quotes/cotizacion.dart';
 import '../quotes/cotizaciones_controller.dart';
 import '../theme/seima_colors.dart';
+import '../router/volver.dart';
 import '../theme/seima_theme.dart';
 import '../widgets/cabecera_seima.dart';
 import '../widgets/etiquetas.dart';
@@ -21,7 +21,7 @@ class CotizacionScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cotizacion = ref.watch(cotizacionProvider(id));
     return Scaffold(
-      appBar: cotizacion.hasValue ? null : AppBar(title: const Text('Cotización')),
+      appBar: cotizacion.hasValue ? null : AppBar(leading: BackButton(onPressed: () => context.volver('/cotizaciones')), title: const Text('Cotización')),
       body: cotizacion.when(
         loading: () => const Center(child: CircularProgressIndicator(color: SeimaColors.red)),
         error: (error, _) => ListView(
@@ -62,7 +62,7 @@ class _Cuerpo extends ConsumerWidget {
     return CustomScrollView(
       slivers: [
         SliverCabeceraSeima(
-          alVolver: () => context.pop(),
+          alVolver: () => context.volver('/cotizaciones'),
           alturaExpandida: 190,
           titulo: nombreLegible(dato.nombre),
           subtitulo: [

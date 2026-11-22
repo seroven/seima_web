@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../catalogo/catalogo.dart';
 import '../catalogo/catalogo_controller.dart';
 import '../theme/seima_colors.dart';
+import '../router/volver.dart';
 import '../theme/seima_theme.dart';
 import '../widgets/cabecera_seima.dart';
 import '../widgets/capas_marca.dart';
@@ -46,7 +47,7 @@ class ServiciosScreen extends ConsumerWidget {
               titulo: 'Servicios',
               subtitulo: 'Lo que el cliente puede pedir al cotizar',
               alturaExpandida: 130,
-              alVolver: () => context.pop(),
+              alVolver: () => context.volver('/ajustes'),
             ),
             ...lista.when(
               loading: () => [const SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator(color: SeimaColors.red)))],

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import '../router/volver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
@@ -47,7 +48,7 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
     final proyecto = ref.watch(proyectoProvider(widget.id));
     final ocupado = _subiendo > 0;
     return Scaffold(
-      appBar: AppBar(title: Text(nombreEtapa(widget.etapa))),
+      appBar: AppBar(leading: BackButton(onPressed: () => context.volver('/proyectos')), title: Text(nombreEtapa(widget.etapa))),
       body: proyecto.when(
         loading: () => const Center(child: CircularProgressIndicator(color: SeimaColors.red)),
         error: (error, _) => ListView(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../router/volver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/auth_controller.dart';
@@ -30,7 +31,7 @@ class _ContrasenaScreenState extends ConsumerState<ContrasenaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Contraseña')),
+      appBar: AppBar(leading: BackButton(onPressed: () => context.volver('/ajustes')), title: const Text('Contraseña')),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [

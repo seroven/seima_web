@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../catalogo/catalogo.dart';
 import '../catalogo/catalogo_controller.dart';
 import '../theme/seima_colors.dart';
+import '../router/volver.dart';
 import '../theme/seima_theme.dart';
 import '../widgets/cabecera_seima.dart';
 import '../widgets/capas_marca.dart';
@@ -44,7 +44,7 @@ class TiposTrabajoScreen extends ConsumerWidget {
               titulo: 'Tipos de trabajo',
               subtitulo: 'Lo que eliges al crear una obra',
               alturaExpandida: 130,
-              alVolver: () => context.pop(),
+              alVolver: () => context.volver('/ajustes'),
             ),
             ...lista.when(
               loading: () => [const SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator(color: SeimaColors.red)))],
