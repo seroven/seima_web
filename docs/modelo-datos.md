@@ -140,3 +140,13 @@ Pedido de Sebas: poder gestionar desde la app de Luis los **tipos de trabajo**, 
 - **Desactivar un tipo de trabajo:** una obra solo sale en la web si tiene al menos un tipo **activo**; la app avisa cuántas obras lo usan antes de desactivarlo.
 - **Íconos de servicio:** la web solo dibuja los que conoce (`cocinas`, `banos`, `departamentos`, `divisiones`, `techos`, `enchapado`, `electricidad`, `melamina`, `remodelaciones`, `locales`); un servicio nuevo usa `generico` (tres capas) y la web dibuja ese mismo para cualquier ícono desconocido. Igual para un tipo de trabajo nuevo en los filtros del catálogo.
 - **Limitación conocida:** la web preselecciona el servicio al venir desde una obra con un mapa fijo de slugs (`CATEGORIA_A_SERVICIO` en `web/src/lib/quote.ts`); los tipos y servicios nuevos no se preseleccionan.
+
+## 7. Mediciones de la web (2026-11-22)
+
+Plan completo en `docs/plan-analiticas.md`. Una tabla nueva, **`visits`** (migración `Analytics`), una fila por página vista o por toque importante de la web pública:
+
+- `created_at` (`timestamptz`), `tipo` (`pagina` | `whatsapp` | `compartir`), `ruta` (normalizada: sin parámetros ni barra final), `proyecto_slug` (de `/proyectos/<slug>`; **sin llave foránea** para que borrar una obra no rompa el historial), `visitante`, `origen`, `pais` (ISO de 2 letras), `ciudad`, `dispositivo` (`movil` | `escritorio` | `tablet`).
+- **Sin IP y sin cookies.** `visitante` = hash(secreto + fecha de Lima + IP + navegador) cortado a 32 caracteres: cambia cada día, no se puede deshacer. País y ciudad salen de la IP con una base que viaja dentro de la API (`geoip-lite`, datos MaxMind GeoLite, licencia CC BY-SA 4.0); la IP solo vive en memoria durante la petición.
+- Índices: `idx_visits_creado` (`created_at`) e `idx_visits_proyecto_creado` (`proyecto_slug`, `created_at`).
+- Los días se agrupan en **hora de Lima** (`America/Lima`). Se borran las filas de **más de 18 meses** cada vez que arranca la API.
+- Las **cotizaciones** que se muestran en el resumen salen de `quotes` (no de `visits`).

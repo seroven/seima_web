@@ -4,7 +4,7 @@
 > **Obligatorio:** se actualiza con **cada cambio y cada decisión** (ver `CLAUDE.md`, sección "Documentación viva"). Lo nuevo va **arriba** del historial, bajo su fecha.
 > Complementa a `CLAUDE.md` (reglas), `docs/brief.md` (decisiones de producto) y `docs/modelo-datos.md` (base de datos).
 
-Última actualización: **2026-11-21**
+Última actualización: **2026-11-22**
 
 ---
 
@@ -158,6 +158,23 @@
 ## 4. Historial (más reciente primero)
 
 ### 2026-11-22
+
+**Mediciones de la web, propias y visibles en la app — fase 1 (API)**
+- **Decisión de Sebas:** medición **propia** (no una herramienta externa), para verla **dentro de la app de Luis**. Eligió: **país y ciudad**, **pestaña nueva «Visitas»** y **no excluir** las visitas de ustedes mismos. Se descartaron Umami/Plausible/Google Analytics (los números quedarían fuera de la app). Plan completo en `docs/plan-analiticas.md` (qué se mide, privacidad, datos, API, web, app, límites y fases).
+- **Fase 1 hecha (API):** módulo `api/src/modules/analytics/` (entidad `Visit`, reglas puras `analytics.rules.ts`, repositorio con QueryBuilder, servicio, controlador, rutas, `geo.ts`), migración `1795360421478-Analytics.ts` (solo crea `visits` y sus 2 índices), `RATE_LIMIT_ANALYTICS_PER_MIN` (60 por minuto y por IP; en `.env.example` y `.env.test.example`), `QuotesRepository.contarEntre`, y limpieza de historial de más de 18 meses al arrancar (`server.ts`).
+  - `POST /api/v1/analytics/hit` (público, Zod, límite por IP, **siempre 204**) y `GET /api/v1/analytics/summary?periodo=hoy|7d|30d` (JWT admin).
+  - **Privacidad:** sin cookies y **sin guardar la IP**; el visitante es un hash (secreto + fecha de Lima + IP + navegador) que cambia cada día. Por eso «visitantes» en 7/30 días cuenta a una persona una vez por cada día que entró (aproximación honesta, igual que otras herramientas sin cookies). Solo se aceptan rutas conocidas (`/`, `/proyectos`, `/proyectos/<slug>`, `/empresas`, `/cotizador`, `/privacidad`) y se descartan robots por su navegador.
+  - **Dependencia nueva:** `geoip-lite@2.0.3` (+ `@types/geoip-lite`) para país/ciudad sin llamadas externas. Se instaló la 2.0.3 a propósito: la 1.4.x que npm traía por defecto tenía una vulnerabilidad en `ip-address`. Datos MaxMind GeoLite (CC BY-SA 4.0): atribución en la doc.
+  - **Pruebas:** 26 unitarias nuevas (rutas, orígenes, robots, dispositivos, visitante anónimo, periodos en hora de Lima, esquemas, servicio con repositorio simulado) y 8 de integración (el endpoint público y el resumen con JWT). **Suite completa: 362 pasan** (23 archivos), con las migraciones desde cero. Se usó otra vez una base PostgreSQL temporal en el puerto 5544 con un `.env.test` temporal; ambos se borraron.
+  - Documentado en `api/README.md` (endpoints) y `docs/modelo-datos.md` §7.
+- **Fase 2 hecha (web):** `web/src/scripts/analytics.ts` (cargado desde `Base.astro`) avisa a `POST /analytics/hit` con `fetch(..., { keepalive: true })` en cada `astro:page-load` (carga inicial y cada navegación del `ClientRouter`), sin cookies ni `localStorage`. El **origen** (`document.referrer` si es de otro sitio, y `utm_source`) solo se manda en la **primera** página de la visita. **No mide** en `localhost` (salvo `PUBLIC_ANALYTICS_LOCAL=1`, nueva en `web/.env.example`, solo para probar), ni sin `PUBLIC_API_URL`, ni si el navegador tiene «No rastrear». Eventos: los enlaces con `data-evento="whatsapp"` (`Cta.astro` y «Escríbenos por WhatsApp» del cotizador) y `data-evento="compartir"` («Compartir por WhatsApp» de la ficha). `/privacidad` tiene la sección «Estadísticas de visitas» (sigue marcada BORRADOR, como el resto).
+- **Probado de punta a punta en dev:** migración aplicada a la base de dev de Sebas (`Analytics1795360421478`, ya figura como ejecutada), API local + web con `PUBLIC_ANALYTICS_LOCAL=1`: entrar con `?utm_source=tiktok` → origen TikTok; navegar a una obra con el router de Astro → cuenta como visita a «Proyecto X» con origen Directo; el toque de «Compartir» → evento; el resumen con JWT lo devolvió bien. La ubicación salió «Sin ubicación» (esperado: `localhost` no tiene país). **Las 3 visitas de prueba se borraron de la base de dev**; se detuvieron la API y la web de prueba y se dejó la web normal en `npm run dev`.
+- **Falta:** fase 3 (app: pestaña «Visitas»). En producción hace falta que `CORS_ORIGINS` de la API incluya la dirección real de la web (ya lo exige el cotizador) y que `PUBLIC_API_URL` esté en el sitio estático.
+- **Límites a recordar:** la ciudad es aproximada (con datos móviles a veces sale otra o solo el país); un enlace pegado en WhatsApp casi nunca trae origen y cuenta como «Directo» (para medirlo, usar `?utm_source=whatsapp`).
+- **Lección operativa:** `pg_ctl start | tail` se cuelga porque el servidor hereda la tubería; arrancar la base temporal con `> /dev/null 2>&1`, y si se detiene una tarea en segundo plano se lleva el servidor con ella.
+
+**Overview del repositorio**
+- `README.md` en la raíz explica el negocio, las tres partes (web, API y app) y cómo correrlas. No repite secretos ni cifras que todavía no son reales.
 
 **Avisos en el celular**
 - El canal de Android se llama `seima_avisos`, con importancia alta. La app lo crea al entrar, lo declara en el manifiesto y, si la app está abierta, muestra el aviso ahí. La API manda el aviso a ese mismo canal y anota cuántos celulares lo aceptaron.

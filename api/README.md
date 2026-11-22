@@ -176,6 +176,11 @@ Nada de lo que pregunta el cotizador está escrito en el código de la web: vive
 
 Credenciales de Firebase (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`) solo en el `.env`. Sin ellas no se envía el aviso.
 
+**Mediciones** (`src/modules/analytics/`, plan en `docs/plan-analiticas.md`).
+- `POST /analytics/hit` — **público**, sin JWT, con límite por IP (`RATE_LIMIT_ANALYTICS_PER_MIN`, 60 por minuto). Cuerpo: `{ ruta, tipo?: "pagina"|"whatsapp"|"compartir", referrer?, utm? }`. **Siempre responde `204`** (descarta en silencio robots y rutas que no son de la web). No guarda la IP ni usa cookies.
+- `GET /analytics/summary?periodo=hoy|7d|30d` — **app de Luis** (JWT admin). Devuelve visitas, visitantes, cotizaciones, toques de WhatsApp y compartidos (cada uno con su periodo anterior), visitas por día (con ceros), obras más vistas, páginas, orígenes, lugares y dispositivos. Días en hora de Lima.
+- País/ciudad: `geoip-lite` (datos MaxMind GeoLite, CC BY-SA 4.0), sin llamadas externas.
+
 **Proteger una ruta del panel:**
 ```ts
 router.get('/quotes', auth.authenticate, requireRole('admin'), controller.list);
