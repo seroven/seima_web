@@ -7,6 +7,7 @@ import CompareSlider from '../../components/CompareSlider.astro';
 import Presentation from '../../components/Presentation.astro';
 import { categoriasNombre, categoryName, etapaLabel, etapas, fotosDe, fotosOrdenadas, principal, show, type Foto } from '../../data/projects';
 import { cargarSitio, proyectoPublico } from '../../lib/proyectos-publicos';
+import { enlaceAbsoluto } from '../../lib/site';
 
 export async function getStaticPaths() {
   const { projects } = await cargarSitio();
@@ -46,7 +47,7 @@ const meta = [
 ];
 // Compartir: abre WhatsApp con el enlace de esta ficha (no necesita el número de Luis).
 const cotizar = `/cotizador?categoria=${p.categoria}&proyecto=${p.slug}`;
-const share = `https://wa.me/?text=${encodeURIComponent(`${p.titulo} · SEIMA Servicios Generales ${Astro.url.href}`)}`;
+const share = `https://wa.me/?text=${encodeURIComponent(`${p.titulo} · SEIMA Servicios Generales ${enlaceAbsoluto(Astro)}`)}`;
 ---
 <Base
   title={`${p.titulo} · SEIMA Servicios Generales`}

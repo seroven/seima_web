@@ -1,0 +1,47 @@
+---
+// Botón de WhatsApp siempre a la vista: contacto directo desde cualquier página. No se muestra si falta el número
+// (PUBLIC_WHATSAPP_NUMBER) ni en el cotizador, donde ya está el flujo para pedir la cotización.
+import SocialIcon from './SocialIcon.astro';
+import { waLink } from '../lib/whatsapp';
+
+const href = waLink('Hola SEIMA, quisiera hacer una consulta.');
+const oculto = Astro.url.pathname.startsWith('/cotizador');
+---
+{href && !oculto && (
+  <a class="wa-fab" href={href} target="_blank" rel="noopener" data-evento="whatsapp" aria-label="Escríbenos por WhatsApp">
+    <SocialIcon name="whatsapp" size={30} />
+    <span class="wa-fab__txt">Escríbenos</span>
+  </a>
+)}
+
+<style>
+  .wa-fab {
+    position: fixed;
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    z-index: 60;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 56px;
+    height: 56px;
+    padding: 0 1.1rem 0 0.9rem;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--red);
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.95rem;
+    text-decoration: none;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+  .wa-fab:hover { background: #c81d30; transform: translateY(-2px); }
+  .wa-fab:focus-visible { outline: none; box-shadow: 0 8px 24px rgb(0 0 0 / 0.35), var(--ring); }
+  /* En celular solo el ícono (más discreto sobre el contenido) */
+  @media (max-width: 720px) {
+    .wa-fab { padding: 0; width: 56px; }
+    .wa-fab__txt { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .wa-fab { transition: none; } }
+</style>

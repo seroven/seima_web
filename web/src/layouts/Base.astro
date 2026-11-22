@@ -3,12 +3,15 @@ import { ClientRouter } from 'astro:transitions';
 import '../styles/global.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import WhatsAppFlotante from '../components/WhatsAppFlotante.astro';
+import { enlaceAbsoluto, origenSitio } from '../lib/site';
 
 interface Props { title: string; description: string; image?: string | null; noindex?: boolean }
 const { title, description, image = null, noindex = false } = Astro.props;
-const canonical = new URL(Astro.url.pathname, Astro.url);
+// Enlaces absolutos con la dirección pública (SITE_URL), no con la del servidor donde se construyó.
+const canonical = new URL(enlaceAbsoluto(Astro));
 // Si la página no trae foto propia, al compartir sale el logo.
-const ogImage = new URL(image ?? '/og-seima.jpg', Astro.url).href;
+const ogImage = new URL(image ?? '/og-seima.jpg', origenSitio(Astro)).href;
 ---
 <!doctype html>
 <html lang="es-PE">
@@ -55,6 +58,7 @@ const ogImage = new URL(image ?? '/og-seima.jpg', Astro.url).href;
       <slot />
     </main>
     <Footer />
+    <WhatsAppFlotante />
     <script>
       import '../scripts/motion';
       import '../scripts/nav';

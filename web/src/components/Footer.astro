@@ -1,6 +1,80 @@
+---
+import SocialIcon from './SocialIcon.astro';
+import { TIKTOK_URL, facebookUrl } from '../lib/site';
+import { waLink } from '../lib/whatsapp';
+
+const wa = waLink('Hola SEIMA, quisiera hacer una consulta.');
+const fb = facebookUrl();
+const anio = new Date().getFullYear();
+const enlaces = [
+  { href: '/', t: 'Inicio' },
+  { href: '/proyectos', t: 'Proyectos' },
+  { href: '/empresas', t: 'Empresas' },
+  { href: '/cotizador', t: 'Cotizador' },
+];
+---
 <footer class="site-footer dark">
-  <div class="wrap">
-    <p><strong>SEIMA Servicios Generales</strong><br />Drywall, enchapado, electricidad, melamina y pintura.<br />Lima y provincias.</p>
-    <p>Luis Rodríguez<br />Contacto: [DATO REAL]<br /><a href="/privacidad">Cómo tratamos tus datos</a></p>
+  <div class="wrap foot">
+    <div class="foot__brand">
+      <img class="foot__logo" src="/logo.webp" width="800" height="535" alt="SEIMA Servicios Generales" loading="lazy" decoding="async" />
+      <p>Drywall, enchapado, electricidad, melamina y pintura.<br />Lima y provincias.</p>
+    </div>
+
+    <nav class="foot__col" aria-label="Pie de página">
+      <h2 class="foot__h">Navega</h2>
+      <ul>
+        {enlaces.map((l) => <li><a href={l.href}>{l.t}</a></li>)}
+        <li><a href="/privacidad">Cómo tratamos tus datos</a></li>
+      </ul>
+    </nav>
+
+    <div class="foot__col">
+      <h2 class="foot__h">Escríbenos</h2>
+      <ul class="social">
+        <li>
+          {wa
+            ? <a class="social__a social__a--wa" href={wa} target="_blank" rel="noopener" data-evento="whatsapp"><SocialIcon name="whatsapp" /><span>WhatsApp</span></a>
+            : <span class="social__a social__a--off" aria-disabled="true" title="Falta configurar PUBLIC_WHATSAPP_NUMBER"><SocialIcon name="whatsapp" /><span>WhatsApp · [NÚMERO PENDIENTE]</span></span>}
+        </li>
+        <li>
+          <a class="social__a" href={TIKTOK_URL} target="_blank" rel="noopener"><SocialIcon name="tiktok" /><span>TikTok @seima.drywall</span></a>
+        </li>
+        <li>
+          {fb
+            ? <a class="social__a" href={fb} target="_blank" rel="noopener"><SocialIcon name="facebook" /><span>Facebook</span></a>
+            : <span class="social__a social__a--off" aria-disabled="true" title="Falta configurar PUBLIC_FACEBOOK_URL"><SocialIcon name="facebook" /><span>Facebook · [PENDIENTE]</span></span>}
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="wrap foot__base">
+    <p>© {anio} SEIMA Servicios Generales · Luis Rodríguez</p>
   </div>
 </footer>
+
+<style>
+  .site-footer { padding-block: clamp(2.4rem, 6vw, 3.6rem) 1.6rem; }
+  .foot { display: grid; grid-template-columns: 1fr; gap: 2rem; align-items: start; }
+  .foot__logo { display: block; height: 64px; width: auto; aspect-ratio: 800 / 535; object-fit: contain; margin-left: -4px; }
+  .foot__brand p { margin: 0.6rem 0 0; line-height: 1.55; max-width: 26rem; }
+  .foot__h { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #fff; margin: 0 0 0.9rem; }
+  .foot__col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2rem; }
+  .foot__col a:not(.social__a) { display: inline-block; padding-block: 0.3rem; }
+  .foot__col .social { gap: 0.6rem; }
+  .social__a {
+    display: inline-flex; align-items: center; gap: 0.7rem; min-height: 44px; padding: 0.4rem 1rem 0.4rem 0.8rem;
+    border-radius: 999px; background: var(--ink-3); color: #fff; text-decoration: none; font-weight: 700;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+  .social__a:hover { background: var(--ink-2); color: #fff; transform: translateY(-1px); }
+  .social__a--wa { background: var(--red); }
+  .social__a--wa:hover { background: #c81d30; }
+  .social__a--off { background: var(--ink-2); color: var(--muted-dark); font-weight: 600; }
+  .foot__base { margin-top: 2.4rem; padding-top: 1.2rem; border-top: 1px solid #262626; font-size: 0.82rem; }
+  .foot__base p { margin: 0; }
+  @media (min-width: 760px) { .foot { grid-template-columns: 1.3fr 1fr 1.2fr; gap: 3rem; } }
+  /* El botón flotante de WhatsApp no tapa el pie en celular */
+  @media (max-width: 720px) { .site-footer { padding-bottom: 5rem; } }
+  @media (prefers-reduced-motion: reduce) { .social__a { transition: none; } }
+</style>
