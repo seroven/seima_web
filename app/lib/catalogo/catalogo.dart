@@ -69,6 +69,17 @@ class OpcionCot {
   final int orden;
   final bool activo;
 
+  OpcionCot conOrden(int nuevo) => OpcionCot(
+    id: id,
+    slug: slug,
+    etiqueta: etiqueta,
+    descripcion: descripcion,
+    tipoEntrada: tipoEntrada,
+    entradaAyuda: entradaAyuda,
+    orden: nuevo,
+    activo: activo,
+  );
+
   /// «Pide un número (m²)», «Pide un texto (¿Cuál?)» o vacío.
   String get resumenEntrada => switch (tipoEntrada) {
     'texto' => entradaAyuda == null ? 'Pide un texto' : 'Pide un texto ($entradaAyuda)',
@@ -106,6 +117,19 @@ class PreguntaCot {
 
   /// La web solo la muestra si está activa, tiene una opción activa y un servicio activo.
   final bool visible;
+
+  PreguntaCot copiaCon({int? orden, List<OpcionCot>? opciones}) => PreguntaCot(
+    id: id,
+    slug: slug,
+    texto: texto,
+    etiqueta: etiqueta,
+    tipo: tipo,
+    orden: orden ?? this.orden,
+    activo: activo,
+    servicios: servicios,
+    opciones: opciones ?? this.opciones,
+    visible: visible,
+  );
 
   bool get variasRespuestas => tipo == 'multiple';
   int get opcionesActivas => opciones.where((o) => o.activo).length;

@@ -47,7 +47,7 @@ class PreguntaScreen extends ConsumerWidget {
               alVolver: () => context.pop(),
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 22, 16, 48),
+              padding: const EdgeInsets.fromLTRB(16, 22, 16, 0),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   const _Titulo('Lo que ve el cliente'),
@@ -94,23 +94,43 @@ class PreguntaScreen extends ConsumerWidget {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(6, 0, 6, 12),
                       child: Text('Sin opciones no se le muestra al cliente. Agrega al menos una.', style: archivo(16, 600, height: 1.3, color: SeimaColors.redText)),
+                    )
+                  else if (pregunta.opciones.length > 1)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(6, 0, 6, 12),
+                      child: Text('Arrastra el ≡ para cambiar el orden en que se muestran.', style: archivo(15, 500, height: 1.3, color: SeimaColors.muted)),
                     ),
-                  for (var i = 0; i < pregunta.opciones.length; i++) ...[
-                    FilaGestion(
-                      titulo: pregunta.opciones[i].etiqueta,
-                      detalle: [if (pregunta.opciones[i].descripcion != null) pregunta.opciones[i].descripcion!, pregunta.opciones[i].resumenEntrada].where((t) => t.isNotEmpty).join(' · '),
-                      activo: pregunta.opciones[i].activo,
-                      onActivo: (on) => _opcionActiva(context, notifier, pregunta.opciones[i], on),
-                      ordenable: true,
-                      onSubir: i > 0 ? () => _moverOpcion(context, notifier, pregunta, pregunta.opciones[i], -1) : null,
-                      onBajar: i < pregunta.opciones.length - 1 ? () => _moverOpcion(context, notifier, pregunta, pregunta.opciones[i], 1) : null,
-                      onTap: () => context.push('/catalogo/preguntas/${pregunta.id}/opcion/${pregunta.opciones[i].id}'),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                  const SizedBox(height: 6),
-                  SeimaButton(label: 'Agregar opción', icono: Icons.add, onPressed: () => context.push('/catalogo/preguntas/${pregunta.id}/opcion')),
                 ]),
+              ),
+            ),
+            // Las opciones van en una lista que se puede reordenar arrastrando.
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverReorderableList(
+                itemCount: pregunta.opciones.length,
+                proxyDecorator: arrastrandoFila,
+                onReorderItem: (viejo, nuevo) => _reordenarOpciones(context, notifier, pregunta, viejo, nuevo),
+                itemBuilder: (context, i) {
+                  final o = pregunta.opciones[i];
+                  return Padding(
+                    key: ValueKey(o.id),
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: FilaGestion(
+                      titulo: o.etiqueta,
+                      detalle: [if (o.descripcion != null) o.descripcion!, o.resumenEntrada].where((t) => t.isNotEmpty).join(' · '),
+                      activo: o.activo,
+                      onActivo: (on) => _opcionActiva(context, notifier, o, on),
+                      indiceArrastre: i,
+                      onTap: () => context.push('/catalogo/preguntas/${pregunta.id}/opcion/${o.id}'),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 48),
+              sliver: SliverToBoxAdapter(
+                child: SeimaButton(label: 'Agregar opción', icono: Icons.add, onPressed: () => context.push('/catalogo/preguntas/${pregunta.id}/opcion')),
               ),
             ),
           ],
@@ -164,8 +184,8 @@ class PreguntaScreen extends ConsumerWidget {
     if (context.mounted && error != null) avisar(context, error);
   }
 
-  Future<void> _moverOpcion(BuildContext context, PreguntasCotController notifier, PreguntaCot p, OpcionCot o, int delta) async {
-    final error = await notifier.moverOpcion(preguntaId: p.id, id: o.id, delta: delta);
+  Future<void> _reordenarOpciones(BuildContext context, PreguntasCotController notifier, PreguntaCot p, int viejo, int nuevo) async {
+    final error = await notifier.reordenarOpciones(p.id, viejo, nuevo);
     if (context.mounted && error != null) avisar(context, error);
   }
 }

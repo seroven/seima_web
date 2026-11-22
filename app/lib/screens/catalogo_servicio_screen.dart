@@ -57,7 +57,7 @@ class ServicioScreen extends ConsumerWidget {
               acciones: [BotonRedondo(icono: Icons.edit_outlined, tooltip: 'Cambiar nombre o ícono', onPressed: () => _editar(context, ref, servicio))],
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 40),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   FilaGestion(
@@ -81,22 +81,44 @@ class ServicioScreen extends ConsumerWidget {
                       padding: const EdgeInsets.fromLTRB(6, 0, 6, 12),
                       child: Text('Este servicio todavía no tiene preguntas. Crea una o agrega una que ya exista.', style: archivo(16, 500, height: 1.3, color: SeimaColors.muted)),
                     )
-                  else
-                    for (var i = 0; i < propias.length; i++) ...[
-                      FilaGestion(
-                        titulo: propias[i].texto,
-                        detalle: '${propias[i].resumenTipo} · ${_cuantas(propias[i].opcionesActivas)}${propias[i].servicios.length > 1 ? ' · en ${propias[i].servicios.length} servicios' : ''}',
-                        aviso: propias[i].activo && propias[i].opcionesActivas == 0 ? 'Sin opciones: no se muestra' : null,
-                        activo: propias[i].activo,
-                        onActivo: (on) => _activarPregunta(context, ref, propias[i], on),
-                        ordenable: true,
-                        onSubir: i > 0 ? () => _mover(context, ref, propias[i], -1) : null,
-                        onBajar: i < propias.length - 1 ? () => _mover(context, ref, propias[i], 1) : null,
-                        onTap: () => context.push('/catalogo/preguntas/${propias[i].id}'),
+                  else if (propias.length > 1)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(6, 0, 6, 12),
+                      child: Text('Arrastra el ≡ para cambiar el orden en que se hacen.', style: archivo(15, 500, height: 1.3, color: SeimaColors.muted)),
+                    ),
+                ]),
+              ),
+            ),
+            // Las preguntas van en una lista que se puede reordenar arrastrando.
+            if (!preguntasAsync.isLoading && !preguntasAsync.hasError && propias.isNotEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverReorderableList(
+                  itemCount: propias.length,
+                  proxyDecorator: arrastrandoFila,
+                  onReorderItem: (viejo, nuevo) => _reordenar(context, ref, propias, viejo, nuevo),
+                  itemBuilder: (context, i) {
+                    final p = propias[i];
+                    return Padding(
+                      key: ValueKey(p.id),
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: FilaGestion(
+                        titulo: p.texto,
+                        detalle: '${p.resumenTipo} · ${_cuantas(p.opcionesActivas)}${p.servicios.length > 1 ? ' · en ${p.servicios.length} servicios' : ''}',
+                        aviso: p.activo && p.opcionesActivas == 0 ? 'Sin opciones: no se muestra' : null,
+                        activo: p.activo,
+                        onActivo: (on) => _activarPregunta(context, ref, p, on),
+                        indiceArrastre: i,
+                        onTap: () => context.push('/catalogo/preguntas/${p.id}'),
                       ),
-                      const SizedBox(height: 10),
-                    ],
-                  const SizedBox(height: 14),
+                    );
+                  },
+                ),
+              ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
                   SeimaButton(label: 'Nueva pregunta', icono: Icons.add, onPressed: () => _nueva(context, ref, servicio)),
                   const SizedBox(height: 10),
                   BotonSuave(icono: Icons.link, label: 'Agregar una pregunta que ya existe', onPressed: () => _agregarExistente(context, ref, servicio, todas)),
@@ -137,8 +159,8 @@ class ServicioScreen extends ConsumerWidget {
     if (context.mounted && error != null) avisar(context, error);
   }
 
-  Future<void> _mover(BuildContext context, WidgetRef ref, PreguntaCot pregunta, int delta) async {
-    final error = await ref.read(preguntasCotProvider.notifier).mover(servicioId: id, id: pregunta.id, delta: delta);
+  Future<void> _reordenar(BuildContext context, WidgetRef ref, List<PreguntaCot> propias, int viejo, int nuevo) async {
+    final error = await ref.read(preguntasCotProvider.notifier).reordenarDeServicio(propias, viejo, nuevo);
     if (context.mounted && error != null) avisar(context, error);
   }
 

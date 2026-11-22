@@ -55,24 +55,30 @@ class TiposTrabajoScreen extends ConsumerWidget {
                 ),
               ],
               data: (tipos) => [
+                const SliverPadding(
+                  padding: EdgeInsets.fromLTRB(22, 20, 22, 14),
+                  sliver: SliverToBoxAdapter(child: _Ayuda('Arrastra el ≡ para cambiar el orden. Los tipos desactivados no se pueden elegir en obras nuevas.')),
+                ),
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 112),
-                  sliver: SliverList.separated(
-                    itemCount: tipos.length + 1,
-                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 112),
+                  sliver: SliverReorderableList(
+                    itemCount: tipos.length,
+                    proxyDecorator: arrastrandoFila,
+                    onReorderItem: (viejo, nuevo) => _reordenar(context, ref, viejo, nuevo),
                     itemBuilder: (context, i) {
-                      if (i == 0) return const _Ayuda('Los tipos desactivados no se pueden elegir en obras nuevas.');
-                      final tipo = tipos[i - 1];
-                      return FilaGestion(
-                        titulo: tipo.nombre,
-                        icono: iconoDeCategoria(tipo.slug),
-                        detalle: _obras(tipo.obras),
-                        activo: tipo.activo,
-                        onActivo: (on) => _activar(context, ref, tipo, on),
-                        ordenable: true,
-                        onSubir: i > 1 ? () => _mover(context, ref, tipo, -1) : null,
-                        onBajar: i < tipos.length ? () => _mover(context, ref, tipo, 1) : null,
-                        onTap: () => _renombrar(context, ref, tipo),
+                      final tipo = tipos[i];
+                      return Padding(
+                        key: ValueKey(tipo.id),
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: FilaGestion(
+                          titulo: tipo.nombre,
+                          icono: iconoDeCategoria(tipo.slug),
+                          detalle: _obras(tipo.obras),
+                          activo: tipo.activo,
+                          onActivo: (on) => _activar(context, ref, tipo, on),
+                          indiceArrastre: i,
+                          onTap: () => _renombrar(context, ref, tipo),
+                        ),
                       );
                     },
                   ),
@@ -115,8 +121,8 @@ class TiposTrabajoScreen extends ConsumerWidget {
     if (context.mounted && error != null) avisar(context, error);
   }
 
-  Future<void> _mover(BuildContext context, WidgetRef ref, TipoTrabajo tipo, int delta) async {
-    final error = await ref.read(tiposProvider.notifier).mover(tipo.id, delta);
+  Future<void> _reordenar(BuildContext context, WidgetRef ref, int viejo, int nuevo) async {
+    final error = await ref.read(tiposProvider.notifier).reordenar(viejo, nuevo);
     if (context.mounted && error != null) avisar(context, error);
   }
 }

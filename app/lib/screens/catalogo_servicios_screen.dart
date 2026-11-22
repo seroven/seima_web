@@ -73,28 +73,34 @@ class ServiciosScreen extends ConsumerWidget {
               ],
               data: (servicios) => [
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 112),
-                  sliver: SliverList.separated(
-                    itemCount: servicios.length + 1,
-                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 14),
+                  sliver: SliverToBoxAdapter(
+                    child: Text(
+                      'Toca un servicio para ver y editar sus preguntas. Arrastra el ≡ para cambiar el orden.',
+                      style: archivo(15, 500, height: 1.3, color: SeimaColors.muted),
+                    ),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 112),
+                  sliver: SliverReorderableList(
+                    itemCount: servicios.length,
+                    proxyDecorator: arrastrandoFila,
+                    onReorderItem: (viejo, nuevo) => _reordenar(context, ref, viejo, nuevo),
                     itemBuilder: (context, i) {
-                      if (i == 0) {
-                        return Padding(
-                          padding: const EdgeInsets.fromLTRB(6, 0, 6, 4),
-                          child: Text('Toca un servicio para ver y editar sus preguntas.', style: archivo(15, 500, height: 1.3, color: SeimaColors.muted)),
-                        );
-                      }
-                      final servicio = servicios[i - 1];
-                      return FilaGestion(
-                        titulo: servicio.nombre,
-                        icono: iconoDeServicio(servicio.icono),
-                        detalle: servicio.preguntas == 0 ? 'Sin preguntas' : (servicio.preguntas == 1 ? '1 pregunta' : '${servicio.preguntas} preguntas'),
-                        activo: servicio.activo,
-                        onActivo: (on) => _activar(context, ref, servicio, on),
-                        ordenable: true,
-                        onSubir: i > 1 ? () => _mover(context, ref, servicio, -1) : null,
-                        onBajar: i < servicios.length ? () => _mover(context, ref, servicio, 1) : null,
-                        onTap: () => context.push('/catalogo/servicios/${servicio.id}'),
+                      final servicio = servicios[i];
+                      return Padding(
+                        key: ValueKey(servicio.id),
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: FilaGestion(
+                          titulo: servicio.nombre,
+                          icono: iconoDeServicio(servicio.icono),
+                          detalle: servicio.preguntas == 0 ? 'Sin preguntas' : (servicio.preguntas == 1 ? '1 pregunta' : '${servicio.preguntas} preguntas'),
+                          activo: servicio.activo,
+                          onActivo: (on) => _activar(context, ref, servicio, on),
+                          indiceArrastre: i,
+                          onTap: () => context.push('/catalogo/servicios/${servicio.id}'),
+                        ),
                       );
                     },
                   ),
@@ -133,8 +139,8 @@ class ServiciosScreen extends ConsumerWidget {
     if (context.mounted && error != null) avisar(context, error);
   }
 
-  Future<void> _mover(BuildContext context, WidgetRef ref, ServicioCot servicio, int delta) async {
-    final error = await ref.read(serviciosCotProvider.notifier).mover(servicio.id, delta);
+  Future<void> _reordenar(BuildContext context, WidgetRef ref, int viejo, int nuevo) async {
+    final error = await ref.read(serviciosCotProvider.notifier).reordenar(viejo, nuevo);
     if (context.mounted && error != null) avisar(context, error);
   }
 }

@@ -17,9 +17,7 @@ class FilaGestion extends StatelessWidget {
     this.activo,
     this.onActivo,
     this.onTap,
-    this.onSubir,
-    this.onBajar,
-    this.ordenable = false,
+    this.indiceArrastre,
   });
 
   final String titulo;
@@ -33,11 +31,10 @@ class FilaGestion extends StatelessWidget {
   final bool? activo;
   final ValueChanged<bool>? onActivo;
   final VoidCallback? onTap;
-  final VoidCallback? onSubir;
-  final VoidCallback? onBajar;
 
-  /// Muestra las flechas (aunque una esté apagada porque ya es la primera o la última).
-  final bool ordenable;
+  /// Si viene, la fila muestra el asa «≡» para arrastrarla y cambiarla de lugar. Es la posición de la fila en la
+  /// lista, y la fila tiene que estar dentro de una `SliverReorderableList`.
+  final int? indiceArrastre;
 
   @override
   Widget build(BuildContext context) {
@@ -68,14 +65,15 @@ class FilaGestion extends StatelessWidget {
                   ],
                 ),
               ),
-              if (ordenable) ...[
-                const SizedBox(width: 6),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _Flecha(icono: Icons.keyboard_arrow_up, tooltip: 'Subir', onPressed: onSubir),
-                    _Flecha(icono: Icons.keyboard_arrow_down, tooltip: 'Bajar', onPressed: onBajar),
-                  ],
+              if (indiceArrastre != null) ...[
+                const SizedBox(width: 2),
+                // Se arrastra desde el asa (no desde toda la fila), así la lista se puede seguir deslizando con el dedo.
+                ReorderableDragStartListener(
+                  index: indiceArrastre!,
+                  child: Semantics(
+                    label: 'Arrastra para cambiar de lugar',
+                    child: const SizedBox(width: 44, height: 48, child: Icon(Icons.drag_indicator, size: 28, color: SeimaColors.muted)),
+                  ),
                 ),
               ],
               if (onActivo != null) ...[
@@ -93,24 +91,25 @@ class FilaGestion extends StatelessWidget {
   }
 }
 
-class _Flecha extends StatelessWidget {
-  const _Flecha({required this.icono, required this.tooltip, required this.onPressed});
-
-  final IconData icono;
-  final String tooltip;
-  final VoidCallback? onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onPressed,
-        child: SizedBox(width: 42, height: 30, child: Icon(icono, size: 26, color: onPressed == null ? SeimaColors.tint2 : SeimaColors.ink)),
-      ),
-    );
-  }
+/// Cómo se ve una fila mientras se arrastra: crece un poco y levanta sombra.
+Widget arrastrandoFila(Widget hijo, int indice, Animation<double> animacion) {
+  return AnimatedBuilder(
+    animation: animacion,
+    builder: (context, child) {
+      final t = Curves.easeOut.transform(animacion.value);
+      return Transform.scale(
+        scale: 1 + 0.03 * t,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [BoxShadow(color: const Color(0x38000000), blurRadius: 18 * t, offset: Offset(0, 6 * t))],
+          ),
+          child: child,
+        ),
+      );
+    },
+    child: hijo,
+  );
 }
 
 /// Pide un texto en una hoja que sube desde abajo. Devuelve el texto (sin espacios de más) o null si se cancela.

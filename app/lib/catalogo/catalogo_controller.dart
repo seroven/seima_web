@@ -5,15 +5,12 @@ import '../projects/proyectos_controller.dart';
 import 'catalogo.dart';
 import 'catalogo_api.dart';
 
-/// Cambia de lugar un elemento de una lista de ids (arriba = -1, abajo = +1). null si no se puede mover.
-List<String>? movido(List<String> ids, String id, int delta) {
-  final i = ids.indexOf(id);
-  final j = i + delta;
-  if (i < 0 || j < 0 || j >= ids.length) return null;
-  final copia = [...ids];
-  final otro = copia[j];
-  copia[j] = copia[i];
-  copia[i] = otro;
+/// Lo que pasa al arrastrar un elemento de [viejo] a [nuevo] en una lista reordenable de Flutter
+/// (`onReorderItem`: [nuevo] ya es la posición final del elemento, contando que sale de su sitio). Devuelve una copia.
+List<T> reordenado<T>(List<T> lista, int viejo, int nuevo) {
+  final copia = [...lista];
+  if (viejo < 0 || viejo >= copia.length) return copia;
+  copia.insert(nuevo.clamp(0, copia.length - 1), copia.removeAt(viejo));
   return copia;
 }
 
@@ -33,10 +30,21 @@ class TiposController extends AsyncNotifier<List<TipoTrabajo>> {
 
   Future<String?> activar(String id, bool activo) => _hacer((api) => api.cambiarTipo(id, activo: activo));
 
-  Future<String?> mover(String id, int delta) async {
-    final ids = movido([for (final t in state.value ?? const <TipoTrabajo>[]) t.id], id, delta);
-    if (ids == null) return null;
-    return _hacer((api) => api.ordenarTipos(ids));
+  /// Arrastrar: la lista cambia YA en pantalla y luego se guarda; si falla, se vuelve a cargar lo que hay en el servidor.
+  Future<String?> reordenar(int viejo, int nuevo) async {
+    final actual = state.value;
+    if (actual == null) return null;
+    final lista = reordenado(actual, viejo, nuevo);
+    state = AsyncData(lista);
+    final api = ref.read(catalogoApiProvider);
+    try {
+      await api.ordenarTipos([for (final t in lista) t.id]);
+      ref.invalidate(categoriasProvider);
+      return null;
+    } on ApiException catch (error) {
+      state = AsyncData(await _intentar(api.tipos, actual));
+      return error.message;
+    }
   }
 
   Future<String?> _hacer(Future<Object?> Function(CatalogoApi api) accion) async {
@@ -80,10 +88,20 @@ class ServiciosCotController extends AsyncNotifier<List<ServicioCot>> {
     return _hacer((api) => api.cambiarServicio(id, nombre: nombre, icono: icono, activo: activo));
   }
 
-  Future<String?> mover(String id, int delta) async {
-    final ids = movido([for (final s in state.value ?? const <ServicioCot>[]) s.id], id, delta);
-    if (ids == null) return null;
-    return _hacer((api) => api.ordenarServicios(ids));
+  Future<String?> reordenar(int viejo, int nuevo) async {
+    final actual = state.value;
+    if (actual == null) return null;
+    final lista = reordenado(actual, viejo, nuevo);
+    state = AsyncData(lista);
+    final api = ref.read(catalogoApiProvider);
+    try {
+      await api.ordenarServicios([for (final s in lista) s.id]);
+      ref.invalidate(serviciosProvider);
+      return null;
+    } on ApiException catch (error) {
+      state = AsyncData(await _intentar(api.servicios, actual));
+      return error.message;
+    }
   }
 
   Future<void> recargar() async {
@@ -128,12 +146,23 @@ class PreguntasCotController extends AsyncNotifier<List<PreguntaCot>> {
     return _hacer((api) => api.cambiarPregunta(id, texto: texto, etiqueta: etiqueta, tipo: tipo, activo: activo, servicios: servicios));
   }
 
-  /// Sube o baja una pregunta DENTRO de un servicio (las de los demás servicios no se mueven).
-  Future<String?> mover({required String servicioId, required String id, required int delta}) {
-    final delServicio = [...(state.value ?? const <PreguntaCot>[]).where((p) => p.aplicaA(servicioId))]..sort((a, b) => a.orden.compareTo(b.orden));
-    final ids = movido([for (final p in delServicio) p.id], id, delta);
-    if (ids == null) return Future.value();
-    return _hacer((api) => api.ordenarPreguntas(ids));
+  /// Arrastrar una pregunta DENTRO de un servicio. [propias] son las preguntas de ese servicio en el orden en que se ven.
+  /// Se reparten entre ellas los mismos números de orden que ya tenían, así las de los demás servicios no se mueven.
+  Future<String?> reordenarDeServicio(List<PreguntaCot> propias, int viejo, int nuevo) async {
+    final actual = state.value;
+    if (actual == null) return null;
+    final nuevoOrden = reordenado(propias, viejo, nuevo);
+    final ordenes = [for (final p in propias) p.orden]..sort();
+    final ordenNuevo = {for (var i = 0; i < nuevoOrden.length; i++) nuevoOrden[i].id: ordenes[i]};
+    state = AsyncData([for (final p in actual) ordenNuevo.containsKey(p.id) ? p.copiaCon(orden: ordenNuevo[p.id]) : p]);
+    final api = ref.read(catalogoApiProvider);
+    try {
+      await api.ordenarPreguntas([for (final p in nuevoOrden) p.id]);
+      return null;
+    } on ApiException catch (error) {
+      state = AsyncData(await _intentar(api.preguntas, actual));
+      return error.message;
+    }
   }
 
   Future<String?> crearOpcion(String preguntaId, {required String etiqueta, String? descripcion, required String tipoEntrada, String? entradaAyuda}) {
@@ -146,12 +175,21 @@ class PreguntasCotController extends AsyncNotifier<List<PreguntaCot>> {
     );
   }
 
-  Future<String?> moverOpcion({required String preguntaId, required String id, required int delta}) {
-    final pregunta = (state.value ?? const <PreguntaCot>[]).where((p) => p.id == preguntaId).firstOrNull;
-    if (pregunta == null) return Future.value();
-    final ids = movido([for (final o in pregunta.opciones) o.id], id, delta);
-    if (ids == null) return Future.value();
-    return _hacer((api) => api.ordenarOpciones(preguntaId, ids));
+  Future<String?> reordenarOpciones(String preguntaId, int viejo, int nuevo) async {
+    final actual = state.value;
+    final pregunta = actual?.where((p) => p.id == preguntaId).firstOrNull;
+    if (actual == null || pregunta == null) return null;
+    final lista = reordenado(pregunta.opciones, viejo, nuevo);
+    final conOrden = [for (var i = 0; i < lista.length; i++) lista[i].conOrden(i)];
+    state = AsyncData([for (final p in actual) p.id == preguntaId ? p.copiaCon(opciones: conOrden) : p]);
+    final api = ref.read(catalogoApiProvider);
+    try {
+      await api.ordenarOpciones(preguntaId, [for (final o in lista) o.id]);
+      return null;
+    } on ApiException catch (error) {
+      state = AsyncData(await _intentar(api.preguntas, actual));
+      return error.message;
+    }
   }
 
   Future<void> _recargar() async {
@@ -168,6 +206,15 @@ class PreguntasCotController extends AsyncNotifier<List<PreguntaCot>> {
     } on ApiException catch (error) {
       return error.message;
     }
+  }
+}
+
+/// Vuelve a pedir la lista al servidor; si tampoco se puede, deja la que había antes.
+Future<List<T>> _intentar<T>(Future<List<T>> Function() cargar, List<T> respaldo) async {
+  try {
+    return await cargar();
+  } on ApiException {
+    return respaldo;
   }
 }
 
