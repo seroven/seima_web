@@ -145,7 +145,7 @@
 1. **Fase 2 — app base:** el código está. Falta `flutter run` en un Android real (entrar, huella y, con Firebase lleno, un aviso).
 2. **Fase 3 — en código:** fotos y videos de Antes, Durante y Después. Un video de más de 1 minuto pide el tramo. La subida queda en cola y, al salir de la app, se programa con WorkManager (solo Wi-Fi si el ajuste está activo). No está probada en un celular. Siguen sin hacerse la subida por partes y el recorte de 15 segundos del comparador.
 3. **Fase 4:** par horizontal con deslizador; vertical, lado a lado. La portada muestra el después y, al mantener, el antes. Al publicar se comparte el título por WhatsApp. El enlace de la obra espera a que la web esté conectada.
-4. **Fase 5 — en curso:** lista con filtro, detalle, WhatsApp, llamar y cambiar el estado. Si el aviso trae el id, abre esa cotización. Falta probarlo con Firebase en un celular.
+4. **Fase 5 — en curso:** lista con filtro, detalle, WhatsApp, llamar y cambiar el estado. El aviso usa el canal `seima_avisos` y también se muestra con la app abierta. Falta verlo en el celular, con las variables de Firebase en la API de Render.
 5. **Fase 6:** el catálogo lee la API, el comparador distingue el par vertical y el visor reproduce el video con sonido. Falta ver un par vertical real en el navegador.
 6. Desplegar la API en Render y aplicar `migration:run` allí. En la base local de Sebas (`localhost:5432/postgres`, schema `seima`) la migración `AppMovil` ya corrió el 2026-11-21.
 
@@ -158,6 +158,10 @@
 ## 4. Historial (más reciente primero)
 
 ### 2026-11-22
+
+**Avisos en el celular**
+- El canal de Android se llama `seima_avisos`, con importancia alta. La app lo crea al entrar, lo declara en el manifiesto y, si la app está abierta, muestra el aviso ahí. La API manda el aviso a ese mismo canal y anota cuántos celulares lo aceptaron.
+- El celular apunta a la API de QA en Render. Esas variables de Firebase tienen que estar en ese servicio; las de la PC no le llegan.
 
 **Logo e icono de marca (web y app)**
 - Sebas dejó `logo.png` e `icono.png` en la raíz. **Los moví a `docs/fuentes/marca/`** como originales (el logo pesa 1,2 MB); los usados salen de ahí, recortados y optimizados. Ambos tienen fondo transparente.
