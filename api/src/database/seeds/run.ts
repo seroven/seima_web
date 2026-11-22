@@ -13,10 +13,10 @@ async function main() {
   if (!VALIDOS.includes(target)) throw new Error(`Seed desconocido: "${target}" (usa ${VALIDOS.join(', ')})`);
   await AppDataSource.initialize();
   try {
-    if (target === 'categories' || target === 'all' || target === 'demo') console.log(`Categorías: ${await seedCategories(AppDataSource)} listas`);
+    if (target === 'categories' || target === 'all' || target === 'demo') console.log(`Categorías: ${await seedCategories(AppDataSource)} nuevas (las que ya existen no se tocan)`);
     if (target === 'catalog' || target === 'all') {
       const c = await seedCatalog(AppDataSource);
-      console.log(`Catálogo del cotizador: ${c.servicios} servicios, ${c.preguntas} preguntas, ${c.opciones} opciones`);
+      console.log(`Catálogo del cotizador: ${c.servicios} servicios, ${c.preguntas} preguntas y ${c.opciones} opciones nuevas (lo que ya existe no se toca)`);
     }
     if (target === 'admin') console.log(`Administrador: ${await seedAdmin(AppDataSource)}`);
     if (target === 'demo') console.log(`Proyectos de prueba: ${await seedDemo(AppDataSource)} cargados`);

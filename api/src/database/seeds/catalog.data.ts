@@ -1,8 +1,8 @@
 // Catálogo del cotizador: servicios y las preguntas que se hacen según el servicio elegido.
-// Para cambiar una pregunta u opción: edita este archivo y corre `npm run migration:run` (o `seed:catalog`). Es idempotente:
-// actualiza lo que existe y agrega lo nuevo por `slug`; NUNCA borra, para no romper respuestas ya guardadas (para retirar algo,
-// ponle `activo = false`). OJO: cuando exista el panel administrativo, la base pasa a ser la fuente de verdad y este seed
-// deberá limitarse a insertar lo que falta (si no, pisaría lo que se edite desde el panel).
+// Es el catálogo BASE: sirve para armar una base nueva (o de pruebas). Desde que el catálogo se gestiona en la app de Luis,
+// la BASE es la fuente de verdad: el seed (`npm run seed:catalog`, que también corre con `migration:run`) solo AGREGA lo que
+// falta, por `slug`. NUNCA modifica ni borra lo que ya existe, así que editar un texto aquí NO cambia una base ya cargada:
+// para eso se usa la app. Para retirar algo se desactiva (`activo = false`); hay respuestas guardadas que apuntan a estas filas.
 //
 // Modelo: TODO es "pregunta → opciones". Una opción puede pedir un dato extra al elegirla (`entrada`):
 //   - 'texto'  (p. ej. "Otro" → ¿cuál?)             `ayuda` = texto de ejemplo del campo

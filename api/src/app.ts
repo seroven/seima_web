@@ -37,9 +37,9 @@ export function createApp(dataSource: DataSource) {
 
   // Módulos (cada uno: repositorio → servicio → controlador → rutas)
   const auth = buildAuthModule(dataSource);
-  const categories = buildCategoriesModule(dataSource);
+  const categories = buildCategoriesModule(dataSource, auth.authenticate);
   const projects = buildProjectsModule(dataSource, auth.authenticate);
-  const catalog = buildCatalogModule(dataSource);
+  const catalog = buildCatalogModule(dataSource, auth.authenticate);
   const devices = buildDevicesModule(dataSource, auth.authenticate);
   const quotes = buildQuotesModule(dataSource, projects.repository, catalog.repository, auth.authenticate, async (aviso) => {
     await enviarAvisoCotizacion(aviso, await devices.service.tokens());
@@ -57,6 +57,7 @@ export function createApp(dataSource: DataSource) {
   // ---- App de Luis (JWT) ----
   api.use('/auth', auth.router);
   api.use('/devices', devices.router);
+  api.use('/catalog', catalog.panelRouter); // gestión del cotizador: servicios, preguntas y opciones
 
   app.use(env.API_PREFIX, api);
   app.get('/health', healthRoutes(dataSource)); // alias sin prefijo para el chequeo del hosting

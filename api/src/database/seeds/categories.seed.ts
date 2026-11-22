@@ -1,7 +1,7 @@
 import type { DataSource } from 'typeorm';
 import { Category } from '../../modules/categories/category.entity';
 
-// Mismas categorías que el catálogo de la web (web/src/data/projects.ts). Se pueden volver a correr sin duplicar.
+// Tipos de trabajo base (los mismos del catálogo de la web). Se pueden volver a correr sin duplicar.
 export const CATEGORIAS = [
   { slug: 'cocinas', nombre: 'Cocinas' },
   { slug: 'banos', nombre: 'Baños' },
@@ -13,10 +13,14 @@ export const CATEGORIAS = [
   { slug: 'locales', nombre: 'Locales comerciales' },
 ];
 
+/**
+ * Agrega SOLO los que faltan (por `slug`). Desde que los tipos de trabajo se gestionan en la app de Luis, la base es la
+ * fuente de verdad: no se pisa el nombre, el orden ni si está activo. Devuelve cuántos agregó.
+ */
 export async function seedCategories(ds: DataSource): Promise<number> {
-  await ds.getRepository(Category).upsert(
-    CATEGORIAS.map((c, i) => ({ ...c, orden: i, activo: true })),
-    ['slug'],
-  );
-  return CATEGORIAS.length;
+  const repo = ds.getRepository(Category);
+  const existentes = new Set((await repo.find({ select: { slug: true } })).map((c) => c.slug));
+  const faltan = CATEGORIAS.map((c, i) => ({ ...c, orden: i, activo: true })).filter((c) => !existentes.has(c.slug));
+  if (faltan.length) await repo.insert(faltan);
+  return faltan.length;
 }

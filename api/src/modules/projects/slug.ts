@@ -1,11 +1,4 @@
+import { slugify as slugBase } from '../../common/utils/slug';
+
 /** Slug a partir del nombre. Luis no lo escribe. */
-export function slugify(titulo: string): string {
-  const base = titulo
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 110);
-  return base || 'proyecto';
-}
+export const slugify = (titulo: string): string => slugBase(titulo, { max: 110, vacio: 'proyecto' });

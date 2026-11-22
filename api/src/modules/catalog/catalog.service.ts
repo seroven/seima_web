@@ -31,7 +31,8 @@ export class CatalogService {
     const activos = new Set(servicios.map((s) => s.slug));
     return {
       servicios: servicios.map((s) => ({ slug: s.slug, nombre: s.nombre, icono: s.icono })),
-      preguntas: preguntas.map((p) => ({
+      // Una pregunta sin opciones activas no se muestra (el cliente no podría contestarla).
+      preguntas: preguntas.filter((p) => p.opciones.length > 0).map((p) => ({
         slug: p.slug,
         texto: p.texto,
         etiqueta: p.etiqueta,

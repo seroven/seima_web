@@ -24,6 +24,9 @@ export class Category {
   @ManyToMany(() => Project, (p) => p.categorias, { onDelete: 'RESTRICT' })
   proyectos?: Relation<Project[]>;
 
+  /** Cuántas obras la usan. No es una columna: la llena `findAllWithCounts` para el panel. */
+  obras?: number;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 
