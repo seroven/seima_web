@@ -24,9 +24,24 @@ function messaging() {
   return getMessaging();
 }
 
+/** El mismo id que crea la app y que declara el manifiesto. Si no coincide, Android esconde el aviso. */
+export const canalAvisos = 'seima_avisos';
+
 /** Texto sin datos del cliente (ni teléfono ni nombre). */
 export function textoAviso(aviso: AvisoCotizacion): string {
   return aviso.distrito ? `Nueva cotización: ${aviso.servicio}, ${aviso.distrito}` : `Nueva cotización: ${aviso.servicio}`;
+}
+
+export function mensajeDeAviso(aviso: AvisoCotizacion, tokens: string[]) {
+  return {
+    tokens,
+    notification: { title: 'Nueva cotización', body: textoAviso(aviso) },
+    data: { quoteId: aviso.id },
+    android: {
+      priority: 'high' as const,
+      notification: { channelId: canalAvisos, sound: 'default' },
+    },
+  };
 }
 
 export async function enviarAvisoCotizacion(aviso: AvisoCotizacion, tokens: string[]): Promise<void> {
@@ -37,12 +52,12 @@ export async function enviarAvisoCotizacion(aviso: AvisoCotizacion, tokens: stri
       logger.info({ quoteId: aviso.id }, 'Firebase no está configurado: la cotización quedó guardada sin aviso');
       return;
     }
-    await fcm.sendEachForMulticast({
-      tokens,
-      notification: { title: 'Nueva cotización', body: textoAviso(aviso) },
-      data: { quoteId: aviso.id },
-      android: { priority: 'high' },
-    });
+    const resultado = await fcm.sendEachForMulticast(mensajeDeAviso(aviso, tokens));
+    const rechazados = resultado.responses.filter((respuesta) => respuesta.error).length;
+    logger.info(
+      { quoteId: aviso.id, enviados: resultado.successCount, rechazados },
+      rechazados > 0 ? 'Algunos celulares rechazaron el aviso' : 'Aviso enviado',
+    );
   } catch (err) {
     logger.warn({ err, quoteId: aviso.id }, 'No se pudo enviar el aviso de la cotización');
   }
