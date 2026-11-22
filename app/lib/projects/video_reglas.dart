@@ -1,15 +1,14 @@
 const maxVideoGaleriaMs = 60000;
 const maxVideoBytes = 50 * 1024 * 1024;
 
-/// null si el video se puede subir a la galería.
+/// null si el archivo cabe. Si dura más de 1 minuto, primero se recorta.
 String? rechazoDeVideo({required int bytes, required int duracionMs}) {
   if (duracionMs <= 0) return 'No se pudo leer la duración del video.';
   if (bytes > maxVideoBytes) return 'El video pesa más de 50 MB. Elige uno más corto.';
-  if (duracionMs > maxVideoGaleriaMs) {
-    return 'Este video dura más de 1 minuto. Todavía no se puede recortar aquí: elige uno de 1 minuto o menos.';
-  }
   return null;
 }
+
+bool videoPideRecorte(int duracionMs) => duracionMs > maxVideoGaleriaMs;
 
 bool videoEsperaWifi({required bool soloWifi, required bool hayWifi}) => soloWifi && !hayWifi;
 

@@ -8,7 +8,9 @@ import 'package:video_player/video_player.dart';
 
 import '../projects/proyecto.dart';
 import '../projects/proyectos_controller.dart';
+import '../projects/video_nativo.dart';
 import '../projects/video_reglas.dart';
+import 'recorte_screen.dart';
 import '../settings/ajustes_locales.dart';
 import '../theme/seima_colors.dart';
 import '../theme/seima_theme.dart';
@@ -49,7 +51,7 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
             children: [
               Text('Fotos y videos de ${nombreEtapa(widget.etapa)}', style: archivo(28, 800, width: 118, height: 1.05)),
               const SizedBox(height: 8),
-              Text('Los videos duran como máximo 1 minuto y, por defecto, solo se suben con Wi-Fi.', style: archivo(16, 500, color: SeimaColors.muted)),
+              Text('Si el video dura más de 1 minuto, eliges el tramo. Por defecto solo se sube con Wi-Fi.', style: archivo(16, 500, color: SeimaColors.muted)),
               const SizedBox(height: 16),
               if (ocupado)
                 Padding(
@@ -128,13 +130,26 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
     }
     final archivo = File(video.path);
     final bytes = await archivo.length();
-    final duracion = await _duracion(video.path);
+    final leida = await _duracion(video.path);
     if (!mounted) return;
-    if (duracion == null) {
+    if (leida == null) {
       setState(() => _error = 'No se pudo leer el video.');
       return;
     }
-    final rechazo = rechazoDeVideo(bytes: bytes, duracionMs: duracion);
+    var ruta = video.path;
+    var duracion = leida;
+    if (videoPideRecorte(duracion)) {
+      final tramo = await Navigator.of(context).push<TramoElegido>(
+        MaterialPageRoute(
+          builder: (_) => RecorteScreen(ruta: ruta, duracionMs: duracion, topeMs: maxVideoGaleriaMs),
+        ),
+      );
+      if (tramo == null || !mounted) return;
+      ruta = tramo.ruta;
+      duracion = tramo.duracionMs;
+    }
+    final peso = await File(ruta).length();
+    final rechazo = rechazoDeVideo(bytes: videoPideRecorte(leida) ? peso : bytes, duracionMs: duracion);
     if (rechazo != null) {
       setState(() => _error = rechazo);
       return;
@@ -146,7 +161,7 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
     });
     final mensaje = await ref.read(proyectoProvider(widget.id).notifier).subirVideo(
       etapa: widget.etapa,
-      ruta: video.path,
+      ruta: ruta,
       nombre: video.name.isEmpty ? 'video.mp4' : video.name,
       duracionMs: duracion,
     );

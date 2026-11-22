@@ -2,11 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:seima/projects/video_reglas.dart';
 
 void main() {
-  test('rechaza un video largo o pesado', () {
+  test('rechaza un video ilegible o pesado', () {
     expect(rechazoDeVideo(bytes: 1000, duracionMs: 0), 'No se pudo leer la duración del video.');
     expect(rechazoDeVideo(bytes: maxVideoBytes + 1, duracionMs: 10000), contains('50 MB'));
-    expect(rechazoDeVideo(bytes: 1000, duracionMs: maxVideoGaleriaMs + 1), contains('1 minuto'));
     expect(rechazoDeVideo(bytes: 1000, duracionMs: maxVideoGaleriaMs), isNull);
+    expect(videoPideRecorte(maxVideoGaleriaMs), isFalse);
+    expect(videoPideRecorte(maxVideoGaleriaMs + 1), isTrue);
   });
 
   test('el video espera Wi-Fi solo si el ajuste está activo', () {
