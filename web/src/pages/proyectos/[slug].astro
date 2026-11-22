@@ -37,11 +37,12 @@ const etapasConFotos = etapas
   .map((e) => ({ ...e, tipos: tiposPara(e.fotos.length) }));
 const ordenadas = fotosOrdenadas(p);
 const globalIndex = (f: Foto) => ordenadas.indexOf(f);
+// Área y duración son opcionales: si no se cargaron, no se muestran (ni como «[DATO REAL]»).
 const meta = [
   { k: 'Distrito', v: show(p.distrito) },
-  { k: 'Área', v: show(p.areaM2, ' m²') },
-  { k: 'Duración', v: show(p.dias, ' días') },
-  { k: 'Servicios', v: p.servicios.join(' · ') },
+  ...(p.areaM2 ? [{ k: 'Área', v: `${p.areaM2} m²` }] : []),
+  ...(p.dias ? [{ k: 'Duración', v: `${p.dias} ${p.dias === 1 ? 'día' : 'días'}` }] : []),
+  ...(p.servicios.length ? [{ k: 'Servicios', v: p.servicios.join(' · ') }] : []),
 ];
 // Compartir: abre WhatsApp con el enlace de esta ficha (no necesita el número de Luis).
 const cotizar = `/cotizador?categoria=${p.categoria}&proyecto=${p.slug}`;

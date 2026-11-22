@@ -4,7 +4,11 @@ interface Props {
   size?: number;
 }
 
-export default function Icon({ name, size = 28 }: Props) {
+/** Los que sabe dibujar. Cualquier otro nombre (p. ej. un servicio nuevo creado desde la app) se ve con el genérico. */
+const CONOCIDOS = ['cocinas', 'banos', 'departamentos', 'melamina', 'techos', 'remodelaciones', 'locales', 'divisiones', 'enchapado', 'electricidad', 'persona', 'empresa', 'check', 'arrow-right', 'arrow-left', 'camera', 'chevron-up', 'chevron-down', 'close'];
+
+export default function Icon({ name: pedido, size = 28 }: Props) {
+  const name = CONOCIDOS.includes(pedido) ? pedido : 'generico';
   return (
     <svg className="ui-icon" viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {name === 'cocinas' && (<><path d="M6 3h12l2.5 5h-17z" /><path d="M4 12h16v8H4z" /><path d="M8 16h.01M12 16h.01M16 16h.01" strokeWidth="3" /></>)}
@@ -26,6 +30,7 @@ export default function Icon({ name, size = 28 }: Props) {
       {name === 'chevron-up' && <path d="M6 15l6-6 6 6" strokeWidth="2.4" />}
       {name === 'chevron-down' && <path d="M6 9l6 6 6-6" strokeWidth="2.4" />}
       {name === 'close' && <path d="M6 6l12 12M18 6 6 18" strokeWidth="2.4" />}
+      {name === 'generico' && (<><path d="M12 3l9 4.5-9 4.5-9-4.5z" /><path d="M3 12l9 4.5 9-4.5" /><path d="M3 16.5l9 4.5 9-4.5" /></>)}
     </svg>
   );
 }

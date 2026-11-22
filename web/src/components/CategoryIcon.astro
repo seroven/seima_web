@@ -2,6 +2,9 @@
 // Íconos de línea (24×24) de cada ambiente. Dibujados para SEIMA; heredan el color del texto.
 interface Props { slug: string; size?: number }
 const { slug, size = 28 } = Astro.props;
+// Un tipo de trabajo nuevo (creado desde la app) no tiene ícono propio: se dibuja el genérico.
+const CONOCIDOS = ['', 'cocinas', 'banos', 'departamentos', 'melamina', 'techos', 'cocheras-fachadas', 'remodelaciones', 'locales'];
+const conocido = CONOCIDOS.includes(slug);
 ---
 <svg class="cicon" viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
   {slug === '' && (<>
@@ -31,6 +34,9 @@ const { slug, size = 28 } = Astro.props;
   </>)}
   {slug === 'locales' && (<>
     <path d="M3 9l1.5-5h15L21 9" /><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0" /><path d="M4.5 12v8h15v-8" /><path d="M10 20v-5h4v5" />
+  </>)}
+  {!conocido && (<>
+    <path d="M12 3l9 4.5-9 4.5-9-4.5z" /><path d="M3 12l9 4.5 9-4.5" /><path d="M3 16.5l9 4.5 9-4.5" />
   </>)}
 </svg>
 
