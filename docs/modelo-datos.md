@@ -126,3 +126,17 @@ Una obra puede tener **de 1 a 4 categorías** («Cocinas» y «Melamina»: es re
 - **API:** las obras traen `categorias` (todas) y `categoria` (la principal, por compatibilidad). `POST/PATCH /projects` reciben `categorias: string[]` (1 a 4, sin repetir, el campo `categoria` ya no se acepta). `GET /projects?categoria=x` devuelve las obras que tengan `x` entre las suyas y **no recorta** las categorías que se devuelven. Una obra solo sale en la web si tiene al menos una categoría activa.
 - **Web:** el filtro del catálogo es por pertenencia (una obra aparece en cada filtro que tenga); la tarjeta y la ficha muestran «Cocinas · Melamina».
 - **App:** el formulario deja marcar varios tipos de trabajo (tope de 4, con aviso).
+
+## 6. Catálogo gestionado desde la app (2026-11-21)
+
+Pedido de Sebas: poder gestionar desde la app de Luis los **tipos de trabajo**, los **servicios** del cotizador y las **preguntas y opciones** de cada servicio. No hay tablas nuevas (se usan `categories`, `services`, `questions`, `question_options`, `question_services`): lo que cambia es **quién manda**.
+
+- **La base es la fuente de verdad.** Antes `catalog.data.ts` mandaba (el seed hacía `upsert` por `slug` y lo corría cada `migration:run`): editar desde la app habría sido pisado en la siguiente migración. Ahora los seeds (`categories`, `catalog`) **solo agregan lo que falta** por `slug`. Excepción: las filas que dejó una migración sin que nadie las tocara (`updated_at = created_at`) se completan con el catálogo base, porque las migraciones crean unas pocas preguntas con textos y orden provisionales (sin esto, una base nueva quedaba con órdenes repetidos).
+- **Nada se borra:** hay obras, cotizaciones y respuestas que apuntan a estas filas. Se **desactiva** (`activo = false`).
+- **El `slug` no cambia al renombrar** (la web, los enlaces `?categoria=` y las respuestas guardadas dependen de él). Se genera del nombre, sin tildes, con `-2`, `-3`… si ya existe.
+- **Nombres sin repetir** (sin importar mayúsculas) entre tipos, entre servicios y entre las opciones de una misma pregunta.
+- **Orden:** `orden` por tabla; las opciones se ordenan dentro de su pregunta. Las preguntas tienen un orden **global** (así se ven en el cotizador) y se acomodan **por servicio**: se reparten los mismos números de orden entre las preguntas movidas, de modo que las de otros servicios no se mueven.
+- **Qué ve el cliente:** `GET /quote-form` solo trae servicios activos y preguntas activas **con al menos una opción activa**; una pregunta sin opciones no se muestra (así crear una pregunta en la app no deja un callejón sin salida).
+- **Desactivar un tipo de trabajo:** una obra solo sale en la web si tiene al menos un tipo **activo**; la app avisa cuántas obras lo usan antes de desactivarlo.
+- **Íconos de servicio:** la web solo dibuja los que conoce (`cocinas`, `banos`, `departamentos`, `divisiones`, `techos`, `enchapado`, `electricidad`, `melamina`, `remodelaciones`, `locales`); un servicio nuevo usa `generico` (tres capas) y la web dibuja ese mismo para cualquier ícono desconocido. Igual para un tipo de trabajo nuevo en los filtros del catálogo.
+- **Limitación conocida:** la web preselecciona el servicio al venir desde una obra con un mapa fijo de slugs (`CATEGORIA_A_SERVICIO` en `web/src/lib/quote.ts`); los tipos y servicios nuevos no se preseleccionan.
