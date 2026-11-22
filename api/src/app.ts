@@ -7,6 +7,7 @@ import type { DataSource } from 'typeorm';
 import { logger } from './common/logger';
 import { errorHandler, notFoundHandler } from './common/middleware/error-handler';
 import { env } from './config/env';
+import { buildAnalyticsModule } from './modules/analytics';
 import { buildAuthModule } from './modules/auth';
 import { buildCatalogModule } from './modules/catalog';
 import { buildCategoriesModule } from './modules/categories';
@@ -48,6 +49,7 @@ export function createApp(dataSource: DataSource) {
     await enviarAvisoCotizacion(aviso, await devices.service.tokens());
   });
   const uploads = buildUploadsModule();
+  const analytics = buildAnalyticsModule(dataSource, auth.authenticate, (desde, hasta) => quotes.repository.contarEntre(desde, hasta));
 
   const api = express.Router();
   api.use('/health', healthRoutes(dataSource));
@@ -57,6 +59,7 @@ export function createApp(dataSource: DataSource) {
   api.use('/quote-form', catalog.router); // servicios y preguntas del cotizador (el formulario se arma con esto)
   api.use('/quotes', quotes.router);
   api.use('/uploads', uploads.router);
+  api.use('/analytics', analytics.router); // POST /hit (la web) y GET /summary (la app de Luis, con JWT)
   // ---- App de Luis (JWT) ----
   api.use('/auth', auth.router);
   api.use('/devices', devices.router);

@@ -87,6 +87,7 @@ const schema = z
     RATE_LIMIT_QUOTES_PER_HOUR: z.coerce.number().int().min(1).default(10),
     RATE_LIMIT_LOGIN_PER_15MIN: z.coerce.number().int().min(1).default(10),
     RATE_LIMIT_UPLOADS_PER_HOUR: z.coerce.number().int().min(1).default(20),
+    RATE_LIMIT_ANALYTICS_PER_MIN: z.coerce.number().int().min(1).default(60),
 
     CLOUDINARY_CLOUD_NAME: opcional(z.string()),
     CLOUDINARY_API_KEY: opcional(z.string()),

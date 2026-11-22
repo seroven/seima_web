@@ -78,6 +78,14 @@ export class QuotesRepository {
     return qb.getManyAndCount();
   }
 
+  /** Cuántas cotizaciones llegaron en el rango [desde, hasta) (para las mediciones de la app). */
+  contarEntre(desde: Date, hasta: Date): Promise<number> {
+    return this.repo
+      .createQueryBuilder('q')
+      .where('q.created_at >= :desde AND q.created_at < :hasta', { desde, hasta })
+      .getCount();
+  }
+
   async updateEstado(id: string, estado: EstadoCotizacion): Promise<boolean> {
     const res = await this.repo.update(id, { estado });
     return (res.affected ?? 0) > 0;
