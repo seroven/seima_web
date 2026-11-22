@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 
+import '../projects/cola_controller.dart';
+import '../projects/cola_videos.dart';
 import '../projects/proyecto.dart';
 import '../projects/proyectos_controller.dart';
 import '../projects/video_nativo.dart';
@@ -30,7 +32,14 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
   final _picker = ImagePicker();
   var _subiendo = 0;
   var _total = 0;
+  var _hayWifi = true;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _mirarRed();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +55,10 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
         ),
         data: (dato) {
           final medios = dato.de(widget.etapa);
+          final cola = ref.watch(colaProvider).value ?? const <PendienteVideo>[];
+          final mios = cola.where((item) => item.projectId == widget.id && item.etapa == widget.etapa).toList();
+          final progreso = textoProgreso(mios);
+          final soloWifi = ref.watch(videosWifiProvider).value ?? true;
           return ListView(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
             children: [
@@ -58,6 +71,11 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Text('Subiendo $_subiendo de $_total', style: archivo(18, 700, color: SeimaColors.redText)),
                 ),
+              if (progreso != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(progreso, style: archivo(18, 700, color: SeimaColors.redText)),
+                ),
               Aviso(_error),
               SeimaButton(label: 'Elegir de la galería', busy: ocupado, onPressed: ocupado ? null : _galeria),
               const SizedBox(height: 10),
@@ -65,6 +83,21 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
               const SizedBox(height: 10),
               SeimaButton(label: 'Elegir un video', onPressed: ocupado ? null : _video),
               const SizedBox(height: 20),
+              for (final item in mios)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(textoPendiente(item, hayWifi: _hayWifi, soloWifi: soloWifi), style: archivo(18, 650))),
+                      if (item.estado == 'fallo')
+                        TextButton(
+                          style: TextButton.styleFrom(minimumSize: const Size(56, 56)),
+                          onPressed: () => ref.read(colaProvider.notifier).reintentar(item.id),
+                          child: Text('Reintentar', style: archivo(16, 700, color: SeimaColors.redText)),
+                        ),
+                    ],
+                  ),
+                ),
               for (var i = 0; i < medios.length; i++)
                 _FilaMedio(
                   medio: medios[i],
@@ -123,11 +156,6 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
   Future<void> _video() async {
     final video = await _picker.pickVideo(source: ImageSource.gallery);
     if (video == null || !mounted) return;
-    final soloWifi = ref.read(videosWifiProvider).value ?? true;
-    if (videoEsperaWifi(soloWifi: soloWifi, hayWifi: await _hayWifi())) {
-      setState(() => _error = 'No hay Wi-Fi. Conecta el Wi-Fi para subir el video.');
-      return;
-    }
     final archivo = File(video.path);
     final bytes = await archivo.length();
     final leida = await _duracion(video.path);
@@ -154,27 +182,22 @@ class _EtapaScreenState extends ConsumerState<EtapaScreen> {
       setState(() => _error = rechazo);
       return;
     }
-    setState(() {
-      _total = 1;
-      _subiendo = 1;
-      _error = null;
-    });
-    final mensaje = await ref.read(proyectoProvider(widget.id).notifier).subirVideo(
+    final mensaje = await ref.read(colaProvider.notifier).agregar(
+      projectId: widget.id,
       etapa: widget.etapa,
       ruta: ruta,
       nombre: video.name.isEmpty ? 'video.mp4' : video.name,
       duracionMs: duracion,
     );
     if (!mounted) return;
-    setState(() {
-      _subiendo = 0;
-      _error = mensaje;
-    });
+    await _mirarRed();
+    if (!mounted) return;
+    setState(() => _error = mensaje);
   }
 
-  Future<bool> _hayWifi() async {
+  Future<void> _mirarRed() async {
     final redes = await Connectivity().checkConnectivity();
-    return redes.contains(ConnectivityResult.wifi);
+    if (mounted) setState(() => _hayWifi = redes.contains(ConnectivityResult.wifi));
   }
 
   Future<int?> _duracion(String ruta) async {

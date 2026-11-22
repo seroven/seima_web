@@ -10,26 +10,22 @@ import '../auth/token_vault.dart';
 import '../config/app_env.dart';
 import 'api_error.dart';
 
-final dioProvider = Provider<Dio>((ref) {
-  final base = AppEnv.apiUrl;
+Dio armarDio({required TokenVault vault, required SessionStore store, String? baseUrl}) {
   final dio = Dio(
     BaseOptions(
-      baseUrl: base,
+      baseUrl: baseUrl ?? AppEnv.apiUrl,
       connectTimeout: const Duration(seconds: 15),
       receiveTimeout: const Duration(seconds: 20),
       headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
     ),
   );
   final bare = Dio(dio.options);
-  dio.interceptors.add(
-    RefreshInterceptor(
-      dio: dio,
-      bare: bare,
-      vault: ref.read(tokenVaultProvider),
-      store: ref.read(sessionStoreProvider),
-    ),
-  );
+  dio.interceptors.add(RefreshInterceptor(dio: dio, bare: bare, vault: vault, store: store));
   return dio;
+}
+
+final dioProvider = Provider<Dio>((ref) {
+  return armarDio(vault: ref.read(tokenVaultProvider), store: ref.read(sessionStoreProvider));
 });
 
 final authApiProvider = Provider<AuthApi>((ref) => DioAuthApi(ref.watch(dioProvider)));

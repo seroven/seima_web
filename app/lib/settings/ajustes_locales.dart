@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../projects/cola_videos.dart';
+
 class AjustesLocales extends AsyncNotifier<bool> {
-  static const _clave = 'seima_videos_wifi';
+  static const _clave = claveVideosWifi;
 
   @override
   Future<bool> build() async {
@@ -17,5 +19,5 @@ class AjustesLocales extends AsyncNotifier<bool> {
   }
 }
 
-/// Videos solo con Wi-Fi. Arranca activado; la subida lo va a usar en la fase 3.
+/// Videos solo con Wi-Fi. Arranca activado.
 final videosWifiProvider = AsyncNotifierProvider<AjustesLocales, bool>(AjustesLocales.new);

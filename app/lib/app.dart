@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'projects/cola_controller.dart';
 import 'auth/auth_controller.dart';
 import 'auth/auth_state.dart';
 import 'devices/push_service.dart';
@@ -13,8 +14,10 @@ class SeimaApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return const EscuchaAvisos(
-      child: _Enrutador(),
+    return const VigilaSubidas(
+      child: EscuchaAvisos(
+        child: _Enrutador(),
+      ),
     );
   }
 }

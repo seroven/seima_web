@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app.dart';
 import 'config/app_env.dart';
 import 'devices/push_service.dart';
+import 'projects/subida_fondo.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,5 +16,6 @@ Future<void> main() async {
     await Firebase.initializeApp(options: AppEnv.firebase);
     FirebaseMessaging.onBackgroundMessage(fondoFirebase);
   }
+  await prepararSubidaEnSegundoPlano();
   runApp(const ProviderScope(child: SeimaApp()));
 }
