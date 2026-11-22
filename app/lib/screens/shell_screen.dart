@@ -46,6 +46,7 @@ class _ShellScreenState extends ConsumerState<ShellScreen> {
             selectedIcon: _Bandeja(nuevas: nuevas, seleccionado: true),
             label: 'Cotizaciones',
           ),
+          const NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart), label: 'Visitas'),
           const NavigationDestination(
             icon: Icon(Icons.settings_outlined),
             selectedIcon: Icon(Icons.settings),

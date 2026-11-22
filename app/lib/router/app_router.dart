@@ -21,6 +21,7 @@ import '../screens/proyecto_screen.dart';
 import '../screens/proyectos_screen.dart';
 import '../screens/shell_screen.dart';
 import '../screens/splash_screen.dart';
+import '../screens/visitas_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = ValueNotifier<int>(0);
@@ -99,6 +100,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           StatefulShellBranch(
             routes: [GoRoute(path: '/cotizaciones', builder: (context, state) => const CotizacionesScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/visitas', builder: (context, state) => const VisitasScreen())],
           ),
           StatefulShellBranch(
             routes: [GoRoute(path: '/ajustes', builder: (context, state) => const AjustesScreen())],
