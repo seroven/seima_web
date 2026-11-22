@@ -146,6 +146,9 @@
 
 ### 2026-11-21
 
+**Firebase en local**
+- El proyecto de Firebase es SeimaApp (`seimaapp-2eb94`), app Android `pe.seima.app`. Las variables quedaron en `app/.env` y en `api/.env`. Los JSON no se quedan en el repo: `.gitignore` cubre `google-services.json` y la cuenta de servicio.
+
 **Subida de video en cola**
 - El video se copia al teléfono y entra en una cola. Si hay Wi-Fi (o el ajuste lo permite), se sube enseguida. Si no, la fila dice «Esperando Wi-Fi». Si falla, dice «No se pudo» y aparece «Reintentar».
 - Al salir de la app, WorkManager queda encargado. El aviso dice «Subiendo un video». Mientras la app está abierta, la cola no se toca dos veces.
