@@ -92,6 +92,9 @@ class FilaGestion extends StatelessWidget {
 }
 
 /// Cómo se ve una fila mientras se arrastra: crece un poco y levanta sombra.
+///
+/// Mientras se arrastra, la fila «flota» en el Overlay, FUERA del Scaffold: sin un `Material` que la rodee, el
+/// interruptor de la fila lanza «No Material widget found» y se ve un error. Por eso va envuelta en uno transparente.
 Widget arrastrandoFila(Widget hijo, int indice, Animation<double> animacion) {
   return AnimatedBuilder(
     animation: animacion,
@@ -104,7 +107,7 @@ Widget arrastrandoFila(Widget hijo, int indice, Animation<double> animacion) {
             borderRadius: BorderRadius.circular(18),
             boxShadow: [BoxShadow(color: const Color(0x38000000), blurRadius: 18 * t, offset: Offset(0, 6 * t))],
           ),
-          child: child,
+          child: Material(type: MaterialType.transparency, child: child),
         ),
       );
     },
