@@ -6,7 +6,6 @@ import '../auth/auth_controller.dart';
 import '../auth/auth_state.dart';
 import '../theme/seima_colors.dart';
 import '../theme/seima_theme.dart';
-import '../widgets/capas_marca.dart';
 import '../widgets/seima_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -48,9 +47,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(28, 40, 28, 32),
               children: [
-                const Align(alignment: Alignment.centerLeft, child: CapasMarca(ancho: 150)),
-                const SizedBox(height: 28),
-                Text('SEIMA', style: archivo(56, 850, width: 118, height: 1, color: Colors.white)),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Image.asset('assets/img/logo.png', width: 220, semanticLabel: 'SEIMA Servicios Generales'),
+                ),
                 const SizedBox(height: 14),
                 Text(
                   'Construimos tu espacio, capa por capa.',

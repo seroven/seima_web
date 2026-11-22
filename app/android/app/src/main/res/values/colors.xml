@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="seima_ink">#0E0E0E</color>
     <color name="seima_paper">#FFFFFF</color>
 </resources>

@@ -74,6 +74,7 @@ flutter:
 
   assets:
     - .env
+    - assets/img/logo.png
 
   fonts:
     - family: Archivo
