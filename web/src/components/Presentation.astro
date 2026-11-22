@@ -16,7 +16,7 @@ const todas = fotosOrdenadas(p);
   </button>
 )}
 
-<dialog class="pres" data-pres tabindex="-1" data-lenis-prevent aria-label={`Fotos: ${p.titulo}`}>
+<dialog class="pres" data-pres tabindex="-1" data-lenis-prevent aria-label={`Fotos y videos: ${p.titulo}`}>
   <div class="pres__bar">
     <span class="pres__count" aria-live="polite"><b data-pres-n>1</b> / {todas.length}</span>
     <span class="pres__title">{p.titulo}</span>
@@ -34,7 +34,13 @@ const todas = fotosOrdenadas(p);
       <div class="pres__track" data-pres-track style="--i:0">
         {todas.map((f, i) => (
           <figure class="pres__slide" aria-label={`${i + 1} de ${todas.length}`}>
-            <Photo src={f.src} alt={f.alt} tone={(p.tono + i) % 6} fill plain label={`[FOTO REAL · ${etapaLabel[f.etapa].toUpperCase()} ${f.orden + 1}]`} />
+            {f.tipo === 'video' && f.video ? (
+              <video data-pres-video poster={f.src ?? undefined} playsinline preload="none" controls aria-label={f.alt}>
+                <source src={f.video} />
+              </video>
+            ) : (
+              <Photo src={f.src} alt={f.alt} tone={(p.tono + i) % 6} fill plain label={`[FOTO REAL · ${etapaLabel[f.etapa].toUpperCase()} ${f.orden + 1}]`} />
+            )}
             <figcaption>{etapaLabel[f.etapa]}{f.pie ? ` · ${f.pie}` : ''}</figcaption>
           </figure>
         ))}
@@ -68,11 +74,28 @@ const todas = fotosOrdenadas(p);
     let i = 0;
     let closing = false;
 
+    const callar = () => {
+      for (const video of dlg.querySelectorAll('video')) video.pause();
+    };
+    const sonar = () => {
+      const slides = [...track.children];
+      slides.forEach((slide, indice) => {
+        const video = slide.querySelector('video');
+        if (!video) return;
+        if (indice === i && dlg.open) {
+          video.muted = false;
+          if (!reduce()) video.play().catch(() => {});
+        } else {
+          video.pause();
+        }
+      });
+    };
     const render = () => {
       track.style.setProperty('--i', String(i));
       n.textContent = String(i + 1);
       prev.disabled = i === 0;
       next.disabled = i === total - 1;
+      sonar();
     };
     const go = (to: number) => {
       i = Math.max(0, Math.min(total - 1, to));
@@ -84,6 +107,7 @@ const todas = fotosOrdenadas(p);
     let startX = 0, startT = 0, dx = 0, dragging = false;
     viewport.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
+      if ((e.target as Element).closest('video')) return;
       dragging = true;
       startX = e.clientX;
       startT = performance.now();
@@ -126,6 +150,7 @@ const todas = fotosOrdenadas(p);
       track.style.transition = 'none'; // saltar a la foto sin deslizar
       go(index);
       dlg.showModal();
+      sonar();
       document.documentElement.classList.add('pres-on');
       void track.offsetWidth;
       track.style.transition = '';
@@ -155,6 +180,7 @@ const todas = fotosOrdenadas(p);
       close();
     });
     dlg.addEventListener('close', () => {
+      callar();
       document.documentElement.classList.remove('pres-on');
       dlg.classList.remove('is-drag');
     });
@@ -242,6 +268,7 @@ const todas = fotosOrdenadas(p);
   .pres.is-drag .pres__track { transition: none; }
   .pres__slide { flex: 0 0 100%; margin: 0; padding: 0 0.5rem; position: relative; min-height: 0; display: grid; pointer-events: none; }
   .pres__slide :global(.photo) { border-radius: 16px; }
+  .pres__slide video { width: 100%; height: 100%; object-fit: contain; border-radius: 16px; background: #000; pointer-events: auto; }
   .pres__slide :global(img) { -webkit-user-drag: none; user-select: none; }
   .pres__slide figcaption { position: absolute; left: 1.5rem; top: 1rem; background: var(--red); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; font-size: 0.78rem; padding: 0.4rem 0.8rem; border-radius: 999px; }
   .pres__hint { text-align: center; font-size: 0.8rem; color: #888; padding: 0.7rem; }
