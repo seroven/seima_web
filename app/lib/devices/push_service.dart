@@ -4,10 +4,59 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/auth_api.dart';
 import '../config/app_env.dart';
+
+/// El mismo id que envía la API y que declara el manifiesto.
+const canalAvisos = 'seima_avisos';
+
+final _locales = FlutterLocalNotificationsPlugin();
+var _canalListo = false;
+
+Future<void> prepararCanal({void Function(String id)? alTocar}) async {
+  if (_canalListo) return;
+  await _locales.initialize(
+    settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')),
+    onDidReceiveNotificationResponse: (respuesta) {
+      final id = respuesta.payload;
+      if (id != null && id.isNotEmpty) alTocar?.call(id);
+    },
+  );
+  await _locales.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(
+    const AndroidNotificationChannel(
+      canalAvisos,
+      'Cotizaciones',
+      description: 'Avisos cuando llega una cotización nueva',
+      importance: Importance.high,
+    ),
+  );
+  await _locales.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
+  _canalListo = true;
+}
+
+Future<void> mostrarAviso(RemoteMessage mensaje) async {
+  final aviso = mensaje.notification;
+  if (aviso == null) return;
+  await _locales.show(
+    id: aviso.hashCode,
+    title: aviso.title,
+    body: aviso.body,
+    notificationDetails: const NotificationDetails(
+      android: AndroidNotificationDetails(
+        canalAvisos,
+        'Cotizaciones',
+        channelDescription: 'Avisos cuando llega una cotización nueva',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+      ),
+    ),
+    payload: mensaje.data['quoteId'],
+  );
+}
 
 /// El sistema muestra el aviso. Este isolate solo deja Firebase listo.
 @pragma('vm:entry-point')
@@ -42,12 +91,16 @@ class FirebasePush implements PushService {
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp(options: AppEnv.firebase);
       }
+      await prepararCanal(alTocar: alAbrir);
       void tomar(RemoteMessage mensaje) {
         final id = mensaje.data['quoteId'];
         if (id is String && id.isNotEmpty) alAbrir(id);
       }
 
-      FirebaseMessaging.onMessage.listen((_) => alLlegar?.call());
+      FirebaseMessaging.onMessage.listen((mensaje) {
+        mostrarAviso(mensaje);
+        alLlegar?.call();
+      });
       FirebaseMessaging.onMessageOpenedApp.listen(tomar);
       final inicial = await FirebaseMessaging.instance.getInitialMessage();
       if (inicial != null) tomar(inicial);
@@ -63,6 +116,7 @@ class FirebasePush implements PushService {
       if (Firebase.apps.isEmpty) {
         await Firebase.initializeApp(options: AppEnv.firebase);
       }
+      await prepararCanal();
       final messaging = FirebaseMessaging.instance;
       final permiso = await messaging.requestPermission();
       // El aviso sale con sendEachForMulticast, que pide el token de registro.
