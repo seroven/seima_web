@@ -1,13 +1,13 @@
 ---
 import Photo from './Photo.astro';
-import { categoryName, principal, type Project } from '../data/projects';
+import { categoriasDe, categoriasNombre, principal, type Project } from '../data/projects';
 // "Después" por defecto; al pasar el mouse o mantener presionado (celular) se asoma el "Antes".
 interface Props { project: Project; ar?: string; fill?: boolean; class?: string }
 const { project: p, ar = '4 / 3', fill = false, class: cls } = Astro.props;
 const after = principal(p, 'despues') ?? p.fotos[0];
 const before = principal(p, 'antes');
 ---
-<a class:list={['pcard', fill && 'pcard--fill', cls]} href={`/proyectos/${p.slug}`} data-cat={p.categoria}>
+<a class:list={['pcard', fill && 'pcard--fill', cls]} href={`/proyectos/${p.slug}`} data-cat={categoriasDe(p).join(' ')}>
   <div class="pcard__media" data-cursor="Ver" transition:name={`foto-${p.slug}`}>
     <Photo src={after.src} alt={after.alt} tone={p.tono} ar={ar} fill={fill} />
     {before && (
@@ -18,7 +18,7 @@ const before = principal(p, 'antes');
     )}
   </div>
   <div class="pcard__body">
-    <span class="pcard__cat">{categoryName(p.categoria)}</span>
+    <span class="pcard__cat">{categoriasNombre(p)}</span>
     <h3>{p.titulo}</h3>
   </div>
 </a>

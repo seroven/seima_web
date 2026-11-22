@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { ladoDe, parVertical } from '../data/projects.ts';
+import { categoriasDe, categoriasNombre, ladoDe, parVertical } from '../data/projects.ts';
 import { detalleAProyecto, tarjetaAProyecto } from './proyectos-publicos.ts';
 
 const tarjeta = tarjetaAProyecto({
@@ -62,3 +62,24 @@ assert.equal(
 );
 
 console.log('ok');
+
+// Varios tipos de trabajo por obra: `categorias` manda, `categoria` es la principal
+const variasCategorias = tarjetaAProyecto({
+  slug: 'cocina-y-closet',
+  titulo: 'Cocina con closet',
+  categoria: { slug: 'cocinas', nombre: 'Cocinas' },
+  categorias: [
+    { slug: 'cocinas', nombre: 'Cocinas' },
+    { slug: 'melamina', nombre: 'Melamina' },
+  ],
+  portada: { antes: null, despues: null },
+});
+assert.equal(variasCategorias?.categoria, 'cocinas');
+assert.deepEqual(variasCategorias?.categorias, ['cocinas', 'melamina']);
+assert.deepEqual(categoriasDe(variasCategorias!), ['cocinas', 'melamina']);
+assert.equal(categoriasNombre(variasCategorias!), 'Cocinas · Melamina');
+
+// Una API vieja que solo manda `categoria` sigue funcionando
+assert.deepEqual(tarjeta?.categorias, ['cocinas']);
+assert.deepEqual(categoriasDe({ categoria: 'banos' }), ['banos']);
+assert.deepEqual(categoriasDe({ categoria: '' }), []);

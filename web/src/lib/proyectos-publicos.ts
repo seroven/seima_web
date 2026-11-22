@@ -2,6 +2,7 @@
 // Si la API no está configurada o no responde, se usan los proyectos de prueba locales
 // para que la web siga viéndose.
 import {
+  categoriasDe,
   categories as categoriasDemo,
   etapaLabel,
   projects as proyectosDemo,
@@ -85,10 +86,16 @@ export function tarjetaAProyecto(card: unknown): Project | null {
     portada.despues ? fotoDe(portada.despues, 'despues', titulo, true) : null,
     portada.antes ? fotoDe(portada.antes, 'antes', titulo, true) : null,
   ].filter((f): f is Foto => f !== null);
+  // La API manda `categorias` (todas) y `categoria` (la principal). Si es una API vieja, solo la segunda.
+  const todas = Array.isArray(c.categorias)
+    ? c.categorias.map((x) => texto((x as { slug?: unknown } | null)?.slug)).filter((s) => s !== '')
+    : [];
+  const principal = texto((c.categoria as { slug?: unknown } | undefined)?.slug) || todas[0] || '';
   return {
     slug,
     titulo,
-    categoria: texto((c.categoria as { slug?: unknown } | undefined)?.slug),
+    categoria: principal,
+    categorias: todas.length ? todas : principal ? [principal] : [],
     distrito: textoOpcional(c.distrito),
     areaM2: numero(c.areaM2),
     dias: numero(c.dias) === null ? null : Math.round(numero(c.dias)!),
@@ -151,9 +158,11 @@ function categoriasDesde(body: unknown, projects: Project[]): Category[] {
     : [];
   const conocidas = new Set(lista.map((c) => c.slug));
   for (const proyecto of projects) {
-    if (proyecto.categoria && !conocidas.has(proyecto.categoria)) {
-      conocidas.add(proyecto.categoria);
-      lista.push({ slug: proyecto.categoria, nombre: proyecto.categoria });
+    for (const slug of categoriasDe(proyecto)) {
+      if (!conocidas.has(slug)) {
+        conocidas.add(slug);
+        lista.push({ slug, nombre: slug });
+      }
     }
   }
   return lista;

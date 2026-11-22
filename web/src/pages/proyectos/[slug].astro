@@ -5,7 +5,7 @@ import Words from '../../components/Words.astro';
 import BackButton from '../../components/BackButton.astro';
 import CompareSlider from '../../components/CompareSlider.astro';
 import Presentation from '../../components/Presentation.astro';
-import { categoryName, etapaLabel, etapas, fotosDe, fotosOrdenadas, principal, show, type Foto } from '../../data/projects';
+import { categoriasNombre, categoryName, etapaLabel, etapas, fotosDe, fotosOrdenadas, principal, show, type Foto } from '../../data/projects';
 import { cargarSitio, proyectoPublico } from '../../lib/proyectos-publicos';
 
 export async function getStaticPaths() {
@@ -18,7 +18,9 @@ if (!project) {
   return new Response('Esta obra no está publicada.', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 }
 const p = project;
-const cat = categoryName(p.categoria);
+// Todos los tipos de trabajo de la obra («Cocinas · Melamina»); el enlace del camino de migas va a la principal.
+const cat = categoriasNombre(p);
+const catPrincipal = categoryName(p.categoria);
 const cover = principal(p, 'despues') ?? p.fotos[0];
 // Etapas que tienen fotos (una etapa sin fotos, p. ej. "durante", simplemente no se muestra)
 // Mosaico en bloques que siempre cuadran (4 columnas × 2 filas): L = 2×2, W = 2×1, S = 1×1, F = 4×2
@@ -55,7 +57,7 @@ const share = `https://wa.me/?text=${encodeURIComponent(`${p.titulo} · SEIMA Se
     <div class="wrap">
       <div class="topbar">
         <BackButton />
-        <nav class="crumbs" aria-label="Ruta"><a href="/proyectos">Proyectos</a> / <a href={`/proyectos?categoria=${p.categoria}`}>{cat}</a></nav>
+        <nav class="crumbs" aria-label="Ruta"><a href="/proyectos">Proyectos</a> / <a href={`/proyectos?categoria=${p.categoria}`}>{catPrincipal}</a></nav>
       </div>
       <h1><Words text={p.titulo} /></h1>
       <ul class="meta" data-hero-in>

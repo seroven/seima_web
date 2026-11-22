@@ -4,6 +4,7 @@ import Words from '../../components/Words.astro';
 import ProjectCard from '../../components/ProjectCard.astro';
 import CategoryIcon from '../../components/CategoryIcon.astro';
 import { cargarSitio } from '../../lib/proyectos-publicos';
+import { categoriasDe } from '../../data/projects';
 
 const sitio = await cargarSitio();
 const { projects, categories, demo } = sitio;
@@ -11,7 +12,7 @@ const { projects, categories, demo } = sitio;
 // Filtros: "Todos" + cada ambiente, con cuántos proyectos tiene
 const filters = [
   { slug: '', nombre: 'Todos', n: projects.length },
-  ...categories.map((c) => ({ slug: c.slug, nombre: c.nombre, n: projects.filter((p) => p.categoria === c.slug).length })),
+  ...categories.map((c) => ({ slug: c.slug, nombre: c.nombre, n: projects.filter((p) => categoriasDe(p).includes(c.slug)).length })),
 ];
 ---
 <Base
@@ -61,7 +62,7 @@ const filters = [
 
       <div class="grid" data-grid>
         {projects.map((p, i) => (
-          <div class="grid__item" data-cat={p.categoria} data-slot={i % 5}>
+          <div class="grid__item" data-cat={categoriasDe(p).join(' ')} data-slot={i % 5}>
             <ProjectCard project={p} fill />
           </div>
         ))}
@@ -138,7 +139,7 @@ const filters = [
         pending = cat;
         return;
       }
-      const next = items.filter((el) => !cat || el.dataset.cat === cat);
+      const next = items.filter((el) => !cat || (el.dataset.cat ?? '').split(' ').includes(cat));
       const was = items.filter((el) => !el.hidden);
       paint(cat, next.length, push);
       moveHighlight(cat, animate);
@@ -189,7 +190,7 @@ const filters = [
     // Estado inicial (desde la URL), sin animar
     const initial = new URLSearchParams(location.search).get('categoria') ?? '';
     const cat = valid.has(initial) ? initial : '';
-    const next = items.filter((el) => !cat || el.dataset.cat === cat);
+    const next = items.filter((el) => !cat || (el.dataset.cat ?? '').split(' ').includes(cat));
     items.forEach((el) => (el.hidden = !next.includes(el)));
     layout(next);
     paint(cat, next.length, false);

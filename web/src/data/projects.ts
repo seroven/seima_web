@@ -11,7 +11,10 @@ export interface Category {
 export interface Project {
   slug: string;
   titulo: string;
+  /** Tipo de trabajo principal (el primero por el orden del catálogo). */
   categoria: string;
+  /** Todos los tipos de trabajo de la obra (una cocina con melamina tiene dos). Los datos de prueba solo traen `categoria`. */
+  categorias?: string[];
   distrito: string | null;
   areaM2: number | null;
   dias: number | null;
@@ -184,4 +187,11 @@ export const projects: Project[] = [
 ];
 
 export const categoryName = (slug: string) => categories.find((c) => c.slug === slug)?.nombre ?? slug;
+
+/** Slugs de todos los tipos de trabajo de la obra, la principal primero. */
+export const categoriasDe = (p: Pick<Project, 'categoria' | 'categorias'>): string[] =>
+  p.categorias?.length ? p.categorias : p.categoria ? [p.categoria] : [];
+
+/** «Cocinas · Melamina» */
+export const categoriasNombre = (p: Pick<Project, 'categoria' | 'categorias'>): string => categoriasDe(p).map(categoryName).join(' · ');
 export const show = (v: string | number | null, suffix = '') => (v === null ? PLACEHOLDER : `${v}${suffix}`);
