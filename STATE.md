@@ -15,7 +15,7 @@
 **Stack real hoy**
 - `web/` — Astro **7.4.12**, GSAP + ScrollTrigger (+ Flip), Lenis, fuente Archivo variable (`@fontsource-variable/archivo/wdth.css`). **React 19 + `@astrojs/react` + Motion (`motion/react`) solo para el cotizador** (isla `client:load`). El resto sigue siendo Astro/GSAP.
 - `api/` — **creada (base)**: Node + Express 5 + **TypeScript + TypeORM** + PostgreSQL, por módulos, migraciones automáticas y JWT para el panel. Ver `api/README.md` y la sección "API" de abajo.
-- `app/` — **fase 5 en curso**: Flutter 3.44 + Riverpod, solo Android, paquete `pe.seima.app`. Ya entra, publica obras y atiende cotizaciones (lista, detalle, WhatsApp, llamada y estados). Faltan el recorte, la subida con la app cerrada y probar el aviso en un celular. Ver `docs/plan-app-movil.md`.
+- `app/` — **fase 3 en curso**: Flutter 3.44 + Riverpod, solo Android, paquete `pe.seima.app`. Ya entra, publica obras, atiende cotizaciones y, si el video pasa de 1 minuto, pide el tramo. Faltan la subida con la app cerrada y probar el aviso en un celular. Ver `docs/plan-app-movil.md`.
 - Node **≥ 22.23.4** (Astro 7 lo exige). Con `nvm use 22.23.4`.
 - Correr: `cd web && npm run dev` → http://localhost:4321/ (si el `node` de la terminal es viejo: `nvm use 22.23.4`).
 
@@ -119,7 +119,7 @@
 ## 3. Pendientes y próximos pasos
 
 **Decidido, sin construir**
-- **App móvil para Luis (Flutter + Riverpod).** Plan aprobado el 2026-11-21. **Fase 1 hecha y migrada en la base local.** En la app ya se entra, se publican obras y se atienden cotizaciones. Faltan el recorte, la subida con la app cerrada y probar el aviso en un Android real.
+- **App móvil para Luis (Flutter + Riverpod).** Plan aprobado el 2026-11-21. **Fase 1 hecha y migrada en la base local.** En la app ya se entra, se publican obras, se atienden cotizaciones y un video largo pide el tramo. Faltan la subida con la app cerrada y probar el aviso en un Android real.
 - Modelo de datos de fotos (etapa, principal, galería) en la API → `docs/modelo-datos.md`. (La parte visual ya está en la web con datos de prueba.)
 
 **Pendiente tras el envío directo del cotizador**
@@ -130,7 +130,7 @@
 
 **Por construir (orden del plan de la app)**
 1. **Fase 2 — app base:** el código está. Falta `flutter run` en un Android real (entrar, huella y, con Firebase lleno, un aviso).
-2. **Fase 3 — en curso:** fotos y videos de Antes, Durante y Después. El video de más de 1 minuto o de más de 50 MB no se sube. Con el ajuste activo, el video pide Wi-Fi. Faltan el recorte en el celular y la subida con la app cerrada.
+2. **Fase 3 — en curso:** fotos y videos de Antes, Durante y Después. Si el video pasa de 1 minuto, Luis elige el tramo y el celular lo recorta. Sigue faltando la subida con la app cerrada, y el tope de 15 segundos del comparador todavía no abre esta pantalla. No se probó el recorte en un Android.
 3. **Fase 4:** par horizontal con deslizador; vertical, lado a lado. La portada muestra el después y, al mantener, el antes. Al publicar se comparte el título por WhatsApp. El enlace de la obra espera a que la web esté conectada.
 4. **Fase 5 — en curso:** lista con filtro, detalle, WhatsApp, llamar y cambiar el estado. Si el aviso trae el id, abre esa cotización. Falta probarlo con Firebase en un celular.
 5. **Fase 6:** el catálogo lee la API, el comparador distingue el par vertical y el visor reproduce el video con sonido. Falta ver un par vertical real en el navegador.
@@ -145,6 +145,11 @@
 ## 4. Historial (más reciente primero)
 
 ### 2026-11-21
+
+**Recorte de video**
+- Si el video de Antes, Durante o Después dura más de 1 minuto, se abre «Elige el tramo»: dos manijas, «Probar» y «Usar este tramo». El inicio desliza el tramo; el final lo acorta, sin pasar de 1 minuto.
+- El recorte y la compresión (hasta 1080 px de alto) los hace Media3 en el celular. Si Android no puede recortar, no se sube el video entero.
+- El código de Android compiló. No hay un celular conectado, así que el recorte no se vio en un teléfono. Un video de 15 a 60 segundos sigue sin poder ser la comparación.
 
 **Visor con sonido**
 - En el modo presentación, un video se abre con controles y con sonido. Al pasar de foto, el video se pausa. Al cerrar el visor, también.
