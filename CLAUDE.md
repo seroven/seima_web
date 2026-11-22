@@ -52,6 +52,7 @@ Repo en GitHub (`origin` = seroven/seima_web). Ramas: `main` (estable) y **`stag
 - Configuración (URL de la API y Firebase) solo en `app/.env` (con `app/.env.example` al día); nunca en el código ni en git.
 - Diseño igual a la web (colores, Archivo, controles sin borde) y **usabilidad para alguien sin conocimientos de tecnología**: una cosa por pantalla, botones ≥ 56 dp, palabras simples, sin gestos escondidos.
 - Videos: subida en segundo plano y solo con Wi-Fi por defecto; recorte y compresión en el celular.
+- **Cambiar el orden de una lista = arrastrar** desde un asa «⋮⋮» visible (no flechas ▲▼). Se ve al instante y se guarda después (si falla, se restaura y se avisa). Excepción por ahora: las fotos de cada etapa de una obra siguen con flechas.
 
 ## Stack
 
