@@ -37,8 +37,7 @@ class Proyecto {
     required this.id,
     required this.titulo,
     required this.estado,
-    required this.categoriaSlug,
-    required this.categoriaNombre,
+    required this.categorias,
     required this.distrito,
     required this.areaM2,
     required this.dias,
@@ -55,8 +54,8 @@ class Proyecto {
   final String id;
   final String titulo;
   final String estado;
-  final String categoriaSlug;
-  final String categoriaNombre;
+  /// Tipos de trabajo de la obra, en el orden del catálogo (la primera es la principal).
+  final List<OpcionCatalogo> categorias;
   final String? distrito;
   final double? areaM2;
   final int? dias;
@@ -77,12 +76,20 @@ class Proyecto {
 
   String get portadaLista => portadaDespues ?? portadaAntes ?? '';
 
+  List<String> get categoriaSlugs => [for (final c in categorias) c.slug];
+
+  /// «Cocinas · Melamina». Vacío si la obra no tiene tipos de trabajo.
+  String get categoriasTexto => categorias.map((c) => c.nombre).where((n) => n.isNotEmpty).join(' · ');
+
   String get etiquetaEstado => switch (estado) {
     'publicado' => 'Publicado',
     'oculto' => 'Oculto',
     _ => 'Borrador',
   };
 }
+
+/// Cuántos tipos de trabajo puede tener una obra (el mismo tope que valida la API).
+const maxCategorias = 4;
 
 class OpcionCatalogo {
   const OpcionCatalogo({required this.slug, required this.nombre});
@@ -220,7 +227,6 @@ FirmaSubida firmaDesde(Object? body) {
 
 Proyecto _proyecto(Object? raw) {
   final mapa = _mapaPlano(raw) ?? const {};
-  final categoria = _mapaPlano(mapa['categoria']) ?? const {};
   final portada = _mapaPlano(mapa['portada']) ?? const {};
   final comparador = _mapaPlano(mapa['comparador']) ?? const {};
   final mediosRaw = _mapaPlano(mapa['medios']) ?? const {};
@@ -228,8 +234,7 @@ Proyecto _proyecto(Object? raw) {
     id: _texto(mapa['id']),
     titulo: _texto(mapa['titulo']),
     estado: _texto(mapa['estado']).isEmpty ? 'borrador' : _texto(mapa['estado']),
-    categoriaSlug: _texto(categoria['slug']),
-    categoriaNombre: _texto(categoria['nombre']),
+    categorias: _categoriasDe(mapa),
     distrito: _textoONull(mapa['distrito']),
     areaM2: _decimal(mapa['areaM2']),
     dias: _entero(mapa['dias']),
@@ -245,6 +250,23 @@ Proyecto _proyecto(Object? raw) {
     comparadorAntes: _idDe(comparador['antes']),
     comparadorDespues: _idDe(comparador['despues']),
   );
+}
+
+/// Lee `categorias` (varias). Si la API es vieja y solo trae `categoria`, usa esa.
+List<OpcionCatalogo> _categoriasDe(Map<String, dynamic> mapa) {
+  OpcionCatalogo? una(Object? raw) {
+    final c = _mapaPlano(raw);
+    if (c == null) return null;
+    final slug = _texto(c['slug']);
+    return slug.isEmpty ? null : OpcionCatalogo(slug: slug, nombre: _texto(c['nombre']));
+  }
+
+  final lista = mapa['categorias'];
+  if (lista is List) {
+    return [for (final item in lista) ?una(item)];
+  }
+  final sola = una(mapa['categoria']);
+  return sola == null ? const [] : [sola];
 }
 
 List<Medio> _medios(Object? raw, String etapa) {

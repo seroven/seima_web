@@ -131,7 +131,7 @@ class _TarjetaObra extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final detalle = [
-      if (proyecto.categoriaNombre.isNotEmpty) proyecto.categoriaNombre,
+      if (proyecto.categoriasTexto.isNotEmpty) proyecto.categoriasTexto,
       if (proyecto.distrito != null && proyecto.distrito!.isNotEmpty) proyecto.distrito!,
     ].join(' · ');
     return TarjetaToque(

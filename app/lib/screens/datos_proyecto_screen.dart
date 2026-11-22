@@ -27,7 +27,8 @@ class _DatosProyectoScreenState extends ConsumerState<DatosProyectoScreen> {
   final _area = TextEditingController();
   final _dias = TextEditingController();
   final _descripcion = TextEditingController();
-  String? _categoria;
+  // En el orden en que se fueron marcando; la API las ordena según el catálogo.
+  final _categorias = <String>{};
   String _cliente = 'persona';
   final _servicios = <String>{};
   var _listo = false;
@@ -71,7 +72,7 @@ class _DatosProyectoScreenState extends ConsumerState<DatosProyectoScreen> {
           ),
           SeccionForm(
             titulo: 'Tipo de trabajo',
-            ayuda: 'Elige uno',
+            ayuda: 'Elige uno o más (hasta $maxCategorias). Por ejemplo: cocina y melamina.',
             hijo: categorias.when(
               loading: () => const LinearProgressIndicator(color: SeimaColors.red),
               error: (error, _) => Text(error.toString(), style: archivo(16, 600, color: SeimaColors.redText)),
@@ -90,8 +91,8 @@ class _DatosProyectoScreenState extends ConsumerState<DatosProyectoScreen> {
                                 child: TarjetaEleccion(
                                   texto: opcion.nombre,
                                   icono: iconoDeCategoria(opcion.slug),
-                                  activo: _categoria == opcion.slug,
-                                  onTap: () => setState(() => _categoria = opcion.slug),
+                                  activo: _categorias.contains(opcion.slug),
+                                  onTap: () => _marcarCategoria(opcion.slug),
                                 ),
                               ),
                           ],
@@ -224,12 +225,30 @@ class _DatosProyectoScreenState extends ConsumerState<DatosProyectoScreen> {
         _area.text = proyecto.areaM2 == null ? '' : _numero(proyecto.areaM2!);
         _dias.text = proyecto.dias?.toString() ?? '';
         _descripcion.text = proyecto.descripcion;
-        _categoria = proyecto.categoriaSlug;
+        _categorias
+          ..clear()
+          ..addAll(proyecto.categoriaSlugs);
         _cliente = proyecto.cliente;
         _servicios
           ..clear()
           ..addAll(proyecto.servicios);
       });
+    });
+  }
+
+  /// Marca o desmarca un tipo de trabajo. Si ya hay [maxCategorias], avisa en vez de dejar pasar uno más.
+  void _marcarCategoria(String slug) {
+    setState(() {
+      if (_categorias.remove(slug)) {
+        _error = null;
+        return;
+      }
+      if (_categorias.length >= maxCategorias) {
+        _error = 'Máximo $maxCategorias tipos de trabajo. Quita uno para elegir otro.';
+        return;
+      }
+      _categorias.add(slug);
+      _error = null;
     });
   }
 
@@ -239,8 +258,8 @@ class _DatosProyectoScreenState extends ConsumerState<DatosProyectoScreen> {
       setState(() => _error = 'Escribe el nombre de la obra');
       return;
     }
-    if (_categoria == null) {
-      setState(() => _error = 'Elige el tipo de trabajo');
+    if (_categorias.isEmpty) {
+      setState(() => _error = 'Elige al menos un tipo de trabajo');
       return;
     }
     final area = _leerArea();
@@ -250,7 +269,7 @@ class _DatosProyectoScreenState extends ConsumerState<DatosProyectoScreen> {
     }
     final datos = <String, dynamic>{
       'titulo': titulo,
-      'categoria': _categoria,
+      'categorias': _categorias.toList(),
       'cliente': _cliente,
       'servicios': _servicios.toList(),
       'descripcion': _descripcion.text.trim(),

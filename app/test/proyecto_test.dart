@@ -9,6 +9,10 @@ void main() {
         'titulo': 'Cocina de Miraflores',
         'estado': 'borrador',
         'categoria': {'slug': 'cocinas', 'nombre': 'Cocinas'},
+        'categorias': [
+          {'slug': 'cocinas', 'nombre': 'Cocinas'},
+          {'slug': 'melamina', 'nombre': 'Melamina'},
+        ],
         'distrito': 'Miraflores',
         'areaM2': 18.5,
         'dias': 12,
@@ -31,10 +35,31 @@ void main() {
     });
 
     expect(proyecto.titulo, 'Cocina de Miraflores');
-    expect(proyecto.categoriaNombre, 'Cocinas');
+    expect(proyecto.categoriaSlugs, ['cocinas', 'melamina']);
+    expect(proyecto.categoriasTexto, 'Cocinas · Melamina');
     expect(proyecto.portadaLista, 'https://ejemplo/despues.jpg');
     expect(proyecto.de('antes'), hasLength(1));
     expect(proyecto.etiquetaEstado, 'Borrador');
+  });
+
+  test('si la API solo manda una categoría, la usa', () {
+    final proyecto = proyectoDesde({
+      'data': {
+        'id': 'p1',
+        'titulo': 'Baño',
+        'categoria': {'slug': 'banos', 'nombre': 'Baños'},
+      },
+    });
+    expect(proyecto.categoriaSlugs, ['banos']);
+    expect(proyecto.categoriasTexto, 'Baños');
+  });
+
+  test('sin tipos de trabajo no rompe', () {
+    final proyecto = proyectoDesde({
+      'data': {'id': 'p1', 'titulo': 'Obra', 'categorias': []},
+    });
+    expect(proyecto.categorias, isEmpty);
+    expect(proyecto.categoriasTexto, '');
   });
 
   test('dice qué falta para publicar', () {
@@ -42,8 +67,7 @@ void main() {
       id: 'p',
       titulo: 'Obra',
       estado: 'borrador',
-      categoriaSlug: 'cocinas',
-      categoriaNombre: 'Cocinas',
+      categorias: [OpcionCatalogo(slug: 'cocinas', nombre: 'Cocinas')],
       distrito: null,
       areaM2: null,
       dias: null,

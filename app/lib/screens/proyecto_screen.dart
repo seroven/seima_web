@@ -221,7 +221,7 @@ class _Portada extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final detalle = [
-      if (dato.categoriaNombre.isNotEmpty) dato.categoriaNombre,
+      if (dato.categoriasTexto.isNotEmpty) dato.categoriasTexto,
       if (dato.distrito != null && dato.distrito!.isNotEmpty) dato.distrito!,
     ].join(' · ');
     return Stack(
