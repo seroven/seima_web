@@ -15,7 +15,7 @@
 **Stack real hoy**
 - `web/` — Astro **7.4.12**, GSAP + ScrollTrigger (+ Flip), Lenis, fuente Archivo variable (`@fontsource-variable/archivo/wdth.css`). **React 19 + `@astrojs/react` + Motion (`motion/react`) solo para el cotizador** (isla `client:load`). El resto sigue siendo Astro/GSAP.
 - `api/` — **creada (base)**: Node + Express 5 + **TypeScript + TypeORM** + PostgreSQL, por módulos, migraciones automáticas y JWT para el panel. Ver `api/README.md` y la sección "API" de abajo.
-- `app/` — **fase 3 en código**: Flutter 3.44 + Riverpod, solo Android, paquete `pe.seima.app`. Ya entra, publica obras, atiende cotizaciones, recorta un video largo y deja la subida en cola. Falta probar en un celular el aviso y que la subida siga con la app cerrada. Ver `docs/plan-app-movil.md`.
+- `app/` — **rediseñada visualmente el 2026-11-21** (ver el historial). **Fase 3 en código**: Flutter 3.44 + Riverpod, solo Android, paquete `pe.seima.app`. Ya entra, publica obras, atiende cotizaciones, recorta un video largo y deja la subida en cola. Falta probar en un celular el aviso y que la subida siga con la app cerrada. Ver `docs/plan-app-movil.md`.
 - Node **≥ 22.23.4** (Astro 7 lo exige). Con `nvm use 22.23.4`.
 - Correr: `cd web && npm run dev` → http://localhost:4321/ (si el `node` de la terminal es viejo: `nvm use 22.23.4`).
 
@@ -112,6 +112,8 @@
 32. **Los `Write` pueden fallar si el archivo cambió:** después de editar un archivo con scripts hay que volver a leerlo antes de reescribirlo con la herramienta de escritura. Los heredocs largos en bash siguen fallando con comillas: usar la herramienta de escritura.
 33. **Cambios de enum en PostgreSQL con TypeORM:** quitar un valor de un enum (`pregunta_tipo`) genera renombrar el tipo, crear el nuevo y convertir la columna con `USING`; falla si quedan filas con el valor retirado, por eso la migración borra antes lo que ya no cabe. El `down` de una columna `NOT NULL` recién agregada debe añadirla nullable, rellenarla y recién entonces marcarla `NOT NULL`.
 34. **Borradores guardados en el navegador:** al cambiar la forma de lo que guarda `sessionStorage` hay que subir la versión de la clave (aquí `seima:quote:v2`) y hacer que el código tolere formatos viejos, o un visitante con un borrador anterior rompe el formulario.
+35. **Probar la app en un celular con `adb`:** `screencap` hay que redirigirlo desde bash (`adb exec-out screencap -p > x.png`); desde PowerShell el `>` corrompe el PNG. `adb shell input text` rompe con paréntesis y otros símbolos (el `sh` del teléfono los interpreta) y los espacios van como `%s`. Tras reinstalar, la app vuelve a pedir la huella: elegir «Entrar con contraseña». Antes de capturar, comprobar con `dumpsys window | grep mCurrentFocus` que la app está al frente: si no, la captura muestra la pantalla personal del teléfono. Si aparece un aviso de error, los campos se mueven y los toques por coordenadas fallan: usar Enter (siguiente campo / enviar) en vez de tocar.
+36. **Texto largo en tarjetas de dos columnas:** con ícono y marca de selección en la misma fila, el texto se queda sin ancho y parte las palabras («Departam-entos»). Poner el ícono arriba y el texto debajo con todo el ancho.
 17. **Heredocs en bash** con comillas/`$`/plantillas fallan a veces: para archivos de código usar la herramienta Write.
 
 ---
@@ -145,6 +147,21 @@
 ## 4. Historial (más reciente primero)
 
 ### 2026-11-21
+
+**Encabezado pegado y letra más chica en la app**
+- Pedido de Sebas: el encabezado se perdía al hacer scroll y la letra era grande. Ahora `SliverCabeceraSeima` (en `widgets/cabecera_seima.dart`, reemplaza al `CabeceraSeima` fijo) se queda **pegado arriba**: grande al inicio y, al bajar, se contrae a una barra de 64 dp con el título (y el botón de volver o ⋮ si los hay). En Cotizaciones los **filtros** quedan fijos dentro de la barra (parámetro `pie`). Lo usan Mis obras, Cotizaciones, Ajustes y el detalle de la cotización; el centro de cada obra (`proyecto_screen.dart`) tiene su propia barra pegada con el nombre de la obra.
+- **Letra:** una sola constante, `escalaTexto = 0.9` en `theme/seima_theme.dart`, aplicada en `app.dart` con un `MediaQuery` sobre toda la app. Se **multiplica** por el tamaño de letra que la persona tenga en el sistema (así Luis puede seguir agrandándola desde los ajustes del teléfono). Para cambiarla, solo se toca esa constante.
+- Verificado en el Android real: Cotizaciones (barra y filtros pegados al bajar), detalle de una cotización (barra con «volver» y nombre), centro de una obra (barra con nombre) y el formulario (las 8 categorías ya caben sin bajar). Se creó y se borró otro borrador de prueba. `flutter analyze` limpio y 33 pruebas.
+- Pendiente de ver: Ajustes con la barra contraída (misma lógica que las otras; no se abrió después del cambio).
+
+**Rediseño visual de la app (sin cambiar la lógica)**
+- Pedido de Sebas: la app se veía «simplona». Decidí llevarla a la misma dirección que la web: **cabeceras oscuras con las «capas»** (estructura, placas y acabado en rojo; widget `CapasMarca`), contenido claro, títulos Archivo ancha, controles sin borde y la barra inferior oscura con indicador rojo. Se mantienen las reglas de usabilidad (botones ≥ 56 dp, palabras simples, un paso por pantalla).
+- Pantallas: entrada oscura con el lema; «Mis obras» (saludo, cifras de publicadas/borradores/ocultas, tarjetas grandes con la portada y su estado, botón flotante «Nuevo proyecto»); centro de cada obra (portada grande, barra «X de 6», camino paso a paso con **el siguiente paso resaltado**, en rojo cuando ya se puede publicar); cotizaciones (filtros con conteo, inicial del cliente, detalle en bloques con WhatsApp y Llamar arriba); ajustes agrupados; formulario de datos (tipo de trabajo en tarjetas con ícono, botón «Crear borrador» siempre a la vista); «Antes/Durante/Después» (acciones con ícono, miniaturas en cuadrícula con su estado y número, progreso a la vista); comparación y portada (miniaturas más grandes con marco rojo en la elegida, botón de guardar fijo abajo).
+- Archivos nuevos en `app/lib/widgets/`: `capas_marca.dart`, `cabecera_seima.dart`, `etiquetas.dart`, `toque.dart` (tarjeta que se hunde y entrada escalonada, apagada con «reducir movimiento»), `elecciones.dart`. `seima_theme.dart` suma `seimaThemeOscuro()`; `seima_colors.dart` suma `ink4`, `onInkMuted`, `redSoft`.
+- `nombreLegible()` (en `quotes/cotizacion.dart`): un nombre escrito en MAYÚSCULAS se muestra con mayúscula inicial («RODRIGUEZ VENTURA» → «Rodriguez Ventura»); si ya trae minúsculas se respeta. Con prueba.
+- **Dato que faltaba en la base de desarrollo:** `categories` estaba vacía (`GET /categories` → `[]`), así que «Tipo de trabajo» salía sin opciones y no se podía crear ninguna obra. Se corrió `npm run seed:categories` (8 categorías) en la base local de Sebas. En QA/PD hay que correrlo también.
+- Verificado **en un Android real** (Samsung, 1440×3120) por `adb`: entrada, Mis obras vacío, Cotizaciones, Ajustes, formulario de datos, crear un borrador, centro de la obra, pantalla Antes, menú ⋮ y eliminar borrador (el borrador de prueba «Prueba diseno borrar» se creó y se borró). `flutter analyze` limpio; 33 pruebas.
+- **No verificado en pantalla:** miniaturas con fotos reales (cuadrícula de `Antes/Durante/Después`), la comparación, la portada y la cotización abierta; no hay fotos subidas y no quise subir archivos reales a Cloudinary solo para probar. Se revisó por código.
 
 **Firebase en local**
 - El proyecto de Firebase es SeimaApp (`seimaapp-2eb94`), app Android `pe.seima.app`. Las variables quedaron en `app/.env` y en `api/.env`. Los JSON no se quedan en el repo: `.gitignore` cubre `google-services.json` y la cuenta de servicio.
