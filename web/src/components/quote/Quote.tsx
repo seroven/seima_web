@@ -284,7 +284,7 @@ export default function Quote() {
               </motion.p>
               <motion.div className="q-nav" variants={subir}>
                 {wa ? (
-                  <a className="btn" href={wa} target="_blank" rel="noopener">Escríbenos por WhatsApp</a>
+                  <a className="btn" href={wa} target="_blank" rel="noopener" data-evento="whatsapp">Escríbenos por WhatsApp</a>
                 ) : (
                   <span className="btn btn--off q-off" aria-disabled="true">Escríbenos por WhatsApp · [NÚMERO PENDIENTE]</span>
                 )}

@@ -5,5 +5,5 @@ const { text, label = 'Cotizar por WhatsApp', class: cls, compact = false } = As
 const href = waLink(text);
 ---
 {href
-  ? <a class:list={['btn', cls]} href={href} target="_blank" rel="noopener">{label}</a>
+  ? <a class:list={['btn', cls]} href={href} target="_blank" rel="noopener" data-evento="whatsapp">{label}</a>
   : <span class:list={['btn btn--off', cls]} aria-disabled="true" title="Falta configurar PUBLIC_WHATSAPP_NUMBER">{label.replace(/\s*→$/, '')}{compact ? '' : ' · [NÚMERO PENDIENTE]'}</span>}
