@@ -56,7 +56,7 @@ Restricciones:
 
 - Tablas: `categories`, `projects`, `project_photos`, `quotes`, `quote_photos`, `admin_users` (+ `migrations`). IDs `uuid` (`gen_random_uuid()`, extensión pgcrypto). Columnas en `snake_case` (la API/entidades usan camelCase en español: `esPrincipal` → `es_principal`).
 - `project_photos`: índice único parcial `uq_project_photos_principal` (una principal por proyecto y etapa) y único `(project_id, etapa, orden)`. Borrar un proyecto borra sus fotos (`ON DELETE CASCADE`).
-- `projects.publicado`: el panel podrá despublicar sin borrar. `projects.categoria_id` es `RESTRICT` (no se borra una categoría con proyectos).
+- `projects.publicado`: el panel podrá despublicar sin borrar. ~~`projects.categoria_id`~~ pasó a la tabla de unión `project_categories` (ver §5): una categoría con obras sigue sin poderse borrar (`RESTRICT`).
 - `GET /projects` entrega la **portada** por proyecto (`antes` y `despues`: la foto principal; si falta, la primera por orden) con una sola consulta extra (`DISTINCT ON`), sin mandar toda la galería. `GET /projects/:slug` entrega `fotos` agrupadas por etapa. Cada foto trae `cloudinaryId` y `url` (null si es de prueba: ids `demo/…`).
 - `quotes`: datos generales (cliente, medidas, distrito, plazo, `notas`, contacto), un `mensaje` con el resumen en texto (el panel lo muestra y sirve para responder por WhatsApp), `estado` (`nueva` · `contactada` · `cerrada` · `descartada`) para que Luis las gestione desde el panel, y `proyecto_id` (`SET NULL` si borran el proyecto). **Lo específico de cada servicio ya no son columnas:** ver 1.5.
 - `admin_users`: correo en minúsculas, hash bcrypt, rol, `activo` y `ultimo_acceso`.
@@ -115,3 +115,14 @@ Detalle y razones en `docs/plan-app-movil.md` §3.3. Resumen:
 - `admin_users.usuario` (único; `luis`) y correo opcional (`nombre` ya existía). Tablas nuevas: **`refresh_tokens`** y **`device_tokens`** (Firebase).
 - La **portada** del catálogo es una pareja (foto de antes + foto de después); no hay rotación.
 - API pública: `fotos` → `medios`.
+
+## 5. Varios tipos de trabajo por obra (2026-11-21)
+
+Una obra puede tener **de 1 a 4 categorías** («Cocinas» y «Melamina»: es realista). Pedido de Sebas.
+
+- **Tabla `project_categories`** (`project_id`, `category_id`, clave primaria compuesta), reemplaza a `projects.categoria_id` (migración `ProjectCategories`, que **mueve los datos**: cada obra conserva su categoría; el `down` devuelve la columna con la categoría principal).
+- Llaves: `project_id → projects` **CASCADE** (al borrar la obra se van sus vínculos); `category_id → categories` **RESTRICT** (una categoría con obras no se borra; se desactiva con `activo`). El `RESTRICT` vive en `Category.proyectos`: en TypeORM el `onDelete` del lado propietario decide la llave de `project_id`, no la de `category_id` (ver STATE.md, lecciones).
+- **Sin columna de orden:** la categoría **principal** es la primera por `categories.orden` (luego por nombre). No hay que elegirla.
+- **API:** las obras traen `categorias` (todas) y `categoria` (la principal, por compatibilidad). `POST/PATCH /projects` reciben `categorias: string[]` (1 a 4, sin repetir, el campo `categoria` ya no se acepta). `GET /projects?categoria=x` devuelve las obras que tengan `x` entre las suyas y **no recorta** las categorías que se devuelven. Una obra solo sale en la web si tiene al menos una categoría activa.
+- **Web:** el filtro del catálogo es por pertenencia (una obra aparece en cada filtro que tenga); la tarjeta y la ficha muestran «Cocinas · Melamina».
+- **App:** el formulario deja marcar varios tipos de trabajo (tope de 4, con aviso).
