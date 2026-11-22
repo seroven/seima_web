@@ -34,21 +34,23 @@ const DEMOS: Demo[] = [
 
 export async function seedDemo(ds: DataSource): Promise<number> {
   const categorias = await ds.getRepository(Category).find();
-  const porSlug = new Map(categorias.map((c) => [c.slug, c.id]));
+  const porSlug = new Map(categorias.map((c) => [c.slug, c]));
 
   await ds.transaction(async (tx) => {
     const projects = tx.getRepository(Project);
     const photos = tx.getRepository(ProjectMedia);
 
     for (const d of DEMOS) {
-      const categoriaId = porSlug.get(d.categoria);
-      if (!categoriaId) throw new Error(`Falta la categoría "${d.categoria}": corre primero "npm run seed:categories".`);
+      const categoria = porSlug.get(d.categoria);
+      if (!categoria) throw new Error(`Falta la categoría "${d.categoria}": corre primero "npm run seed:categories".`);
 
       await projects.upsert(
-        { slug: d.slug, titulo: d.titulo, descripcion: d.descripcion, categoriaId, distrito: null, areaM2: null, dias: null, servicios: d.servicios, destacado: d.destacado, cliente: d.cliente, estado: 'publicado' as const },
+        { slug: d.slug, titulo: d.titulo, descripcion: d.descripcion, distrito: null, areaM2: null, dias: null, servicios: d.servicios, destacado: d.destacado, cliente: d.cliente, estado: 'publicado' as const },
         ['slug'],
       );
       const { id } = await projects.findOneByOrFail({ slug: d.slug });
+      // El upsert no maneja la relación de muchas a muchas: se guarda aparte.
+      await projects.save({ id, categorias: [categoria] });
 
       // Se regeneran los medios de prueba. La primera foto de antes y de después es el comparador y la portada.
       await photos.delete({ projectId: id });

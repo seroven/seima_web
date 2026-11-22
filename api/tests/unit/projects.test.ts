@@ -14,7 +14,7 @@ function proyecto(p: Partial<Project> = {}): Project {
   return {
     id: 'p1', slug: 'cocina-x', titulo: 'Cocina X', descripcion: 'Desc', distrito: 'Comas', areaM2: 12, dias: 5,
     servicios: ['cocina'], destacado: false, cliente: 'persona', estado: 'publicado',
-    categoria: { slug: 'cocinas', nombre: 'Cocinas' }, createdAt: new Date('2026-01-02T03:04:05Z'), ...p,
+    categorias: [{ slug: 'cocinas', nombre: 'Cocinas', orden: 1 }], createdAt: new Date('2026-01-02T03:04:05Z'), ...p,
   } as Project;
 }
 
@@ -56,6 +56,7 @@ describe('toCardDto', () => {
     expect(dto).not.toHaveProperty('medios');
     expect(dto).not.toHaveProperty('descripcion');
     expect(dto.categoria).toEqual({ slug: 'cocinas', nombre: 'Cocinas' });
+    expect(dto.categorias).toEqual([{ slug: 'cocinas', nombre: 'Cocinas' }]);
   });
   it('portada null donde no hay foto', () => {
     expect(toCardDto(proyecto(), []).portada).toEqual({ antes: null, despues: null });

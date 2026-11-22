@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, ManyToMany, PrimaryGeneratedColumn, type Relation, UpdateDateColumn } from 'typeorm';
+import { Project } from '../projects/project.entity';
 
 /** Ambiente/categoría del catálogo (cocinas, baños, departamentos…). */
 @Entity('categories')
@@ -18,6 +19,10 @@ export class Category {
 
   @Column({ type: 'boolean', default: true })
   activo!: boolean;
+
+  /** Obras que usan esta categoría. RESTRICT: no se borra una categoría que todavía tiene obras (se desactiva con `activo`). */
+  @ManyToMany(() => Project, (p) => p.categorias, { onDelete: 'RESTRICT' })
+  proyectos?: Relation<Project[]>;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

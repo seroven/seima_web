@@ -22,9 +22,17 @@ export type ListProjectsQuery = z.infer<typeof listProjectsQuerySchema>;
 /** Cadena vacía = borrar el dato. Si el campo no viene, se queda como está. */
 const vacioANull = (v: unknown) => (v === '' ? null : v);
 
+/** Tipos de trabajo de una obra: de 1 a 4, sin repetir. */
+export const MAX_CATEGORIAS = 4;
+const categorias = z
+  .array(slug)
+  .min(1, 'Elige al menos un tipo de trabajo')
+  .max(MAX_CATEGORIAS, `Máximo ${MAX_CATEGORIAS} tipos de trabajo`)
+  .transform((lista) => [...new Set(lista)]);
+
 const datosProyecto = {
   titulo: z.string().trim().min(2).max(160),
-  categoria: slug,
+  categorias,
   distrito: z.preprocess(vacioANull, z.string().trim().min(2).max(100).nullable().optional()),
   areaM2: z.preprocess(vacioANull, z.number().positive().max(100000).nullable().optional()),
   dias: z.preprocess(vacioANull, z.number().int().positive().max(3650).nullable().optional()),
@@ -40,7 +48,7 @@ export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export const updateProjectSchema = z
   .object({
     titulo: datosProyecto.titulo.optional(),
-    categoria: slug.optional(),
+    categorias: categorias.optional(),
     distrito: datosProyecto.distrito,
     areaM2: datosProyecto.areaM2,
     dias: datosProyecto.dias,

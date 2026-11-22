@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, type Relation, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinTable, ManyToMany, PrimaryGeneratedColumn, type Relation, UpdateDateColumn } from 'typeorm';
 import { Category } from '../categories/category.entity';
 import { ESTADOS_PROYECTO, TIPOS_CLIENTE, type EstadoProyecto, type TipoCliente } from './projects.types';
 
@@ -21,12 +21,18 @@ export class Project {
   @Column({ type: 'text' })
   descripcion!: string;
 
-  @Column({ type: 'uuid', name: 'categoria_id' })
-  categoriaId!: string;
-
-  @ManyToOne(() => Category, { nullable: false, onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'categoria_id' })
-  categoria!: Relation<Category>;
+  /**
+   * Tipos de trabajo de la obra (una cocina con muebles de melamina tiene dos).
+   * Al borrar la obra se borran sus vínculos; una categoría con obras no se puede borrar
+   * (el RESTRICT está en `Category.proyectos`, que es el lado que decide esa llave).
+   */
+  @ManyToMany(() => Category, (c) => c.proyectos)
+  @JoinTable({
+    name: 'project_categories',
+    joinColumn: { name: 'project_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'category_id', referencedColumnName: 'id' },
+  })
+  categorias!: Relation<Category[]>;
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   distrito!: string | null;

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { AppDataSource } from '../../src/database/data-source';
+import { Category } from '../../src/modules/categories/category.entity';
 import { API, agent, cotizacionValida, useDatabase } from './helpers';
 
 useDatabase();
@@ -16,7 +18,7 @@ describe('proyectos desde la app', () => {
     const token = await tokenAdmin();
     const creado = await agent().post(`${API}/projects`).set(auth(token)).send({
       titulo: 'Cocina de prueba de la app',
-      categoria: 'cocinas',
+      categorias: ['melamina', 'cocinas'],
       descripcion: 'Borrador de la prueba',
       distrito: 'Comas',
     });
@@ -24,6 +26,9 @@ describe('proyectos desde la app', () => {
     const id = creado.body.data.id as string;
     expect(creado.body.data.estado).toBe('borrador');
     expect(creado.body.data.slug).toBe('cocina-de-prueba-de-la-app');
+    // Dos tipos de trabajo, en el orden del catálogo; la principal es la primera.
+    expect(creado.body.data.categorias.map((c: { slug: string }) => c.slug)).toEqual(['cocinas', 'melamina']);
+    expect(creado.body.data.categoria.slug).toBe('cocinas');
 
     const subir = async (etapa: 'antes' | 'durante' | 'despues', tipo: 'foto' | 'video' = 'foto') => {
       const reserva = await agent().post(`${API}/projects/${id}/medios`).set(auth(token)).send({ etapa, tipo });
@@ -82,15 +87,53 @@ describe('proyectos desde la app', () => {
 
   it('un borrador sí se puede borrar', async () => {
     const token = await tokenAdmin();
-    const creado = await agent().post(`${API}/projects`).set(auth(token)).send({ titulo: 'Para borrar', categoria: 'banos' });
+    const creado = await agent().post(`${API}/projects`).set(auth(token)).send({ titulo: 'Para borrar', categorias: ['banos', 'techos'] });
     const id = creado.body.data.id as string;
+    const vinculos = () => AppDataSource.query('SELECT count(*)::int AS n FROM project_categories WHERE project_id = $1', [id]) as Promise<{ n: number }[]>;
+    expect((await vinculos())[0].n).toBe(2);
     expect((await agent().delete(`${API}/projects/${id}`).set(auth(token))).status).toBe(204);
     expect((await agent().get(`${API}/projects/gestion/${id}`).set(auth(token))).status).toBe(404);
+    // Al borrar la obra se van también sus vínculos con las categorías.
+    expect((await vinculos())[0].n).toBe(0);
   });
 
   it('sin token no deja gestionar', async () => {
     expect((await agent().get(`${API}/projects/gestion`)).status).toBe(401);
-    expect((await agent().post(`${API}/projects`).send({ titulo: 'Nada', categoria: 'cocinas' })).status).toBe(401);
+    expect((await agent().post(`${API}/projects`).send({ titulo: 'Nada', categorias: ['cocinas'] })).status).toBe(401);
+  });
+});
+
+describe('varios tipos de trabajo por obra', () => {
+  it('se pueden cambiar al editar y se rechaza lo inválido', async () => {
+    const token = await tokenAdmin();
+    const creado = await agent().post(`${API}/projects`).set(auth(token)).send({ titulo: 'Obra con varios tipos', categorias: ['cocinas'] });
+    expect(creado.status).toBe(201);
+    const id = creado.body.data.id as string;
+
+    const editado = await agent().patch(`${API}/projects/${id}`).set(auth(token)).send({ categorias: ['techos', 'banos', 'techos'] });
+    expect(editado.status).toBe(200);
+    expect(editado.body.data.categorias.map((c: { slug: string }) => c.slug)).toEqual(['banos', 'techos']);
+
+    // Solo el título: las categorías no se tocan
+    const titulo = await agent().patch(`${API}/projects/${id}`).set(auth(token)).send({ titulo: 'Obra renombrada' });
+    expect(titulo.body.data.categorias).toHaveLength(2);
+
+    const inexistente = await agent().patch(`${API}/projects/${id}`).set(auth(token)).send({ categorias: ['banos', 'no-existe'] });
+    expect(inexistente.status).toBe(422);
+    expect(JSON.stringify(inexistente.body.error.details)).toContain('no-existe');
+    const intacto = await agent().get(`${API}/projects/gestion/${id}`).set(auth(token));
+    expect(intacto.body.data.categorias).toHaveLength(2);
+
+    expect((await agent().patch(`${API}/projects/${id}`).set(auth(token)).send({ categorias: [] })).status).toBe(422);
+    expect((await agent().post(`${API}/projects`).set(auth(token)).send({ titulo: 'Sin tipo', categorias: [] })).status).toBe(422);
+    expect((await agent().post(`${API}/projects`).set(auth(token)).send({ titulo: 'Con el campo viejo', categoria: 'cocinas' })).status).toBe(422);
+    expect((await agent().post(`${API}/projects`).set(auth(token)).send({ titulo: 'Demasiados', categorias: ['cocinas', 'banos', 'techos', 'melamina', 'locales'] })).status).toBe(422);
+  });
+
+  it('una categoría que tiene obras no se puede borrar', async () => {
+    const token = await tokenAdmin();
+    await agent().post(`${API}/projects`).set(auth(token)).send({ titulo: 'Obra que usa remodelaciones', categorias: ['remodelaciones'] });
+    await expect(AppDataSource.getRepository(Category).delete({ slug: 'remodelaciones' })).rejects.toThrow();
   });
 });
 

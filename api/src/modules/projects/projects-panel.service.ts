@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { conflict, notFound, validationError } from '../../common/errors/app-error';
 import { env } from '../../config/env';
 import type { CategoriesRepository } from '../categories/categories.repository';
+import type { Category } from '../categories/category.entity';
 import { borrarDeCloudinary } from '../uploads/cloudinary-destroy';
 import type { UploadsService } from '../uploads/uploads.service';
 import { faltantesParaPublicar, mensajeIncompatible, type MedioRegla } from './project-rules';
@@ -59,14 +60,13 @@ export class PanelProjectsService {
   }
 
   async create(input: CreateProjectInput): Promise<ProjectGestionDto> {
-    const categoria = await this.categories.findBySlug(input.categoria);
-    if (!categoria) throw validationError([{ campo: 'categoria', mensaje: 'Ese tipo de trabajo no existe' }]);
+    const categorias = await this.categoriasPedidas(input.categorias);
     const slug = await this.slugLibre(slugify(input.titulo));
     const guardado = await this.repository.save({
       slug,
       titulo: input.titulo,
       descripcion: input.descripcion ?? '',
-      categoriaId: categoria.id,
+      categorias,
       distrito: input.distrito ?? null,
       areaM2: input.areaM2 ?? null,
       dias: input.dias ?? null,
@@ -90,13 +90,20 @@ export class PanelProjectsService {
     if (input.servicios !== undefined) cambios.servicios = input.servicios;
     if (input.destacado !== undefined) cambios.destacado = input.destacado;
     if (input.cliente !== undefined) cambios.cliente = input.cliente;
-    if (input.categoria !== undefined) {
-      const categoria = await this.categories.findBySlug(input.categoria);
-      if (!categoria) throw validationError([{ campo: 'categoria', mensaje: 'Ese tipo de trabajo no existe' }]);
-      cambios.categoriaId = categoria.id;
-    }
+    const categorias = input.categorias === undefined ? undefined : await this.categoriasPedidas(input.categorias);
     if (Object.keys(cambios).length) await this.repository.update(proyecto.id, cambios);
+    if (categorias) await this.repository.setCategorias(proyecto.id, categorias);
     return this.get(id);
+  }
+
+  /** Busca los tipos de trabajo pedidos; si alguno no existe, avisa cuál. */
+  private async categoriasPedidas(slugs: string[]): Promise<Category[]> {
+    const encontradas = await this.categories.findBySlugs(slugs);
+    const faltan = slugs.filter((s) => !encontradas.some((c) => c.slug === s));
+    if (faltan.length) {
+      throw validationError(faltan.map((s) => ({ campo: 'categorias', mensaje: `El tipo de trabajo "${s}" no existe` })));
+    }
+    return encontradas;
   }
 
   async remove(id: string): Promise<void> {

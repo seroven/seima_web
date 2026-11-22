@@ -1,4 +1,5 @@
 import { In, type DataSource, type Repository } from 'typeorm';
+import { Category } from '../categories/category.entity';
 import { ProjectMedia } from './project-media.entity';
 import { Project } from './project.entity';
 import type { EstadoProyecto, Etapa } from './projects.types';
@@ -26,38 +27,60 @@ export class ProjectsRepository {
     this.media = dataSource.getRepository(ProjectMedia);
   }
 
-  /** Proyectos publicados (con su categoría), los destacados primero y luego los más recientes. */
+  /**
+   * Proyectos publicados con todas sus categorías activas, los destacados primero y luego los más recientes.
+   * Filtrar por categoría no recorta las categorías que se devuelven: se pregunta aparte si la obra la tiene.
+   */
   findPublishedPage(f: ProjectFilters): Promise<[Project[], number]> {
     const qb = this.projects
       .createQueryBuilder('p')
-      .innerJoinAndSelect('p.categoria', 'c')
-      .where('p.estado = :estado', { estado: 'publicado' })
-      .andWhere('c.activo = true');
-    if (f.categoriaSlug) qb.andWhere('c.slug = :slug', { slug: f.categoriaSlug });
+      .innerJoinAndSelect('p.categorias', 'c', 'c.activo = true')
+      .where('p.estado = :estado', { estado: 'publicado' });
+    if (f.categoriaSlug) {
+      const conLaCategoria = qb
+        .subQuery()
+        .select('1')
+        .from('project_categories', 'pc')
+        .innerJoin(Category, 'f', 'f.id = pc.category_id')
+        .where('pc.project_id = p.id')
+        .andWhere('f.slug = :slug')
+        .andWhere('f.activo = true')
+        .getQuery();
+      qb.andWhere(`EXISTS ${conLaCategoria}`, { slug: f.categoriaSlug });
+    }
     if (f.destacado !== undefined) qb.andWhere('p.destacado = :destacado', { destacado: f.destacado });
     return qb.orderBy('p.destacado', 'DESC').addOrderBy('p.createdAt', 'DESC').skip(f.skip).take(f.take).getManyAndCount();
   }
 
   findPublishedBySlug(slug: string): Promise<Project | null> {
-    return this.projects.findOne({ where: { slug, estado: 'publicado', categoria: { activo: true } }, relations: { categoria: true } });
+    return this.projects
+      .createQueryBuilder('p')
+      .innerJoinAndSelect('p.categorias', 'c', 'c.activo = true')
+      .where('p.slug = :slug AND p.estado = :estado', { slug, estado: 'publicado' })
+      .getOne();
   }
 
   findGestionPage(f: GestionFilters): Promise<[Project[], number]> {
-    const qb = this.projects.createQueryBuilder('p').innerJoinAndSelect('p.categoria', 'c');
+    const qb = this.projects.createQueryBuilder('p').leftJoinAndSelect('p.categorias', 'c');
     if (f.estado) qb.where('p.estado = :estado', { estado: f.estado });
     return qb.orderBy('p.updatedAt', 'DESC').skip(f.skip).take(f.take).getManyAndCount();
   }
 
   findById(id: string): Promise<Project | null> {
-    return this.projects.findOne({ where: { id }, relations: { categoria: true } });
+    return this.projects.findOne({ where: { id }, relations: { categorias: true } });
   }
 
   slugTaken(slug: string): Promise<boolean> {
     return this.projects.existsBy({ slug });
   }
 
-  save(data: Partial<Project> & Pick<Project, 'slug' | 'titulo' | 'descripcion' | 'categoriaId'>): Promise<Project> {
+  save(data: Partial<Project> & Pick<Project, 'slug' | 'titulo' | 'descripcion' | 'categorias'>): Promise<Project> {
     return this.projects.save(this.projects.create(data));
+  }
+
+  /** Reemplaza los tipos de trabajo de la obra por exactamente estos. */
+  async setCategorias(id: string, categorias: Category[]): Promise<void> {
+    await this.projects.save({ id, categorias });
   }
 
   async update(id: string, data: Partial<Project>): Promise<void> {

@@ -1,4 +1,4 @@
-import type { DataSource, Repository } from 'typeorm';
+import { In, type DataSource, type Repository } from 'typeorm';
 import { Category } from './category.entity';
 
 /** Único lugar que habla con la base para categorías. */
@@ -15,5 +15,11 @@ export class CategoriesRepository {
 
   findBySlug(slug: string): Promise<Category | null> {
     return this.repo.findOne({ where: { slug, activo: true } });
+  }
+
+  /** Las categorías activas que existen entre los slugs pedidos (las que no existan no vienen). */
+  findBySlugs(slugs: string[]): Promise<Category[]> {
+    if (slugs.length === 0) return Promise.resolve([]);
+    return this.repo.find({ where: { slug: In(slugs), activo: true } });
   }
 }

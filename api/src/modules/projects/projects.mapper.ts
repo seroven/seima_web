@@ -24,10 +24,18 @@ export interface MedioDto {
   poster: string | null;
 }
 
+export interface CategoriaDto {
+  slug: string;
+  nombre: string;
+}
+
 export interface ProjectCardDto {
   slug: string;
   titulo: string;
-  categoria: { slug: string; nombre: string };
+  /** La principal (la primera por el orden del catálogo). Se mantiene por compatibilidad. */
+  categoria: CategoriaDto;
+  /** Todos los tipos de trabajo de la obra, en el orden del catálogo. */
+  categorias: CategoriaDto[];
   distrito: string | null;
   areaM2: number | null;
   dias: number | null;
@@ -57,7 +65,8 @@ export interface ProjectGestionDto {
   titulo: string;
   descripcion: string;
   estado: EstadoProyecto;
-  categoria: { slug: string; nombre: string };
+  categoria: CategoriaDto;
+  categorias: CategoriaDto[];
   distrito: string | null;
   areaM2: number | null;
   dias: number | null;
@@ -108,10 +117,19 @@ const par = (medios: ProjectMedia[], elegir: (m: ProjectMedia[], e: Etapa) => Pr
   })(),
 });
 
+/** Categorías de la obra en el orden del catálogo (primero `orden`, luego el nombre). */
+export const categoriasDe = (p: Pick<Project, 'categorias'>): CategoriaDto[] =>
+  [...(p.categorias ?? [])]
+    .sort((a, b) => a.orden - b.orden || a.nombre.localeCompare(b.nombre))
+    .map((c) => ({ slug: c.slug, nombre: c.nombre }));
+
+const SIN_CATEGORIA: CategoriaDto = { slug: 'sin-categoria', nombre: 'Sin categoría' };
+
 const base = (p: Project, portada: ProjectCardDto['portada']): ProjectCardDto => ({
   slug: p.slug,
   titulo: p.titulo,
-  categoria: { slug: p.categoria.slug, nombre: p.categoria.nombre },
+  categoria: categoriasDe(p)[0] ?? SIN_CATEGORIA,
+  categorias: categoriasDe(p),
   distrito: p.distrito,
   areaM2: p.areaM2,
   dias: p.dias,

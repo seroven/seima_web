@@ -1,5 +1,8 @@
+import { In } from 'typeorm';
 import { describe, expect, it } from 'vitest';
 import { AppDataSource } from '../../src/database/data-source';
+import { Category } from '../../src/modules/categories/category.entity';
+import { Project } from '../../src/modules/projects/project.entity';
 import { QuotePhoto } from '../../src/modules/quotes/quote-photo.entity';
 import { RespuestaCotizacion } from '../../src/modules/quotes/respuesta-cotizacion.entity';
 import { Quote } from '../../src/modules/quotes/quote.entity';
@@ -49,6 +52,34 @@ describe('GET /projects (público)', () => {
     expect(b.body.data).toEqual(a.body.data);
     const d = await agent().get(`${API}/projects?destacado=true`);
     expect(d.body.data).toHaveLength(3);
+  });
+
+  it('una obra con dos tipos de trabajo sale en el filtro de cada uno y trae los dos', async () => {
+    const proyectos = AppDataSource.getRepository(Project);
+    const obra = await proyectos.findOneByOrFail({ slug: 'closet-melamina' });
+    const cats = await AppDataSource.getRepository(Category).find({ where: { slug: In(['melamina', 'remodelaciones']) } });
+    await proyectos.save({ id: obra.id, categorias: cats });
+    try {
+      for (const slug of ['melamina', 'remodelaciones']) {
+        const res = await agent().get(`${API}/projects?categoria=${slug}`);
+        const mia = res.body.data.find((p: { slug: string }) => p.slug === 'closet-melamina');
+        expect(mia, `filtro ${slug}`).toBeTruthy();
+        // El filtro no recorta las categorías que se devuelven
+        expect(mia.categorias.map((c: { slug: string }) => c.slug)).toEqual(['melamina', 'remodelaciones']);
+        expect(mia.categoria.slug).toBe('melamina');
+      }
+      // No se repite en la lista y el total cuenta obras, no vínculos
+      const todas = await agent().get(`${API}/projects`);
+      expect(todas.body.meta.total).toBe(7);
+      expect(todas.body.data.filter((p: { slug: string }) => p.slug === 'closet-melamina')).toHaveLength(1);
+      const ficha = await agent().get(`${API}/projects/closet-melamina`);
+      expect(ficha.body.data.categorias).toHaveLength(2);
+      // Otra categoría no la trae
+      const otra = await agent().get(`${API}/projects?categoria=locales`);
+      expect(otra.body.data.some((p: { slug: string }) => p.slug === 'closet-melamina')).toBe(false);
+    } finally {
+      await proyectos.save({ id: obra.id, categorias: cats.filter((c) => c.slug === 'melamina') });
+    }
   });
 
   it('pagina', async () => {
