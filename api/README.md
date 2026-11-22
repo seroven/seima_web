@@ -212,11 +212,25 @@ npm test
 ```
 Cada ejecución vacía la base de pruebas, la reconstruye con `migration:run` y carga datos mínimos: así se comprueba también la automatización de la base. Se niega a correr si el nombre de la base no contiene `test`.
 
-## Despliegue (Render) — pendiente de configurar
-- Un servicio de Render por entorno (qa y pd), cada uno con su base y sus variables definidas en el panel (no se sube ningún `.env`).
-- Build: `npm install && npm run build` · Pre-deploy: `npm run migration:run:prod -- --yes` · Start: `npm start`
-- Variables: `APP_ENV=qa` (o `pd`), `DATABASE_URL` (la entrega Render), `DB_SSL=true`, `TRUST_PROXY=true`, `JWT_SECRET`, `CORS_ORIGINS` (URL de la web), `CLOUDINARY_CLOUD_NAME`.
+## Despliegue (Render)
+Dos servicios por entorno (qa y pd), cada uno con sus variables definidas **en el panel de Render** (no se sube ningún `.env`).
+
+**La API (Web Service)** — *Root Directory* `api`
+- Build: `npm install --include=dev && npm run build` (TypeScript está en las dependencias de desarrollo).
+- Start: `npm run migration:run:prod -- --yes && node dist/database/seeds/run.js all && npm start`. Migra, carga lo básico (tipos de trabajo, catálogo y el usuario `luis`) y arranca; todo es repetible sin pisar lo editado. Si el plan tiene *Pre-Deploy Command*, ahí va solo `npm run migration:run:prod -- --yes` y el Start queda en `npm start`.
 - Health check: `/health`.
+- Variables: `NODE_VERSION=22`, `APP_ENV=qa` (o `pd`), `DATABASE_URL` (la entrega Render), `DB_SSL=true`, `TRUST_PROXY=true`, `JWT_SECRET`, `CORS_ORIGINS` (la dirección de la web), `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, **`ADMIN_PASSWORD`** (mínimo 10 caracteres; en pd es la contraseña de `luis` y sin ella el arranque falla a propósito) y **`WEB_DEPLOY_HOOK_URL`** (ver abajo).
+
+**La web (Static Site)** — *Root Directory* `web`
+- Build: `npm install && npm run build` · Publish Directory: `dist`.
+- Variables: `NODE_VERSION=22.23.4` (Astro 7 lo exige), `PUBLIC_API_URL` (la dirección pública de la API, terminada en `/api/v1`), `PUBLIC_WHATSAPP_NUMBER`.
+- La web es estática: lee las obras de la API **al construirse**, así que la API tiene que estar arriba antes de construirla (crear primero la API).
+
+**Que una obra nueva aparezca en la web (reconstrucción automática).** En el Static Site, *Settings → Deploy Hook* da una URL **secreta**; se pone en la API como `WEB_DEPLOY_HOOK_URL` (solo en el panel de Render o en un `.env` local; nunca en git). Cuando cambia algo que la web muestra, la API le hace un `POST` y Render reconstruye el sitio (la obra aparece en 1–2 minutos):
+- una obra se **publica**, se **oculta**, o estando publicada se **edita** o le cambian fotos, comparación o portada;
+- se crea, renombra, ordena o desactiva un **tipo de trabajo** (salen en los filtros).
+
+No avisa por borradores, obras ocultas ni mientras se suben archivos. Junta los cambios seguidos en una sola reconstrucción (espera 1 minuto de calma, con tope de 5 minutos) y **un fallo al avisar nunca rompe lo que se estaba haciendo**: queda en el log, sin la URL. Si la API se reinicia dentro de ese minuto, el aviso pendiente se pierde (se recupera con el siguiente cambio o reconstruyendo a mano). Sin la variable (desarrollo) no hace nada. Código: `src/modules/web-rebuild/`.
 
 ## Pendiente (ver `STATE.md`)
 Endpoints del panel (CRUD de proyectos, subida de fotos a Cloudinary, revisión de cotizaciones), conectar la web a la API, refresh tokens si hacen falta, despliegue.
