@@ -263,25 +263,41 @@ html.fx-on [data-cursor] * {
   text-decoration: none;
   line-height: 1;
 }
-.brand svg {
-  width: 30px;
-  height: 30px;
-}
-.brand b {
+/* El logo ya trae el nombre y «Servicios Generales». flex: none evita que el contenedor flex lo aplaste de ancho. */
+.brand__logo {
   display: block;
-  font-stretch: 125%;
-  font-weight: 900;
-  font-size: 1.25rem;
-  color: var(--red);
-  letter-spacing: 0.02em;
+  flex: none;
+  height: 44px;
+  width: auto;
+  aspect-ratio: 800 / 535;
+  object-fit: contain;
 }
-.brand small {
-  display: block;
-  font-size: 0.6rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--muted-dark);
-  margin-top: 3px;
+
+/* ---------- Pantalla de bienvenida (primera visita de la sesión) ---------- */
+.splash {
+  display: none;
+}
+.splash-on .splash {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: #000;
+  pointer-events: none;
+  animation: splash-out 0.6s 1.4s ease forwards;
+}
+.splash img {
+  width: min(78vw, 460px);
+  height: auto;
+  animation: splash-in 0.9s cubic-bezier(0.2, 0.7, 0, 1) both;
+}
+@keyframes splash-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes splash-out {
+  to { opacity: 0; visibility: hidden; }
 }
 .nav {
   display: flex;
@@ -302,18 +318,13 @@ html.fx-on [data-cursor] * {
   padding: 0.55rem 1rem;
   font-size: 0.9rem;
 }
-@media (max-width: 460px) {
-  .brand small {
-    display: none;
-  }
-}
 /* Celular: los enlaces pasan al menú a pantalla completa; quedan el logo, "Cotizar" y el botón de menú */
 @media (max-width: 720px) {
   .site-header .wrap { gap: 0.6rem; }
   .nav { margin-left: auto; gap: 0; }
   .nav .nav__link { display: none; }
   .nav .btn { padding: 0.5rem 0.95rem; font-size: 0.88rem; }
-  .brand svg { width: 26px; height: 26px; }
+  .brand__logo { height: 40px; }
 }
 
 main {

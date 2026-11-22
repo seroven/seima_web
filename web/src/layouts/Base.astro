@@ -7,7 +7,8 @@ import Footer from '../components/Footer.astro';
 interface Props { title: string; description: string; image?: string | null; noindex?: boolean }
 const { title, description, image = null, noindex = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.url);
-const ogImage = image ? new URL(image, Astro.url).href : null;
+// Si la página no trae foto propia, al compartir sale el logo.
+const ogImage = new URL(image ?? '/og-seima.jpg', Astro.url).href;
 ---
 <!doctype html>
 <html lang="es-PE">
@@ -17,7 +18,10 @@ const ogImage = image ? new URL(image, Astro.url).href : null;
     <title>{title}</title>
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical.href} />}
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preload" as="image" href="/logo.webp" type="image/webp" />
     <meta name="theme-color" content="#0E0E0E" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="es_PE" />
@@ -25,16 +29,26 @@ const ogImage = image ? new URL(image, Astro.url).href : null;
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical.href} />
-    {ogImage && <meta property="og:image" content={ogImage} />}
-    <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
     <script is:inline>
       // Oculta lo que va a animarse solo si hay movimiento permitido (sin JS o con "reducir movimiento" todo se ve).
       if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('motion');
+      // Pantalla de bienvenida con el logo: solo la primera visita de la sesión y solo con movimiento permitido.
+      try {
+        var raiz = document.documentElement;
+        if (raiz.classList.contains('motion') && !sessionStorage.getItem('seima-splash')) {
+          sessionStorage.setItem('seima-splash', '1');
+          raiz.classList.add('splash-on');
+          setTimeout(function () { raiz.classList.remove('splash-on'); }, 2000);
+        }
+      } catch (e) {}
     </script>
     <ClientRouter />
   </head>
   <body>
     <div class="progress" aria-hidden="true"></div>
+    <div class="splash" aria-hidden="true"><img src="/logo.webp" width="800" height="535" alt="" /></div>
     <a class="skip" href="#main">Saltar al contenido</a>
     <Header />
     <main id="main">
