@@ -358,6 +358,8 @@ main {
 }
 .w {
   display: inline-block;
+  max-width: 100%; /* una palabra larguísima se parte en vez de salirse de la pantalla */
+  overflow-wrap: anywhere;
   overflow: hidden;
   vertical-align: top;
   padding: 0.12em 0.04em 0.1em;

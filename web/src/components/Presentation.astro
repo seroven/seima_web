@@ -216,7 +216,7 @@ const todas = fotosOrdenadas(p);
   .pres-open:hover { border-bottom-color: var(--red); }
 
   .pres { width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; background: #000; color: #fff; }
-  .pres[open] { display: grid; grid-template-rows: auto 1fr auto; transform-origin: var(--ox, 50%) var(--oy, 50%); }
+  .pres[open] { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr auto; transform-origin: var(--ox, 50%) var(--oy, 50%); }
   .pres::backdrop { background: #000; }
   .pres:focus { outline: none; }
 
@@ -237,10 +237,11 @@ const todas = fotosOrdenadas(p);
   @keyframes pres-pop { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
 
   .pres__bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.8rem 1rem; }
-  .pres__count { font-size: 0.9rem; color: #bbb; min-width: 4rem; }
+  .pres__count { font-size: 0.9rem; color: #bbb; min-width: 4rem; flex: none; }
   .pres__count b { color: #fff; }
-  .pres__title { font-weight: 700; font-size: 0.95rem; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pres__close { width: 44px; height: 44px; border-radius: 50%; border: 0; background: #222; color: #fff; display: grid; place-items: center; cursor: pointer; transition: background-color 0.2s ease, scale 0.2s ease; }
+  /* El título largo se parte en hasta 2 líneas y nunca empuja la barra (ni el botón de cerrar) fuera de la pantalla */
+  .pres__title { flex: 1; min-width: 0; font-weight: 700; font-size: 0.95rem; line-height: 1.25; text-align: center; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+  .pres__close { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 0; background: #222; color: #fff; display: grid; place-items: center; cursor: pointer; transition: background-color 0.2s ease, scale 0.2s ease; }
   .pres__close:hover { background: var(--red); scale: 1.06; }
 
   /* Escenario: flechas a los lados (en celular se montan sobre la foto) */

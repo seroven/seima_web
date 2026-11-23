@@ -23,7 +23,7 @@ const before = principal(p, 'antes');
   </div>
 </a>
 <style>
-  .pcard { display: flex; flex-direction: column; gap: 0.9rem; text-decoration: none; height: 100%; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  .pcard { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; text-decoration: none; height: 100%; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
   .pcard__media { position: relative; border-radius: var(--r); overflow: hidden; }
   .pcard--fill .pcard__media { height: var(--h, 20rem); }
   .pcard__peek { position: absolute; inset: 0; opacity: 0; transition: opacity 0.4s ease; }
@@ -34,6 +34,9 @@ const before = principal(p, 'antes');
   }
   @media (hover: hover) { .pcard:hover .pcard__peek { opacity: 1; } }
   .pcard:focus-visible .pcard__peek, .pcard.is-peek .pcard__peek { opacity: 1; }
+  .pcard__body { min-width: 0; }
+  /* Un título largo (o una palabra larga) se parte en varias líneas y nunca estira la tarjeta fuera de la pantalla */
+  .pcard__body h3, .pcard__cat { overflow-wrap: anywhere; }
   .pcard__cat { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--red-text); }
   :global(.dark) .pcard__cat { color: var(--red); }
   h3 { font-size: clamp(1.1rem, 2.4vw, 1.4rem); margin-top: 0.2rem; }
