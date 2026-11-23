@@ -157,7 +157,14 @@
 
 ## 4. Historial (más reciente primero)
 
-### 2026-11-22
+### 2026-11-23
+
+**Títulos largos que estiraban la pantalla en celular — web**
+- **Reporte de Sebas:** en celular, al abrir una foto de un proyecto con un título largo, el título se obligaba a una sola línea y el componente se estiraba fuera de la pantalla, sin verse toda la imagen. Debe hacer *wrap* y mantenerse dentro.
+- **Causa (reproducida en un marco de 390 px):** en el **visor** (`Presentation.astro`) el contenedor es un `grid` sin columna definida (columna `auto`) y el título era `white-space: nowrap`: con un título largo la barra llegó a **965 px** y el botón de cerrar quedó fuera de la pantalla. El mismo patrón estiraba la **tarjeta del catálogo** (una palabra larga sin espacios llevó la tarjeta y la página a **699 px**) y podía desbordar el `<h1>` de la ficha (las palabras son `inline-block`).
+- **Arreglo (solo CSS):** visor → `grid-template-columns: minmax(0, 1fr)`; el título pasa a `flex: 1; min-width: 0; overflow-wrap: anywhere` con **hasta 2 líneas** (`line-clamp`) y el contador y el botón de cerrar no se encogen (`flex: none`). Tarjeta (`ProjectCard.astro`) → `min-width: 0` y `overflow-wrap: anywhere` en título y categoría; catálogo (`proyectos/index.astro`) → columnas `minmax(0, 1fr)`; palabras de los títulos animados (`.w` en `global.css`) → `max-width: 100%` y `overflow-wrap: anywhere`.
+- **Medido tras el arreglo (390 px):** visor con barra de 0 a 390, título en 2 líneas y botón de cerrar dentro; catálogo con la tarjeta entre 20 y 370 y la página en 390; ficha con la palabra larguísima partida y la página en 390. `npm run build` correcto.
+- Nota: el servidor de desarrollo de la web y la API locales estaban apagados al empezar el día; se levantó solo la web (con datos de prueba; la ficha «Cocina» de QA no existe sin la API).
 
 **Footer con redes, WhatsApp flotante y enlaces con la dirección real — web**
 - **Pedido de Sebas:** rediseñar el pie con espacio para WhatsApp, TikTok y Facebook; que al menos WhatsApp se vea desde el inicio como ícono de contacto; y arreglar que «Compartir por WhatsApp» llevara `localhost` aunque la web está desplegada en QA.
